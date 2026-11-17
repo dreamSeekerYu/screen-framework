@@ -1,7 +1,11 @@
 <template>
   <div
     class="image-placeholder"
-    :class="[`image-placeholder--${shape}`, { 'is-clickable': clickable }]"
+    ref="rootRef"
+    :class="[
+      `image-placeholder--${shape}`,
+      { 'is-clickable': isClickable, 'is-previewable': previewable }
+    ]"
     :style="{ width, height }"
     @click="handleClick"
   >
@@ -24,10 +28,11 @@
       <span v-if="text" class="image-placeholder__text">{{ error ? errorText : text }}</span>
     </div>
 
-    <!-- hover 蒙层 -->
-    <div v-if="loaded && clickable" class="image-placeholder__hover">
+    <!-- hover 蒙层（可点击场景） -->
+    <div v-if="loaded && isClickable" class="image-placeholder__hover">
       <slot name="hover">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+        <!-- 可预览时默认显示放大镜，普通点击保留箭头/提示 -->
+        <svg v-if="previewable" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
           <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm2.5-4h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
         </svg>
       </slot>
@@ -36,7 +41,8 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
+import { previewImage } from '../../utils/imagePreview'
 
 const props = defineProps({
   src: { type: String, default: '' },
@@ -47,12 +53,15 @@ const props = defineProps({
     default: 'square',
     validator: (v) => ['square', 'rounded', 'circle'].includes(v)
   },
-  // 默认占位提示文字
   text: { type: String, default: '' },
   errorText: { type: String, default: '图片加载失败' },
-  // 是否可点击（用于点击预览的场景，仅显示 hover 蒙层）
-  clickable: { type: Boolean, default: false },
-  // 是否启用懒加载
+  /**
+   * 是否可点击：
+   * - true：普通点击，仅透出 click 事件
+   * - 'preview'：点击自动打开单图预览
+   * - 传数组：点击自动打开多图预览，当前图定位到对应索引
+   */
+  clickable: { type: [Boolean, String, Array], default: false },
   lazy: { type: Boolean, default: true }
 })
 
@@ -62,6 +71,11 @@ const error = ref(false)
 let img = null
 let io = null
 const rootRef = ref(null)
+
+const previewable = computed(() => {
+  return props.clickable === 'preview' || Array.isArray(props.clickable)
+})
+const isClickable = computed(() => !!props.clickable)
 
 function load() {
   if (!props.src) { loaded.value = false; return }
@@ -81,7 +95,21 @@ function load() {
 }
 
 function handleClick(e) {
-  if (props.clickable) emit('click', e)
+  if (!isClickable.value) return
+  emit('click', e)
+
+  if (previewable.value && loaded.value) {
+    let urls = []
+    let initialIndex = 0
+    if (Array.isArray(props.clickable)) {
+      urls = props.clickable
+      const idx = urls.findIndex(u => u === props.src)
+      initialIndex = idx >= 0 ? idx : 0
+    } else {
+      urls = [props.src]
+    }
+    previewImage({ urls, initialIndex })
+  }
 }
 
 watch(() => props.src, load)
@@ -125,6 +153,11 @@ defineExpose({ reload: load })
   &--circle  { border-radius: 50%; }
 
   &.is-clickable { cursor: pointer; }
+  &.is-previewable {
+    cursor: zoom-in;
+    .image-placeholder__bg { transition: transform 0.3s ease; }
+    &:hover .image-placeholder__bg { transform: scale(1.03); }
+  }
 
   &__bg {
     position: absolute;

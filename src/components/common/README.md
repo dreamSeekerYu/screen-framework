@@ -1,121 +1,185 @@
-# Common 通用组件说明
+# 通用组件文档
 
-本目录为大屏项目的通用基础组件，全部使用 SCSS 变量 + CSS 自定义属性，自动跟随 `data-theme`（dark-blue / gov-red / light-business）主题切换。
+所有组件已适配大屏三套主题（科技深蓝 / 政务红金 / 浅色商务），会自动跟随主题切换。
 
 ---
 
-## Dialog 页面级弹窗
+## 组件清单
+
+| 组件 | 文件 | 说明 |
+|---|---|---|
+| Tag | Tag.vue | 标签，8种状态色、支持可关闭/自定义色/透明边框 |
+| Progress | Progress.vue | 进度条，支持条纹动效/内置外置文字/自定义渐变 |
+| Tabs / TabPane | Tabs.vue / TabPane.vue | 标签页切换，三种风格：line/card/segment |
+| Image | Image.vue | **单图组件**：整合懒加载、loading 占位、错误占位、hover 放大镜、点击预览 |
+| ImagePreviewGroup | ImagePreviewGroup.vue | **图集预览组**：用 provide/inject 收集子 `<Image>`，缩略图点击自动联动预览 |
+| Dialog | Dialog.vue | 页面级弹窗：拖拽、全屏、ESC/遮罩关闭、过渡动画 |
+| ImagePreview | ImagePreview.vue | 预览底层组件，通常不直接使用，用函数式 API `previewImage` 唤起 |
+
+> 图片相关原 `ImagePlaceholder.vue` 已整合进 `Image.vue`，删除冗余，不再单独提供。
+
+---
+
+## Image（核心图片组件）
 
 ```vue
-<Dialog v-model="visible" title="问题详情" width="900px" draggable>
-  <div>弹窗内容</div>
+<Image src="/img/a.jpeg" />
+```
+
+| Prop | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| src | string | '' | 图片地址 |
+| alt | string | '' | 替代文本 |
+| width / height | string/number | '' | 尺寸，数字默认 px |
+| radius | string | '' | 自定义圆角，不填跟随 shape |
+| shape | 'square'\|'rounded'\|'circle' | 'rounded' | 形状 |
+| fit | 'fill'\|'contain'\|'cover'\|'none'\|'scale-down' | 'cover' | object-fit 填充模式 |
+| lazy | boolean | true | 是否启用 IntersectionObserver 懒加载 |
+| preview | boolean \| string[] | - | 是否点击预览：<br>- `true` 单图预览<br>- `string[]` 自定义图集<br>- 不填但外层包裹了 ImagePreviewGroup，自动加入组内图集 |
+| onClick | Function | null | 自定义点击，设置后会覆盖默认预览行为 |
+
+插槽：`#loading` 自定义加载中占位、`#error` 自定义加载失败占位。
+
+### 三种预览用法
+
+```vue
+<!-- 1. 单图点击预览 -->
+<Image :src="url" preview />
+
+<!-- 2. 单图点击打开自定义图集（当前图在图集中定位） -->
+<Image :src="url" :preview="allUrls" />
+
+<!-- 3. 由 Group 自动收集图集，无需维护 urls 数组 -->
+<ImagePreviewGroup>
+  <Image v-for="u in urls" :key="u" :src="u" :width="100" :height="80" />
+</ImagePreviewGroup>
+```
+
+### JS 函数式唤起（无需写模板组件）
+
+```js
+import { previewImage } from '@/utils/imagePreview'
+previewImage({ urls: imgList, initialIndex: 2 })
+// 或直接用 window.$previewImage({...})
+```
+
+---
+
+## ImagePreviewGroup（图集组）
+
+将若干 `<Image>` 包在 `<ImagePreviewGroup>` 里，组内任意图片点击时自动以图集方式预览（带左右切换、底部缩略图、键盘 ←→ 切换、滚轮缩放、旋转、下载）。
+
+```vue
+<ImagePreviewGroup>
+  <div class="grid">
+    <Image v-for="u in list" :key="u" :src="u" :width="120" :height="90" />
+  </div>
+</ImagePreviewGroup>
+```
+
+| Prop | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| current | number | 0 | 初始索引（通常不需要，组件会按点击的图片自动定位） |
+
+组件内部使用 `display: contents`，不会额外增加 DOM 层级，不影响你的布局。
+
+---
+
+## Tag
+
+```vue
+<Tag type="primary" text="标签" />
+<Tag type="danger" text="可关闭" closable @close="..." />
+<Tag color="#FF9500" text="自定义色" />
+<Tag plain type="success" text="透明边框" />
+<Tag size="small" text="小尺寸" />
+```
+
+| Prop | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| text | string | '' | 标签文字 |
+| type | 'default'\|'primary'\|'success'\|'warning'\|'danger'\|'info'\|'cyan'\|'purple' | 'default' | 状态色 |
+| color | string | '' | 自定义颜色（优先于 type） |
+| plain | boolean | false | 透明描边风格 |
+| closable | boolean | false | 是否显示关闭按钮 |
+| size | 'default'\|'small' | 'default' | 尺寸 |
+
+事件：`@close` 关闭按钮点击。
+
+---
+
+## Progress
+
+```vue
+<Progress :percentage="65" status="success" striped text-inside />
+```
+
+| Prop | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| percentage | number | 0 | 百分比 0-100 |
+| status | 'primary'\|'success'\|'warning'\|'danger'\|'info' | 'primary' | 状态色 |
+| strokeWidth | number | 8 | 进度条粗细 px |
+| textInside | boolean | false | 文字在进度条内显示 |
+| striped | boolean | false | 斑马条纹动效 |
+| showText | boolean | true | 是否显示文字 |
+| color | string | '' | 自定义颜色/渐变，如 `linear-gradient(90deg, #f66, #f90)` |
+
+---
+
+## Tabs / TabPane
+
+```vue
+<Tabs v-model="active" type="card">
+  <TabPane label="本周" name="week">...</TabPane>
+  <TabPane label="本月" name="month" badge="3">...</TabPane>
+  <TabPane label="归档" name="archived" disabled>...</TabPane>
+</Tabs>
+```
+
+**Tabs props**
+
+| Prop | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| modelValue | string/number | '' | v-model 绑定当前激活的 pane name |
+| type | 'line'\|'card'\|'segment' | 'line' | 风格 |
+
+**TabPane props**
+
+| Prop | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| label | string | '' | 标签文字 |
+| name | string/number | '' | 唯一标识 |
+| disabled | boolean | false | 禁用 |
+| badge | string/number | '' | 右上角徽标（小红点/数字） |
+
+---
+
+## Dialog
+
+```vue
+<Dialog v-model="visible" title="标题" width="600px" draggable>
+  内容
   <template #footer>
-    <button @click="visible = false">关闭</button>
+    <StatusTag text="取消" @click="visible=false" />
+    <StatusTag type="primary" text="确定" @click="visible=false" />
   </template>
 </Dialog>
 ```
 
 | Prop | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| v-model | Boolean | false | 显示/隐藏 |
-| title | String | '' | 标题（也可通过 #header 插槽自定义） |
-| width | String/Number | '60%' | 宽度 |
-| size | String | 'default' | small/default/large |
-| fullscreen | Boolean | false | 是否全屏 |
-| draggable | Boolean | false | 头部是否可拖拽 |
-| closeOnClickModal | Boolean | true | 点击遮罩关闭 |
-| closeOnPressEscape | Boolean | true | ESC 关闭 |
-| blur | Boolean | true | 遮罩背景模糊 |
-| top | String | '10vh' | 距顶距离 |
+| modelValue | boolean | false | v-model 控制显隐 |
+| title | string | '' | 标题 |
+| width | string | '520px' | 宽度 |
+| top | string | '12vh' | 距顶距离 |
+| fullscreen | boolean | false | 是否全屏 |
+| draggable | boolean | true | 是否允许拖拽标题栏移动 |
+| closeOnClickModal | boolean | true | 点击遮罩关闭 |
+| closeOnPressEscape | boolean | true | 按 ESC 关闭 |
+| showClose | boolean | true | 是否显示右上角关闭按钮 |
+| modal | boolean | true | 是否显示遮罩 |
+| appendToBody | boolean | true | 是否挂载到 body |
 
-事件：`@open` `@close` `@opened` `@closed`；插槽：`#header` `#header-extra` `#footer`。
+插槽：`#header` 自定义头部、`#footer` 自定义底部、`#default` 内容区。
 
----
-
-## Tabs / TabPane 标签页切换
-
-```vue
-<Tabs v-model="tab" type="card">
-  <TabPane label="本周" name="week">内容</TabPane>
-  <TabPane label="本月" name="month" badge="3">内容</TabPane>
-</Tabs>
-```
-
-Tabs Props：
-
-| Prop | 类型 | 默认 | 说明 |
-|---|---|---|---|
-| v-model | String/Number | 0 | 当前激活项 |
-| type | String | 'card' | line / card / segment |
-| stretch | Boolean | false | segment 类型下是否均分宽度 |
-
-TabPane Props：`label`、`name`、`disabled`、`badge`。
-事件：`@change`。
-
----
-
-## ImagePreview 图片预览
-
-支持单张/多张、缩放、旋转、拖拽、滚轮缩放、键盘方向键切换、全屏、下载、缩略图列表。
-
-```vue
-<ImagePreview v-model="previewVisible" :urls="imgList" :initial-index="0" />
-```
-
-触发方式：通常配合 `ImagePlaceholder` 或 `Image` 点击后把 v-model 置 true，urls 可以是字符串数组或单个字符串。
-
-快捷键：← → 切换、+/- 缩放、Esc 关闭、双击图片重置。
-
----
-
-## Image 图片（带加载/失败状态）
-
-```vue
-<Image src="/img/xx.jpeg" fit="cover" width="120px" height="80px" @click="preview" />
-```
-
-Props：`src`、`alt`、`width`、`height`、`fit`（fill/contain/cover/none/scale-down）、`loadingText`、`errorText`。
-事件：`@load` `@error` `@click`。
-
----
-
-## ImagePlaceholder 图片占位（带懒加载+骨架屏）
-
-专为大屏列表/表格缩略图设计，默认 IntersectionObserver 懒加载，未加载时显示骨架屏，加载失败显示图标。
-
-```vue
-<ImagePlaceholder
-  :src="item.img"
-  shape="rounded"
-  width="80px"
-  height="60px"
-  clickable
-  @click="openPreview"
-/>
-```
-
-Props：`src`、`width`、`height`、`shape`（square/rounded/circle）、`text`、`errorText`、`clickable`、`lazy`。
-插槽：`#icon`（自定义占位图标）、`#hover`（自定义 hover 蒙层内容）。
-
----
-
-## Tag 标签
-
-```vue
-<Tag text="已完成" type="success" closable @close="onClose" />
-```
-
-Props：`text`、`type`（default/primary/success/info/warning/danger）、`size`（small/default/large）、`round`、`closable`。
-
-> 注意与 `StatusTag` 的区别：StatusTag 用于状态强调（多为实色填充），Tag 用于数据标注（描边半透明风格，更适合大屏深色背景）。
-
----
-
-## Progress 进度条
-
-```vue
-<Progress :percentage="78" status="success" :stroke-width="10" striped />
-```
-
-Props：`percentage`（0–100）、`status`（success/warning/danger）、`strokeWidth`、`color`（单色或色数组渐变）、`trackColor`、`showText`、`textInside`、`striped`（斑马条纹动效）、`duration`。
-插槽：`#text`（自定义百分比文字）。
+事件：`@open`、`@close`、`@opened`、`@closed`。
