@@ -14,6 +14,21 @@ html, body {
   color: var(--color-text-primary);
 }
 
+// 组件演示类页面允许页面整体滚动
+html.body-scrollable,
+body.body-scrollable {
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: auto;
+  min-height: 100%;
+}
+
+html.body-scrollable #app,
+body.body-scrollable #app {
+  height: auto;
+  min-height: 100vh;
+}
+
 #app {
   width: 100%;
   height: 100%;

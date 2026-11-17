@@ -54,30 +54,32 @@ const routes = [
   {
     path: '/comp',
     name: 'Comp',
-    // 路由懒加载
     component: () => import('@/views/Comp/index.vue'),
-    meta: { title: '组件展示' }
+    meta: { title: '组件展示', noScale: true }
   },
   {
     path: '/newcomp',
     name: 'NewComp',
-    // 路由懒加载
     component: () => import('@/views/NewComp/index.vue'),
-    meta: { title: '组件展示' }
+    meta: { title: '统计卡片组件', noScale: true }
   },
   {
     path: '/tags',
     name: 'Tags',
-    // 路由懒加载
     component: () => import('@/views/NewComp/Demo.vue'),
-    meta: { title: '组件展示' }
+    meta: { title: '组件展示', noScale: true }
   },
 {
     path: '/c_q_Card',
     name: 'C_Q_Card',
-    // 路由懒加载
     component: () => import('@/views/NewComp/CustomerQualityCard.vue'),
-    meta: { title: '组件展示' }
+    meta: { title: '客户质量卡片', noScale: true }
+  },
+  {
+    path: '/commoncomp',
+    name: 'CommonComp',
+    component: () => import('@/views/NewComp/CommonCompDemo.vue'),
+    meta: { title: '通用组件展示', noScale: true }
   },
 ]
 

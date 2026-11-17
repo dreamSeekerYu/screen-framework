@@ -1,5 +1,5 @@
 <template>
-    <div style="padding: 40px; background: #f5f7fa; height: 100vh;overflow-y: scroll;">
+    <div style="padding: 40px 40px 80px; background: #f5f7fa; min-height: 100vh; box-sizing: border-box;">
         <h2 style="margin-bottom: 24px; color: #1d2129;">📊 统计卡片组件 - 插槽用法演示</h2>
         <div
             style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px;">

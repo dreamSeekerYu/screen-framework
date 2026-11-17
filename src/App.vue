@@ -1,20 +1,28 @@
 <template>
-  <ScreenContainer>
+  <ScreenContainer v-if="!$route.meta?.noScale">
     <router-view v-slot="{ Component }">
       <div class="router-link-container">
         <RouterLink v-for="(route, index) in routeList" :key="index" :to="route.path"> {{ route.name }}</RouterLink>
       </div>
       <transition name="fade" mode="out-in">
         <component :is="Component" />
-
       </transition>
     </router-view>
   </ScreenContainer>
+  <div v-else class="full-page">
+    <div class="router-link-container full-page-links">
+      <RouterLink v-for="(route, index) in routeList" :key="index" :to="route.path"> {{ route.name }}</RouterLink>
+    </div>
+    <router-view v-slot="{ Component }">
+      <component :is="Component" />
+    </router-view>
+  </div>
 </template>
 
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import ScreenContainer from '@/components/layout/ScreenContainer.vue'
 import jsonData from './data/data.json'
 import packData from './data/pack客户表现.json'
@@ -35,8 +43,24 @@ import {
   rightMostFilledCol,
   latestFilledCols,
 } from '@/utils/getDataFromJson.js'
-console.log(router.options.routes)
+
+const route = useRoute()
 const routeList = ref(router.options.routes);
+
+// 根据路由动态切换body滚动权限：组件演示页允许整体滚动，大屏页保持禁止滚动
+const updateBodyScroll = () => {
+  if (route.meta?.noScale) {
+    document.body.classList.add('body-scrollable')
+    document.documentElement.classList.add('body-scrollable')
+  } else {
+    document.body.classList.remove('body-scrollable')
+    document.documentElement.classList.remove('body-scrollable')
+  }
+}
+onMounted(updateBodyScroll)
+watch(() => route.path, updateBodyScroll)
+
+console.log(router.options.routes)
 // 获取单元格/区域数据
 const packSheet = indexSheet(packData.sheets[0]);
 console.log(packSheet)
@@ -145,6 +169,34 @@ getRowsFromSheet(jsonData, {
   a {
     display: block;
     margin-right: 30px;
+  }
+}
+
+.full-page {
+  width: 100%;
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding: 56px 24px 40px;
+}
+
+.full-page-links {
+  position: fixed;
+  right: 16px;
+  top: 12px;
+  left: auto;
+  flex-direction: row;
+  gap: 12px;
+  z-index: 9999;
+
+  a {
+    margin-right: 0;
+    font-size: 12px;
+    color: #4080ff;
+    background: #fff;
+    padding: 4px 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.08);
+    text-decoration: none;
   }
 }
 </style>
