@@ -1,0 +1,101 @@
+// ========== 全局尺寸基准 ==========
+$design-width: 1920px;
+$design-height: 1080px;
+
+// ========== 通用间距 ==========
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// ========== 字体大小 ==========
+$font-xs: 12px;
+$font-sm: 14px;
+$font-md: 16px;
+$font-lg: 20px;
+$font-xl: 28px;
+$font-xxl: 36px;
+
+// ========== 圆角 ==========
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+
+// ========== 全局样式变量（CSS 自定义属性，通过 data-theme 切换） ==========
+:root[data-theme='dark-blue'] {
+  // 主色板 - 科技深蓝
+  --color-primary: #1e6fff;
+  --color-primary-light: #4d90ff;
+  --color-primary-dark: #0052d9;
+  
+  // 背景
+  --color-bg-page: #0a1929;
+  --color-bg-card: rgba(13, 35, 63, 0.8);
+  --color-bg-header: rgba(10, 25, 41, 0.95);
+  
+  // 文字
+  --color-text-primary: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.7);
+  --color-text-muted: rgba(255, 255, 255, 0.45);
+  
+  // 边框
+  --color-border: rgba(30, 111, 255, 0.3);
+  --color-border-light: rgba(30, 111, 255, 0.15);
+  
+  // 图表通用色系
+  --chart-colors: #1e6fff, #00c6ff, #36cfc9, #ffc53d, #ff7a45, #9254de;
+}
+
+:root[data-theme='gov-red'] {
+  // 主色板 - 政务红金
+  --color-primary: #c41e3a;
+  --color-primary-light: #e03e56;
+  --color-primary-dark: #9c142c;
+  
+  // 背景
+  --color-bg-page: #120a0e;
+  --color-bg-card: rgba(50, 20, 30, 0.8);
+  --color-bg-header: rgba(18, 10, 14, 0.95);
+  
+  // 文字
+  --color-text-primary: #f5e6c8;
+  --color-text-secondary: rgba(245, 230, 200, 0.7);
+  --color-text-muted: rgba(245, 230, 200, 0.45);
+  
+  // 边框
+  --color-border: rgba(196, 30, 58, 0.3);
+  --color-border-light: rgba(196, 30, 58, 0.15);
+  
+  // 图表通用色系
+  --chart-colors: #c41e3a, #d4af37, #e6b800, #ff8c00, #cd5c5c, #8b0000;
+}
+
+:root[data-theme='light-business'] {
+  // 主色板 - 浅色商务
+  --color-primary: #2f54eb;
+  --color-primary-light: #597ef7;
+  --color-primary-dark: #1d39c4;
+  
+  // 背景
+  --color-bg-page: #f0f2f5;
+  --color-bg-card: #ffffff;
+  --color-bg-header: #ffffff;
+  
+  // 文字
+  --color-text-primary: #1f2329;
+  --color-text-secondary: rgba(31, 35, 41, 0.7);
+  --color-text-muted: rgba(31, 35, 41, 0.45);
+  
+  // 边框
+  --color-border: rgba(47, 84, 235, 0.2);
+  --color-border-light: rgba(47, 84, 235, 0.1);
+  
+  // 图表通用色系
+  --chart-colors: #2f54eb, #1890ff, #13c2c2, #52c41a, #faad14, #f5222d;
+}
+
+// ========== 组件级变量 ==========
+$header-height: 80px;
+$card-padding: 16px;
+$z-index-header: 100;

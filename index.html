@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据可视化大屏框架</title>
+  <script>
+    // 首屏防闪烁：在DOM解析前先设置好主题属性
+    const savedTheme = localStorage.getItem('screen-theme') || 'dark-blue'
+    document.documentElement.setAttribute('data-theme', savedTheme)
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div class="app-loading">
+      <div class="loading-text">大屏加载中...</div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
