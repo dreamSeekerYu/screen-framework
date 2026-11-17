@@ -3,7 +3,7 @@
     <!-- 顶部标题栏 -->
     <ScreenHeader title="重大质量异常闭环率" />
     <div
-      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px;">
+      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 32px;">
       <StatCard v-for="(item, index) in totalKardData" :key="index" :theme="item.theme" :status="item.status"
         :title="item.title" :sub-title="item.subTitle" :value="item.value" :unit="item.unit" :trend="item.trend"
         :trend-type="item.trendType" :trend-label="item.trendLabel" :badge="item.badge" :icon-type="item.iconType">
