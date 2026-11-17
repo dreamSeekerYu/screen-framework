@@ -7,11 +7,15 @@
       <StatCard v-for="(item, index) in totalKardData" :key="index" :theme="item.theme" :status="item.status"
         :title="item.title" :explain="item.explain" :sub-title="item.subTitle" :value="item.value" :unit="item.unit"
         :trend="item.trend" :trend-type="item.trendType" :trend-label="item.trendLabel" :badge="item.badge"
-        :icon-type="item.iconType" :icon="item.icon" :variant="item.variant" brightness="dark" size="small"
-      >
+        :icon-type="item.iconType" :icon="item.icon" :variant="item.variant" brightness="dark" size="small">
       </StatCard>
     </div>
-
+    <!-- 卡片展示区 -->
+    <div class="cards-grid">
+      <CustomerQualityCard v-for="(item, key) in metricsCardData" :key="key" :title="item.title" :status="item.status"
+        :layout="item.layout" :metrics="item.metrics" :progress="85" :remark="item.remark" :theme="item.theme"
+        :sections="item.sections" />
+    </div>
     <!-- 主体内容区 -->
     <div class="screen-content">
       <!-- 左侧区域 -->
@@ -113,6 +117,78 @@ import NumberCounter from '@/components/data/NumberCounter.vue'
 import MarqueeList from '@/components/data/MarqueeList.vue'
 import { useLazyLoad } from '@/composables/useLazyLoad'
 import StatCard from '@/components/common/NewStatCard.vue'
+import CustomerQualityCard from '@/components/common/CustomerQualityCard.vue'
+
+// 主题切换
+const currentTheme = ref('light')
+const metricsCardData = ref([
+  {
+    //A1客户数据 - 关注
+    title: "A1客户",
+    status: "attention",
+    layout: "standard",
+    progress: "85",
+    theme: currentTheme,
+    remark: "整体达标率 85%，需关注0KM异常",
+    metrics: [
+      { label: '0KM PPM', value: '3745', extra: '(WK40)', highlight: true },
+      { label: '3MIS PPM', value: '0', extra: '达标' },
+      { label: '6MIS PPM', value: '0', extra: '达标' },
+      { label: '12MIS PPM', value: '7', extra: '(26-2月)' }
+    ]
+  }, {
+    // A2客户数据 - 预警
+    title: "A2客户",
+    status: "warning",
+    layout: "standard",
+    progress: "60",
+    theme: currentTheme,
+    remark: "整体达标率 60%，12MIS需重点关注",
+    metrics: [
+      { label: '0KM PPM', value: '2597', extra: '(WK40)', highlight: true },
+      { label: '3MIS PPM', value: '2', extra: '(WK44)' },
+      { label: '6MIS PPM', value: '71', extra: '(25-11月)' },
+      { label: '12MIS PPM', value: '75.4', extra: '(WK44)', highlight: true }
+    ]
+  }, {
+    // A3客户数据 - 达标
+    title: "A3客户",
+    status: "success",
+    layout: "standard",
+    progress: "95",
+    theme: currentTheme,
+    remark: "整体达标率 95%，质量表现优秀",
+    metrics: [
+      { label: '0KM PPM', value: '2248', extra: '(峰值)', highlight: true },
+      { label: '3MIS PPM', value: '0', extra: '达标' },
+      { label: '6MIS PPM', value: '0', extra: '达标' },
+      { label: '12MIS PPM', value: '0', extra: '达标' }
+    ]
+  }, {
+    // A4客户数据 - 多项目布局
+    title: "A4客户",
+    status: "success",
+    layout: "multi",
+    progress: "80",
+    theme: currentTheme,
+    remark: "整体达标率 80%，小米N1外观需关注",
+    sections: [
+      {
+        title: 'M5-XP (D03E):',
+        items: [
+          { label: '0KM PPM峰值', value: '270', extra: '(WK43)', highlight: true }
+        ]
+      },
+      {
+        title: 'M6-XM (小米 N1):',
+        items: [
+          { label: '外观PPM', value: '988' },
+          { label: '性能PPM', value: '142', extra: '达标' }
+        ]
+      }
+    ]
+  }
+])
 
 const totalKardData = ref([
   {
@@ -517,5 +593,12 @@ const progressData = ref([
     font-family: 'DIN Alternate', sans-serif;
     flex-shrink: 0;
   }
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
 }
 </style>

@@ -1,0 +1,332 @@
+<template>
+  <div class="customer-card" :class="[`status-${status}`, `theme-${theme}`]">
+    <!-- 头部：客户名称 + 状态标签 -->
+    <div class="card-header">
+      <span class="customer-name">{{ title }}</span>
+      <span class="status-tag" :class="`tag-${status}`">{{ statusText }}</span>
+    </div>
+
+    <!-- 内容区：自动根据 layout 切换 -->
+    <div class="card-body">
+      <!-- 标准PPM周期布局 -->
+      <template v-if="layout === 'standard'">
+        <div class="metric-row" v-for="(item, idx) in metrics" :key="idx">
+          <span class="metric-label">{{ item.label }}</span>
+          <span class="metric-value" :class="{ highlight: item.highlight }">
+            {{ item.value }}
+            <span v-if="item.extra" class="metric-extra">{{ item.extra }}</span>
+          </span>
+        </div>
+      </template>
+
+      <!-- 多项目自定义布局 -->
+      <template v-else-if="layout === 'multi'">
+        <div class="metric-section" v-for="(section, sIdx) in sections" :key="sIdx">
+          <div v-if="section.title" class="section-title">{{ section.title }}</div>
+          <div class="metric-row" v-for="(item, idx) in section.items" :key="idx">
+            <span class="metric-label">{{ item.label }}</span>
+            <span class="metric-value" :class="{ highlight: item.highlight }">
+              {{ item.value }}
+              <span v-if="item.extra" class="metric-extra">{{ item.extra }}</span>
+            </span>
+          </div>
+        </div>
+      </template>
+
+      <!-- 进度条 -->
+      <div class="progress-wrapper" v-if="progress !== null && progress !== undefined">
+        <div class="progress-bar">
+          <div 
+            class="progress-fill" 
+            :style="{ width: `${Math.min(100, Math.max(0, progress))}%` }"
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部备注 -->
+    <div class="card-footer" v-if="remark">
+      <span class="remark-text">{{ remark }}</span>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  // 客户/项目标题
+  title: {
+    type: String,
+    required: true
+  },
+  // 状态：'attention' | 'warning' | 'success' | 'custom'
+  status: {
+    type: String,
+    default: 'success',
+    validator: (v) => ['attention', 'warning', 'success', 'custom'].includes(v)
+  },
+  // 状态标签文字，默认根据 status 自动生成
+  statusText: {
+    type: String,
+    default: ''
+  },
+  // 布局模式：'standard' 标准PPM周期 | 'multi' 多项目自定义
+  layout: {
+    type: String,
+    default: 'standard',
+    validator: (v) => ['standard', 'multi'].includes(v)
+  },
+  // 标准布局指标数组：[{ label, value, extra, highlight }]
+  metrics: {
+    type: Array,
+    default: () => []
+  },
+  // 多项目布局分组：[{ title, items: [{ label, value, extra, highlight }] }]
+  sections: {
+    type: Array,
+    default: () => []
+  },
+  // 达标率进度 0-100
+  progress: {
+    type: Number,
+    default: null
+  },
+  // 底部备注文案
+  remark: {
+    type: String,
+    default: ''
+  },
+  // 主题：'light' | 'dark'
+  theme: {
+    type: String,
+    default: 'light'
+  },
+  // 自定义主色（status='custom' 时生效）
+  customColor: {
+    type: String,
+    default: '#4080ff'
+  }
+})
+
+// 自动生成状态文字
+const _statusText = computed(() => {
+  if (props.statusText) return props.statusText
+  const map = { attention: '关注', warning: '预警', success: '达标', custom: '自定义' }
+  return map[props.status]
+})
+</script>
+
+<style scoped>
+.customer-card {
+  border-radius: 8px;
+  padding: 16px 18px;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ===== 亮色主题 ===== */
+.theme-light {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.theme-light .customer-name {
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 600;
+}
+.theme-light .metric-label {
+  color: #6b7280;
+  font-size: 13px;
+}
+.theme-light .metric-value {
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 600;
+}
+.theme-light .metric-value.highlight {
+  color: var(--status-color, #2563eb);
+  font-weight: 700;
+}
+.theme-light .metric-extra {
+  color: var(--status-color, #2563eb);
+  font-weight: 500;
+  font-size: 12px;
+  margin-left: 4px;
+}
+.theme-light .section-title {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+.theme-light .progress-bar {
+  background: #f3f4f6;
+}
+.theme-light .progress-fill {
+  background: var(--status-color, #2563eb);
+}
+.theme-light .remark-text {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* ===== 暗黑主题 ===== */
+.theme-dark {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.theme-dark .customer-name {
+  color: #f1f5f9;
+  font-size: 16px;
+  font-weight: 600;
+}
+.theme-dark .metric-label {
+  color: #94a3b8;
+  font-size: 13px;
+}
+.theme-dark .metric-value {
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 600;
+}
+.theme-dark .metric-value.highlight {
+  color: var(--status-color, #60a5fa);
+  font-weight: 700;
+}
+.theme-dark .metric-extra {
+  color: var(--status-color, #60a5fa);
+  font-weight: 500;
+  font-size: 12px;
+  margin-left: 4px;
+}
+.theme-dark .section-title {
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+.theme-dark .progress-bar {
+  background: #334155;
+}
+.theme-dark .progress-fill {
+  background: var(--status-color, #60a5fa);
+}
+.theme-dark .remark-text {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* ===== 状态色系 ===== */
+/* 关注 */
+.status-attention {
+  --status-color: #3b82f6;
+}
+.status-attention .status-tag {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+.theme-dark.status-attention .status-tag {
+  background: rgba(96, 165, 250, 0.15);
+}
+
+/* 预警（加粗边框高亮） */
+.status-warning {
+  --status-color: #1e40af;
+  border-color: #1e40af !important;
+  border-width: 2px !important;
+}
+.theme-dark.status-warning {
+  --status-color: #60a5fa;
+  border-color: #60a5fa !important;
+}
+.status-warning .status-tag {
+  background: rgba(30, 64, 175, 0.1);
+  color: #1e40af;
+}
+.theme-dark.status-warning .status-tag {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+}
+
+/* 达标 */
+.status-success {
+  --status-color: #06b6d4;
+}
+.status-success .status-tag {
+  background: rgba(6, 182, 212, 0.1);
+  color: #06b6d4;
+}
+.theme-dark.status-success .status-tag {
+  background: rgba(34, 211, 238, 0.15);
+}
+
+/* 自定义 */
+.status-custom {
+  --status-color: v-bind('props.customColor');
+}
+.status-custom .status-tag {
+  background: color-mix(in srgb, var(--status-color) 10%, transparent);
+  color: var(--status-color);
+}
+
+/* ===== 通用样式 ===== */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.status-tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  line-height: 1.6;
+}
+
+.progress-wrapper {
+  margin-top: 10px;
+  margin-bottom: 6px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+.card-footer {
+  margin-top: 8px;
+  padding-top: 6px;
+}
+
+/* 卡片hover效果 */
+.customer-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.theme-dark.customer-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+</style>

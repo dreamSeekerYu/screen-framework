@@ -72,6 +72,13 @@ const routes = [
     component: () => import('@/views/NewComp/Demo.vue'),
     meta: { title: '组件展示' }
   },
+{
+    path: '/c_q_Card',
+    name: 'C_Q_Card',
+    // 路由懒加载
+    component: () => import('@/views/NewComp/CustomerQualityCard.vue'),
+    meta: { title: '组件展示' }
+  },
 ]
 
 const router = createRouter({

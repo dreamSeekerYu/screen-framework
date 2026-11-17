@@ -136,9 +136,10 @@ getRowsFromSheet(jsonData, {
 
 .router-link-container {
   position: fixed;
-  left: 0;
+  left: -75px;
   top: 0;
   display: flex;
+  flex-direction: column;
   z-index: 9999;
 
   a {
