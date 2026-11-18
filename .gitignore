@@ -17,3 +17,4 @@ data-source/
 
 # 本地缓存
 .cache
+public/img/*
