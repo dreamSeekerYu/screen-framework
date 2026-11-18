@@ -22,8 +22,15 @@
     <template v-else-if="currentWeek">
       <!-- KPI 指标栏 -->
       <div class="kpi-row">
-        <StatCard v-for="k in kpiCards" :key="k.title" :theme="k.theme" :status="k.status" :title="k.title"
-          :value="k.value" :unit="k.unit" />
+        <StatCard
+          v-for="k in kpiCards"
+          :key="k.title"
+          :theme="k.theme"
+          :status="k.status"
+          :title="k.title"
+          :value="k.value"
+          :unit="k.unit"
+        />
       </div>
 
       <!-- 核心内容 2x2 -->
@@ -85,8 +92,13 @@
     </template>
 
     <!-- 明细弹窗 -->
-    <WeeklyPlanDetail v-model="showDetail" :weeks="weeks" :workshops="workshops" :default-week="defaultWeek"
-      title="周度工作计划完整台账" />
+    <WeeklyPlanDetail
+      v-model="showDetail"
+      :weeks="weeks"
+      :workshops="workshops"
+      :default-week="defaultWeek"
+      title="周度工作计划完整台账"
+    />
   </div>
 </template>
 
@@ -241,9 +253,11 @@ async function load() {
     defaultWeek.value = 0
 
     await nextTick()
-    // 懒加载图表（等容器渲染）
-    setTimeout(() => { barReady.value = true }, 100)
-    setTimeout(() => { pieReady.value = true }, 200)
+    // 等容器渲染完成后再渲染图表（否则 chart 拿到 0×0 容器会渲染空白）
+    setTimeout(() => {
+      barReady.value = true
+      setTimeout(() => pieReady.value = true, 80)
+    }, 150)
   } catch (e) {
     console.error(e)
     loadError.value = '周度计划数据加载失败：' + (e.message || e)
@@ -263,202 +277,99 @@ onMounted(load)
 <style lang="scss" scoped>
 .plain-screen {
   width: 100%;
-  min-height: 100vh;
-  padding: 0 20px 24px;
+  height: 100%;
+  padding: 16px 24px 20px;
   box-sizing: border-box;
-  background: var(--bg-base, #f5f7fa);
-  color: var(--text-base, #1f2937);
-}
-
-.header-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  background: rgba(255, 255, 255, .18);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, .3);
-  font-size: 13px;
-  transition: all .2s;
-
-  &:hover {
-    background: rgba(255, 255, 255, .3);
-  }
-
-  .btn-icon {
-    font-size: 14px;
-  }
-}
-
-.loading-mask,
-.error-mask {
+  background: transparent;
+  color: var(--color-text-primary, #1f2937);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  gap: 14px;
-  color: var(--text-secondary, #6b7280);
+  overflow: hidden;
+}
+.header-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 4px; cursor: pointer;
+  background: var(--color-primary, #2563eb);
+  color: #fff; border: 1px solid var(--color-primary, #2563eb);
+  font-size: 13px; transition: all .2s;
+  &:hover { background: var(--color-primary-dark, #1d4ed8); border-color: var(--color-primary-dark, #1d4ed8); }
+  .btn-icon { font-size: 14px; }
 }
 
+.loading-mask, .error-mask {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 60vh; gap: 14px; color: var(--text-secondary, #6b7280);
+}
 .loading-spinner {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  width: 36px; height: 36px; border-radius: 50%;
   border: 3px solid var(--border-color, #e5e7eb);
   border-top-color: var(--primary, #2563eb);
   animation: spin .8s linear infinite;
 }
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.error-icon {
-  font-size: 48px;
-}
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-icon { font-size: 48px; }
 
 .kpi-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
   margin: 16px 0;
 }
 
 .main-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 320px 320px;
+  grid-template-rows: 1fr 1fr;
   gap: 16px;
+  min-height: 0;
 }
-
 .grid-card {
   height: 100%;
   box-sizing: border-box;
-
-  :deep(.screen-card-body) {
+  :deep(.screen-card__body) {
     height: calc(100% - 40px);
     padding: 12px;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 }
-
 .chart-box {
   flex: 1;
-  min-height: 0;
+  width: 100%;
+  min-height: 240px;
 }
 
 .highlight-list {
-  list-style: none;
-  padding: 4px 8px;
-  margin: 0;
-  overflow-y: auto;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--text-base, #1f2937);
-
-  li {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-    margin-bottom: 10px;
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-top: 8px;
-      flex-shrink: 0;
+  list-style: none; padding: 4px 8px; margin: 0; overflow-y: auto;
+  font-size: 13px; line-height: 1.7; color: var(--text-base, #1f2937);
+  li { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px;
+    .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 8px; flex-shrink: 0;
       background: var(--primary, #2563eb);
     }
-
-    strong {
-      color: var(--primary-dark, #1e40af);
-      margin-right: 4px;
-    }
+    strong { color: var(--primary-dark, #1e40af); margin-right: 4px; }
   }
-
-  .h-ok .dot {
-    background: var(--success, #10b981);
-  }
-
-  .h-warn .dot {
-    background: var(--danger, #ef4444);
-  }
-
-  .h-info .dot {
-    background: var(--primary, #2563eb);
-  }
-
-  .h-empty {
-    color: var(--text-secondary, #9ca3af);
-    justify-content: center;
-  }
+  .h-ok .dot { background: var(--success, #10b981); }
+  .h-warn .dot { background: var(--danger, #ef4444); }
+  .h-info .dot { background: var(--primary, #2563eb); }
+  .h-empty { color: var(--text-secondary, #9ca3af); justify-content: center; }
 }
 
 .brief-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-
-  th,
-  td {
-    padding: 10px 8px;
-    border-bottom: 1px solid var(--border-color, #eef0f4);
-    text-align: left;
-  }
-
-  th {
-    background: var(--primary-soft, #eff6ff);
-    color: var(--primary, #1d4ed8);
-    font-weight: 600;
-    font-size: 12px;
-  }
-
-  .tc {
-    text-align: center;
-  }
-
-  .group-cell {
-    color: var(--primary, #2563eb);
-    font-weight: 600;
-    width: 80px;
-    text-align: center;
-  }
-
-  .done-num {
-    color: var(--success, #10b981);
-    font-weight: 600;
-    font-size: 15px;
-  }
-
-  .brief-desc {
-    color: var(--text-secondary, #4b5563);
-    font-size: 12px;
-  }
-
-  .empty-td {
-    text-align: center;
-    color: var(--text-secondary, #9ca3af);
-    padding: 40px 0;
-  }
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  th, td { padding: 10px 8px; border-bottom: 1px solid var(--border-color, #eef0f4); text-align: left; }
+  th { background: var(--primary-soft, #eff6ff); color: var(--primary, #1d4ed8); font-weight: 600; font-size: 12px; }
+  .tc { text-align: center; }
+  .group-cell { color: var(--primary, #2563eb); font-weight: 600; width: 80px; text-align: center; }
+  .done-num { color: var(--success, #10b981); font-weight: 600; font-size: 15px; }
+  .brief-desc { color: var(--text-secondary, #4b5563); font-size: 12px; }
+  .empty-td { text-align: center; color: var(--text-secondary, #9ca3af); padding: 40px 0; }
 }
 
 .footer-tip {
-  margin-top: 12px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-secondary, #9ca3af);
+  margin-top: 12px; text-align: center; font-size: 12px; color: var(--text-secondary, #9ca3af);
 }
 
 @media (max-width: 1280px) {
-  .main-grid {
-    grid-template-rows: 280px 280px;
-  }
+  .main-grid { grid-template-rows: 280px 280px; }
 }
 </style>
