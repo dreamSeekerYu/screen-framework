@@ -71,13 +71,13 @@ watch(() => route.path, updateBodyScroll)
 
   // 获取单元格/区域数据
   const packSheet = indexSheet(packJson.sheets[0]);
-  console.log(packSheet)
-  console.log(getCell(packSheet,8,10))
+  console.log('packSheet.....',packSheet)
+  // console.log(getCell(packSheet,8,10))
   // console.log(getRange(packSheet,6,4,8,20))
 
   // const totalSheet = indexSheet(jsonData.sheets[0]);
   const totalSheet = indexSheet(mainJson.sheets[1]);
-  console.log(totalSheet)
+  console.log('totalSheet.....',totalSheet)
   // console.log(getCell(totalSheet, 8, 10))
   // console.log(getRange(totalSheet, 6, 4, 30, 20))
   // console.log(totalSheet.rowByNo.get(24))
@@ -87,7 +87,7 @@ watch(() => route.path, updateBodyScroll)
 
   // 最新一列列号(填充率大于40%的列号，从右向左找第一个有数据的列)
   const mostFilledCol = rightMostFilledCol(totalSheet)
-  console.log(mostFilledCol)
+  console.log('mostFilledCol.....',mostFilledCol)
   // console.log(getCell(totalSheet, 1, mostFilledCol - 1))
   // console.log(getCell(totalSheet, 2, mostFilledCol - 1))
   // console.log(getCell(totalSheet, 1, mostFilledCol))

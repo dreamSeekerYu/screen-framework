@@ -72,22 +72,23 @@ const loading = ref(true)
 const img_src = ref('')
 let LPAData = null
 
-// 异步加载 LPA 数据（不再打进组件 chunk）
-;(async () => {
-  const lpaJson = await loadData('lpa')
-  LPAData = indexSheet(lpaJson.sheets[0]);
-  console.log(getCell(LPAData, 8, 10))
-  console.log(getRange(LPAData, 6, 4, 10, 20))
-  console.log(LPAData.colByName['日期'])
-  console.log(LPAData.colByName['问题图片'])
-  // 获取图片真实地址
-  console.log(getImgPath(LPAData, LPAData.colByName['问题图片'][1]))
-  console.log(getImgPath(LPAData, 'img_9'))
+  // 异步加载 LPA 数据（不再打进组件 chunk）
+  ; (async () => {
+    const lpaJson = await loadData('lpa')
+    LPAData = indexSheet(lpaJson.sheets[0]);
+    console.log('LPAData....', LPAData)
+    console.log(getCell(LPAData, 8, 10))
+    // console.log(getRange(LPAData, 6, 4, 10, 20))
+    console.log(LPAData.colByName['日期'])
+    console.log(LPAData.colByName['问题图片'])
+    // 获取图片真实地址
+    console.log(getImgPath(LPAData, LPAData.colByName['问题图片'][1]?.[0]))
+    console.log(getImgPath(LPAData, 'img_9'))
 
-  // ============ 指标数据 ============
-  img_src.value = getImgPath(LPAData, LPAData.colByName['问题图片'][1])
-  loading.value = false
-})()
+    // ============ 指标数据 ============
+    img_src.value = getImgPath(LPAData, LPAData.colByName['问题图片'][1]?.[0])
+    loading.value = false
+  })()
 </script>
 
 <style scoped lang="scss">

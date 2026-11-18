@@ -32,21 +32,27 @@ function getImagesAtCell(sheet, cellRef) {
 // ① 加载后建一次索引：之后取值全是 O(1)，切勿在循环里反复 find 全表 
 export function indexSheet(s) {
     s.rowByNo = new Map((s.rows || []).map(r => [r._row, r]));
-    // Excel行号 → 行对象 
+    // Excel行号 → 行对象
     s.imgById = new Map((s.images || []).map(i => [i.id, i]));
-    // 图片id → 图片(src) 
+    // 图片id → 图片(src)
     s.imgBydispimgId = new Map((s.images || []).map(i => [i.dispimgId, i]));
-    // dispimgId → 图片(src) 
+    // dispimgId → 图片(src)
     s.colByName = {};
-    // 列名 → 整列值数组 
+    // 列名 → 整列值数组
     s.colByNo = {};
-    // 列名 → 列号 
-    if (s.headers)
+    // 列名 → 列号
+    if (s.headers) {
         // console.log(Object.entries(s.headers))
         for (const [L, h] of Object.entries(s.headers)) {
             s.colByNo[h] = colNum(L);
-            s.colByName[h] = (s.rows || []).map(r => r[h]);
+            s.colByName[h] = (s.rows || []).map(r => {
+                if (r[h + '_images']) {
+                    return r[h + '_images'];
+                }
+                return r[h]
+            });
         }
+    }
     return s;
 }
 // ② 列号 ↔ 列字母 
@@ -183,10 +189,10 @@ function runsToHtml(runs) {
 // });
 
 // 检测字符串是否以‘=DISPIMG(’为开头
-const isDispImg = (str) => {
+const isDispImg = (str = '') => {
     return str.startsWith('=DISPIMG(');
 };
-const isIdImg = (str) => {
+const isIdImg = (str = '') => {
     return str.startsWith('img_');
 };
 // 获取图片真实路径
