@@ -4,19 +4,20 @@
     <div class="screen-header__left">
       <h1 class="screen-title">{{ title }}</h1>
     </div>
-    
+
     <!-- 中间标题 -->
     <div class="screen-header__center">
-     
+
     </div>
-    
+
     <!-- 右侧区域 -->
     <div class="screen-header__right">
+      <slot name="right" />
       <TimeClock />
       <ThemeSwitch />
       <div class="fullscreen-btn" @click="toggleFullscreen" title="全屏切换">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+          <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
         </svg>
       </div>
     </div>
@@ -58,7 +59,7 @@ const toggleFullscreen = () => {
   padding: 0 $spacing-lg;
   // background: var(--color-bg-header);
   // border-bottom: 1px solid var(--color-border-light);
-  
+
   // &::after {
   //   content: '';
   //   position: absolute;
@@ -69,19 +70,19 @@ const toggleFullscreen = () => {
   //   height: 2px;
   //   background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
   // }
-  
+
   &__left,
   &__right {
     flex: 1;
     display: flex;
     align-items: center;
   }
-  
+
   &__right {
     justify-content: flex-end;
     gap: $spacing-md;
   }
-  
+
   &__center {
     flex: 0 0 auto;
   }
@@ -111,7 +112,7 @@ const toggleFullscreen = () => {
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.3s ease;
-  
+
   &:hover {
     color: var(--color-primary);
     border-color: var(--color-primary);
