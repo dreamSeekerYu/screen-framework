@@ -2,35 +2,38 @@
   <div class="home-screen">
     <!-- 顶部标题栏 -->
     <ScreenHeader title="LPA" />
-    LPA
-    <div
-      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px;">
-      <StatCard theme="kpi-side" status="success" title="本周CPK达标率" sub-title="CW44周度" value="98.7" unit="%"
-        trend="1.3pp" trend-type="down" trend-label="较上周" badge="达标">
-        <template #icon>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 3v18h18"></path>
-            <path d="M18 17l-5-5-4 4-3-3"></path>
-          </svg>
-        </template>
-      </StatCard>
-      <StatCard theme="kpi-side" status="primary" title="累计CPK项目" sub-title="本周覆盖" value="153" unit="项" trend="8项"
-        trend-type="up" trend-label="较上周">
-        <template #icon>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-            <path d="M7 7h10"></path>
-            <path d="M7 12h10"></path>
-            <path d="M7 17h6"></path>
-          </svg>
-        </template>
-      </StatCard>
-      <img :src="img_src" style="max-width:300px">
+    <div v-if="loading" class="data-loading">数据加载中...</div>
+    <template v-else>
+      LPA
+      <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px;">
+        <StatCard theme="kpi-side" status="success" title="本周CPK达标率" sub-title="CW44周度" value="98.7" unit="%"
+          trend="1.3pp" trend-type="down" trend-label="较上周" badge="达标">
+          <template #icon>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="M18 17l-5-5-4 4-3-3"></path>
+            </svg>
+          </template>
+        </StatCard>
+        <StatCard theme="kpi-side" status="primary" title="累计CPK项目" sub-title="本周覆盖" value="153" unit="项" trend="8项"
+          trend-type="up" trend-label="较上周">
+          <template #icon>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <path d="M7 7h10"></path>
+              <path d="M7 12h10"></path>
+              <path d="M7 17h6"></path>
+            </svg>
+          </template>
+        </StatCard>
+        <img v-if="img_src" :src="img_src" style="max-width:300px">
 
 
-    </div>
+      </div>
+    </template>
     <!-- 主体内容区 -->
 
   </div>
@@ -42,8 +45,7 @@ import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import { useLazyLoad } from '@/composables/useLazyLoad'
 import StatCard from '@/components/common/NewStatCard.vue'
 
-import LPA_Json from '@/data/dataLPA.json'
-
+import { loadData } from '@/utils/dataLoader.js'
 import {
   getRowsFromSheet,
   indexSheet,
@@ -65,18 +67,27 @@ const metricsData = ref([
   { label: '总交易额', value: 8965.3, suffix: '万', trend: 15.6 },
   { label: '活跃用户', value: 28956, suffix: '人', trend: -2.3 }
 ])
-const LPAData = indexSheet(LPA_Json.sheets[0]);
-console.log(getCell(LPAData, 8, 10))
-console.log(getRange(LPAData, 6, 4, 10, 20))
-console.log(LPAData.colByName['日期'])
-console.log(LPAData.colByName['问题图片'])
-// 获取图片真实地址
-console.log(getImgPath(LPAData, LPAData.colByName['问题图片'][1]))
-console.log(getImgPath(LPAData, 'img_9'))
 
+const loading = ref(true)
+const img_src = ref('')
+let LPAData = null
 
-// ============ 指标数据 ============
-const img_src = ref(getImgPath(LPAData, LPAData.colByName['问题图片'][1]))
+// 异步加载 LPA 数据（不再打进组件 chunk）
+;(async () => {
+  const lpaJson = await loadData('lpa')
+  LPAData = indexSheet(lpaJson.sheets[0]);
+  console.log(getCell(LPAData, 8, 10))
+  console.log(getRange(LPAData, 6, 4, 10, 20))
+  console.log(LPAData.colByName['日期'])
+  console.log(LPAData.colByName['问题图片'])
+  // 获取图片真实地址
+  console.log(getImgPath(LPAData, LPAData.colByName['问题图片'][1]))
+  console.log(getImgPath(LPAData, 'img_9'))
+
+  // ============ 指标数据 ============
+  img_src.value = getImgPath(LPAData, LPAData.colByName['问题图片'][1])
+  loading.value = false
+})()
 </script>
 
 <style scoped lang="scss">
@@ -86,6 +97,16 @@ const img_src = ref(getImgPath(LPAData, LPAData.colByName['问题图片'][1]))
   display: flex;
   flex-direction: column;
 
+}
+
+.data-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: $font-md;
+  padding: 80px 0;
 }
 
 .screen-content {

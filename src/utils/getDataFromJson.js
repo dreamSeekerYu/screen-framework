@@ -201,7 +201,9 @@ export const getImgPath = (sheet, str = '') => {
     if (isIdImg(str)) {
         opt = sheet?.imgById?.get(str);
     }
-    return '/' + opt?.src || opt?.path
+    if (!opt) return ''
+    const src = opt.src || opt.path || ''
+    return src ? '/' + src : ''
 }
 // 判断一列是否有数据，一列的充填率大于某个值时确认有数据
 export const hasData = (sheet, colName, threshold = 0.4) => {
