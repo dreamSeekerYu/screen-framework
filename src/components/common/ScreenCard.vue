@@ -84,6 +84,11 @@ defineProps({
   &__body {
     width: 100%;
     height: calc(100% - #{$font-md} - #{$spacing-md} - #{$spacing-md});
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    // 让内部子元素（图表/表格/列表）能在 flex 容器里继承高度
+    > * { min-height: 0; }
   }
   
   // 四角装饰

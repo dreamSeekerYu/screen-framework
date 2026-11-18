@@ -38,7 +38,7 @@
         <!-- 左上：各车间计划完成对比柱状图 -->
         <ScreenCard title="各车间周计划完成对比" class="grid-card">
           <div class="chart-box" ref="barRef">
-            <BaseChart v-if="barReady" :option="barOption" />
+            <BaseChart v-if="barReady" ref="barChartRef" :option="barOption" @chart-ready="onChartReady" />
           </div>
         </ScreenCard>
 
@@ -56,7 +56,7 @@
         <!-- 左下：计划完成状态占比饼图 -->
         <ScreenCard title="本周计划完成状态" class="grid-card">
           <div class="chart-box" ref="pieRef">
-            <BaseChart v-if="pieReady" :option="pieOption" />
+            <BaseChart v-if="pieReady" ref="pieChartRef" :option="pieOption" @chart-ready="onChartReady" />
           </div>
         </ScreenCard>
 
@@ -123,6 +123,8 @@ const barReady = ref(false)
 const pieReady = ref(false)
 const barRef = ref(null)
 const pieRef = ref(null)
+const barChartRef = ref(null)
+const pieChartRef = ref(null)
 
 // 当前展示周 = 最新一周（weeks[0]）
 const currentWeek = computed(() => weeks.value[defaultWeek.value] || null)
@@ -252,18 +254,29 @@ async function load() {
     workshops.value = ws
     defaultWeek.value = 0
 
+    // 等待两轮 nextTick：先等 v-if(currentWeek) 把 grid 渲染出来，再等浏览器完成布局，
+    // 然后才创建 ECharts 实例，确保容器尺寸 > 0
     await nextTick()
-    // 等容器渲染完成后再渲染图表（否则 chart 拿到 0×0 容器会渲染空白）
+    await new Promise((r) => requestAnimationFrame(r))
     setTimeout(() => {
       barReady.value = true
-      setTimeout(() => pieReady.value = true, 80)
-    }, 150)
+      setTimeout(() => {
+        pieReady.value = true
+      }, 60)
+    }, 80)
   } catch (e) {
     console.error(e)
     loadError.value = '周度计划数据加载失败：' + (e.message || e)
   } finally {
     loading.value = false
   }
+}
+
+function onChartReady() {
+  // 等组件挂好后再触发一次 resize，防止首次初始化时容器高度还在 flex 计算中
+  requestAnimationFrame(() => {
+    ;[barChartRef, pieChartRef].forEach((c) => c.value?.getInstance?.()?.resize())
+  })
 }
 
 function weekNo(title) {
@@ -278,7 +291,7 @@ onMounted(load)
 .plain-screen {
   width: 100%;
   height: 100%;
-  padding: 16px 24px 20px;
+  padding: 16px 24px 12px;
   box-sizing: border-box;
   background: transparent;
   color: var(--color-text-primary, #1f2937);
@@ -298,7 +311,7 @@ onMounted(load)
 
 .loading-mask, .error-mask {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: 60vh; gap: 14px; color: var(--text-secondary, #6b7280);
+  flex: 1; gap: 14px; color: var(--text-secondary, #6b7280);
 }
 .loading-spinner {
   width: 36px; height: 36px; border-radius: 50%;
@@ -311,37 +324,32 @@ onMounted(load)
 
 .kpi-row {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
-  margin: 16px 0;
+  margin: 12px 0;
+  flex-shrink: 0;
 }
 
 .main-grid {
   flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 16px;
-  min-height: 0;
 }
 .grid-card {
-  height: 100%;
+  min-height: 0;
   box-sizing: border-box;
-  :deep(.screen-card__body) {
-    height: calc(100% - 40px);
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
 }
 .chart-box {
-  flex: 1;
   width: 100%;
-  min-height: 240px;
+  height: 100%;
+  min-height: 0;
 }
 
 .highlight-list {
   list-style: none; padding: 4px 8px; margin: 0; overflow-y: auto;
   font-size: 13px; line-height: 1.7; color: var(--text-base, #1f2937);
+  height: 100%;
   li { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px;
     .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 8px; flex-shrink: 0;
       background: var(--primary, #2563eb);
@@ -356,6 +364,7 @@ onMounted(load)
 
 .brief-table {
   width: 100%; border-collapse: collapse; font-size: 13px;
+  height: 100%;
   th, td { padding: 10px 8px; border-bottom: 1px solid var(--border-color, #eef0f4); text-align: left; }
   th { background: var(--primary-soft, #eff6ff); color: var(--primary, #1d4ed8); font-weight: 600; font-size: 12px; }
   .tc { text-align: center; }
@@ -366,10 +375,7 @@ onMounted(load)
 }
 
 .footer-tip {
-  margin-top: 12px; text-align: center; font-size: 12px; color: var(--text-secondary, #9ca3af);
-}
-
-@media (max-width: 1280px) {
-  .main-grid { grid-template-rows: 280px 280px; }
+  margin-top: 8px; text-align: center; font-size: 12px; color: var(--text-secondary, #9ca3af);
+  flex-shrink: 0;
 }
 </style>
