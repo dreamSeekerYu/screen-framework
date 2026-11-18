@@ -52,7 +52,7 @@
   .color-demo{display:inline-block;width:14px;height:14px;border:1px solid #ccc;border-radius:2px;vertical-align:middle;margin-right:4px}
   #lightbox{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);display:none;justify-content:center;align-items:center;z-index:9999;cursor:pointer}
   #lightbox img{max-width:90%;max-height:90%;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
-  .code-snippet{background:#f5f5f5;padding:12px;border-radius:6px;margin-top:12px;font-family:Consolas,Monaco,monospace;font-size:12px;overflow:auto;max-height:300px}
+  .code-snippet{background:#f8f9fa;border:1px solid #e1e4e8;padding:14px 16px;border-radius:6px;margin-top:10px;font-family:'SFMono-Regular',Consolas,Monaco,'Liberation Mono','Courier New',monospace;font-size:13px;line-height:1.6;white-space:pre;overflow-x:auto;max-height:520px;tab-size:2;color:#24292e}
   .merge-mark{position:absolute;top:1px;right:2px;font-size:8px;color:#fff;background:rgba(26,115,232,.7);border-radius:2px;padding:0 2px}
   .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:#e8f0fe;color:#1967d2;margin-right:6px}
 </style>
@@ -877,58 +877,104 @@ async function parseXlsx(arrayBuffer, options){
           qsa(drXml,'Relationship').forEach(r=>{dRels[attr(r,'Id')]='xl/'+attr(r,'Target').replace(/^\.\.\//g,'');});
         }
         const dXml=xmlDoc(await dFile.async('string'));
-        // oneCellAnchor & twoCellAnchor
-        qsa(dXml,'oneCellAnchor,twoCellAnchor').forEach(anc=>{
+        // oneCellAnchor & twoCellAnchor & absoluteAnchor
+        // 注意：尺寸读取顺序必须是 spPr/xfrm/ext → 外层 anchor ext，
+        // 因为 oneCellAnchor 的 <xdr:ext cx="0"> 只是编辑占位，真实宽度写在 <a:xfrm><a:ext> 里。
+        // 之前按"cx<=0 就跳过"会把 cx=0 但 cy>0、且图片本身有尺寸的浮动图误杀。
+        qsa(dXml,'oneCellAnchor,twoCellAnchor,absoluteAnchor').forEach(anc=>{
           const from=qs(anc,'from');
-          const pic=qs(anc,'pic');
-          if(!from||!pic)return;
+          const pic=qs(anc,'pic');if(!pic)return;
+          const isAbs=anc.tagName&&anc.tagName.toLowerCase()==='absoluteanchor';
+          let col=0,row=0;
+          if(from){
+            col=parseInt(qs(from,'col').textContent)+1;
+            row=parseInt(qs(from,'row').textContent)+1;
+          }else{
+            // absoluteAnchor：从 pos 反推单元格
+            const pos=qs(anc,'pos');
+            if(pos){
+              const px=parseInt(attr(pos,'x'))/EMU_PER_PX,py=parseInt(attr(pos,'y'))/EMU_PER_PX;
+              const pc=emuPosToCell(px,py,colWidths,rowHeights,colWidthToPx,rowHeightToPx);
+              col=pc.col;row=pc.row;
+            }else return;
+          }
           const blip=qs(pic,'blip');if(!blip)return;
           const embed=attr(blip,'r:embed')||blip.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','embed');
           const imgPath=dRels[embed];if(!imgPath)return;
-          const col=parseInt(qs(from,'col').textContent)+1;
-          const row=parseInt(qs(from,'row').textContent)+1;
-          const ext=qs(anc,'ext')||(anc.tagName==='twoCellAnchor'?null:qs(pic,'ext'));
-          if(ext&&(parseInt(attr(ext,'cx'))<=0||parseInt(attr(ext,'cy'))<=0))return; // 零尺寸图形：表格中不可见，跳过
-          let w=0,h=0;
-          if(ext){w=Math.round(parseInt(attr(ext,'cx'))/EMU_PER_PX);h=Math.round(parseInt(attr(ext,'cy'))/EMU_PER_PX);}
-          else if(pic){const spExt=qs(pic,'xfrm ext');if(spExt){w=Math.round(parseInt(attr(spExt,'cx'))/EMU_PER_PX);h=Math.round(parseInt(attr(spExt,'cy'))/EMU_PER_PX);}}
+          // 在 <pic> 下按 localName 找 spPr（<xdr:spPr>）
+          let spPr=null;
+          {
+            const kids=pic.getElementsByTagName('*');
+            for(let i=0;i<kids.length;i++){if(kids[i].localName==='spPr'){spPr=kids[i];break;}}
+          }
+          // 真实尺寸：spPr → xfrm → ext 优先；回退到 anchor 外层 ext
+          // 注意 XML 带命名空间前缀（a:xfrm / a:ext / xdr:ext），querySelector 对带前缀选择器不可靠，
+          // 用 getElementsByTagName('*') 按 localName 查找。
+          let cx=0,cy=0;
+          function findExtByLocalName(root){
+            if(!root)return null;
+            const kids=root.getElementsByTagName('*');
+            for(let i=0;i<kids.length;i++){
+              if(kids[i].localName==='ext')return kids[i];
+            }
+            return null;
+          }
+          let foundExt=null;
+          if(spPr){
+            // 在 spPr 里找 xfrm → ext：先找 xfrm 子节点
+            const xfrmList=spPr.getElementsByTagName('*');
+            let xfrmEl=null;
+            for(let i=0;i<xfrmList.length;i++){if(xfrmList[i].localName==='xfrm'){xfrmEl=xfrmList[i];break;}}
+            if(xfrmEl)foundExt=findExtByLocalName(xfrmEl);
+          }
+          if(foundExt){cx=parseInt(attr(foundExt,'cx'))||0;cy=parseInt(attr(foundExt,'cy'))||0;}
+          if(cx<=0||cy<=0){
+            // anchor 层的 ext 标签
+            const ancKids=anc.getElementsByTagName('*');
+            let ancExt=null;
+            for(let i=0;i<ancKids.length;i++){
+              if(ancKids[i].localName==='ext'&&ancKids[i].parentNode&&ancKids[i].parentNode.localName&&ancKids[i].parentNode.localName.toLowerCase().indexOf('xfrm')<0){ancExt=ancKids[i];break;}
+            }
+            if(ancExt){
+              if(cx<=0)cx=parseInt(attr(ancExt,'cx'))||0;
+              if(cy<=0)cy=parseInt(attr(ancExt,'cy'))||0;
+            }
+          }
+          // 宽或高为 0：不可见图形（零宽度占位 / 隐形控件图标），跳过；
+          // 注意此前只看 anchor 层 <xdr:ext> 容易被 cx=0 误判，但真实尺寸读自 spPr/xfrm/ext 后仍为 0 的才是真不可见。
+          if(cx<=0||cy<=0)return;
+          let w=Math.round(cx/EMU_PER_PX),h=Math.round(cy/EMU_PER_PX);
           const ext2=imgPath.split('.').pop().toLowerCase();
+          let anchorType='oneCell';
+          const tag=(anc.tagName||'').toLowerCase();
+          if(tag.includes('twocell'))anchorType='twoCell';
+          else if(tag.includes('absolute'))anchorType='absolute';
           globalImgCounter++;
           const imgObj={
             id:'img_'+globalImgCounter,
-            type:anc.tagName.replace('Anchor',''),
+            type:anchorType,
             cell:colLetter(col)+row,row,col,
             path:imgPath,width:w,height:h,
             format:ext2==='jpg'?'jpeg':ext2,
             src:null
           };
+          if(isAbs){
+            // absoluteAnchor: pos + ext 在 anchor 层
+            const ancKids=anc.getElementsByTagName('*');
+            let posEl=null,extEl=null;
+            for(let i=0;i<ancKids.length;i++){
+              const ln=ancKids[i].localName;
+              if(!posEl&&ln==='pos')posEl=ancKids[i];
+              if(!extEl&&ln==='ext')extEl=ancKids[i];
+            }
+            if(posEl){imgObj.posX=parseInt(attr(posEl,'x'))/EMU_PER_PX;imgObj.posY=parseInt(attr(posEl,'y'))/EMU_PER_PX;}
+            if(extEl){
+              const aw=parseInt(attr(extEl,'cx'))/EMU_PER_PX,ah=parseInt(attr(extEl,'cy'))/EMU_PER_PX;
+              if(aw>0&&ah>0){imgObj.width=Math.round(aw);imgObj.height=Math.round(ah);}
+            }
+          }
           sheetImages.push(imgObj);imgMap[imgObj.id]=imgObj;
           const cref=colLetter(col)+row;
-          if(cells[cref])cells[cref].images.push(imgObj.id);
-          else cells[cref]={value:null,images:[imgObj.id],style:{}};
-        });
-        // absoluteAnchor
-        qsa(dXml,'absoluteAnchor').forEach(anc=>{
-          const pic=qs(anc,'pic');if(!pic)return;
-          const blip=qs(pic,'blip');if(!blip)return;
-          const embed=attr(blip,'r:embed')||blip.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','embed');
-          const imgPath=dRels[embed];if(!imgPath)return;
-          const pos=qs(anc,'pos');const ext=qs(anc,'ext');
-          let px=0,py=0,w=0,h=0;
-          if(pos){px=parseInt(attr(pos,'x'))/EMU_PER_PX;py=parseInt(attr(pos,'y'))/EMU_PER_PX;}
-          if(ext){w=Math.round(parseInt(attr(ext,'cx'))/EMU_PER_PX);h=Math.round(parseInt(attr(ext,'cy'))/EMU_PER_PX);}
-          // 通过坐标反推单元格
-          const pc=emuPosToCell(px,py,colWidths,rowHeights,colWidthToPx,rowHeightToPx);
-          const ext2=imgPath.split('.').pop().toLowerCase();
-          globalImgCounter++;
-          const imgObj={
-            id:'img_'+globalImgCounter,type:'absolute',
-            cell:colLetter(pc.col)+pc.row,row:pc.row,col:pc.col,
-            path:imgPath,width:w,height:h,posX:px,posY:py,
-            format:ext2==='jpg'?'jpeg':ext2,src:null
-          };
-          sheetImages.push(imgObj);imgMap[imgObj.id]=imgObj;
-          const cref=colLetter(pc.col)+pc.row;
           if(cells[cref])cells[cref].images.push(imgObj.id);
           else cells[cref]={value:null,images:[imgObj.id],style:{}};
         });
@@ -963,7 +1009,18 @@ async function parseXlsx(arrayBuffer, options){
     //   _buffer / _mime 仅在内存中使用，输出JSON时会被剥离
     //   path/src 统一扁平化为单层相对路径（如 img/image8.jpeg），后期HTML直接按该路径引用即可
     for(const img of sheetImages){
-      const srcPath=img.path;                                 // 先记住包内原始路径，用于读取
+      // srcPath 在不同来源下可能是：
+      //   - WPS DISPIMG："media/image1.jpeg"（cellimages.rels 的 Target，不带 xl/ 前缀）
+      //   - drawing 传统图："xl/../media/image1.png"（drawing rels 已经统一成 'xl/' + Target）
+      // 统一归一化成 zip 内真实路径（xl/media/xxx）
+      let srcPath=img.path;
+      if(srcPath){
+        srcPath=String(srcPath).replace(/^\.\.\//g,'').replace(/^xl\//,'');
+        // 已经是 media/xxx 开头 → 补 xl/；其他走原始
+        if(/^media\//.test(srcPath))srcPath='xl/'+srcPath;
+        else if(!/^xl\//.test(srcPath)&&/^[a-zA-Z]+\//.test(srcPath))srcPath='xl/'+srcPath;
+      }
+      img._zipPath=srcPath;                                   // 真实包内路径，供读取二进制使用
       try{
         const f=zip.file(srcPath);
         if(f){
@@ -974,6 +1031,8 @@ async function parseXlsx(arrayBuffer, options){
                    :img.format==='webp'?'image/webp'
                    :'image/jpeg';
           img.size=buf.byteLength;
+        }else{
+          console.warn('图片文件未找到:',srcPath);
         }
       }catch(e){console.warn('读取图片失败:',srcPath,e);}
       img.path=toOutImgPath(srcPath);                         // 扁平化：img/xxx.ext
@@ -1694,15 +1753,31 @@ function indexSheet(s) {
 }
 
 // ② 列号 ↔ 列字母
-const colLetter = n => { let s=''; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
-const colNum    = L => { let n=0; for (const ch of L) n = n*26 + (ch.charCodeAt(0)-64); return n; };
+function colLetter(n) {
+  let s = '';
+  while (n > 0) {
+    const m = (n - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+function colNum(L) {
+  let n = 0;
+  for (const ch of L) n = n * 26 + (ch.charCodeAt(0) - 64);
+  return n;
+}
 
 // ③ 取单格：行列号就是你在 Excel 里看到的数字和字母
 function getCell(sheet, row, col) {
   return sheet.cells[(typeof col === 'number' ? colLetter(col) : col) + row] || null;
 }
 // 显示值：日期/时间/百分比用 text，普通数值/文本用 value
-function cellText(c) { return c ? (c.text != null ? c.text : (c.value == null ? '' : c.value)) : ''; }
+function cellText(c) {
+  if (!c) return '';
+  if (c.text != null) return c.text;
+  return c.value == null ? '' : c.value;
+}
 
 // ④ 取矩形区域：第 3~6 行 × B~E 列 → 二维数组
 function getRange(sheet, r1, c1, r2, c2) {
@@ -1790,8 +1865,16 @@ function getCellData(sheet, ref) {              // ref 例如 'J24'
 }
 
 // ── ③ 按「行 + 列名」取一格，自动处理富文本 / 图片 / 图文同格 / 合并格
-//    colLetter 在第 5 节已定义；若你只复制本节代码，下面这行打开即可：
-// const colLetter = n => { let s=''; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; };
+//    colLetter 在第 5 节已定义；若你只复制本节代码，下面这段打开即可：
+// function colLetter(n) {
+//   let s = '';
+//   while (n > 0) {
+//     const m = (n - 1) % 26;
+//     s = String.fromCharCode(65 + m) + s;
+//     n = Math.floor((n - 1) / 26);
+//   }
+//   return s;
+// }
 function cellOfRow(sheet, row, colName) {       // colName 如 '问题描述'
   const colNo = sheet.colByNo[colName];         // 列名 → 列号（第 5 节的索引）
   const ref   = colLetter(colNo) + row._row;
@@ -1853,7 +1936,15 @@ sheet.rows.forEach(row => {
 });</div>
 
     <h4 style="margin:16px 0 8px;color:#1a73e8">8. 还原表格（自动跳过空白行/列 + 合并单元格）</h4>
-    <div class="code-snippet">function colToLetter(c){let s='';while(c>0){let m=(c-1)%26;s=String.fromCharCode(65+m)+s;c=Math.floor((c-1)/26);}return s;}
+    <div class="code-snippet">function colToLetter(c) {
+  let s = '';
+  while (c > 0) {
+    let m = (c - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    c = Math.floor((c - 1) / 26);
+  }
+  return s;
+}
 
 function renderTable(sheet) {
   const { cells, images, dimensions, usedRange } = sheet;
@@ -2006,9 +2097,10 @@ row["CW1"]              // 0.9677（不是 "23:13"）
 sheet.cells["D9"].text  // "96.77%"   ← 需要显示文本时取 text
 
 // ③ 通用取值函数：任何模式（table / freeform）都能用
-function cellDisplay(cell){          // cell = sheet.cells["D9"]
-  if(!cell) return '';
-  return cell.text != null ? cell.text : (cell.value == null ? '' : String(cell.value));
+function cellDisplay(cell) {             // cell = sheet.cells["D9"]
+  if (!cell) return '';
+  if (cell.text != null) return cell.text;
+  return cell.value == null ? '' : String(cell.value);
 }
 
 // 字段说明：
