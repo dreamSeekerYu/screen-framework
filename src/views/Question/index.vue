@@ -44,7 +44,7 @@
       <div class="q-kpi q-kpi-1">
         <div class="q-kpi-shine"></div>
         <div class="q-kpi-content">
-          <div>
+          <div class="q-kpi-info">
             <div class="q-kpi-label">连续按期闭环率</div>
             <div class="q-kpi-sub">{{ closeData.kpi.periodRange.replace('—', '—') }} 连续{{ closeData.kpi.consecutiveWeeks
               }}周</div>
@@ -58,7 +58,7 @@
       <div class="q-kpi q-kpi-2">
         <div class="q-kpi-shine"></div>
         <div class="q-kpi-content">
-          <div>
+          <div class="q-kpi-info">
             <div class="q-kpi-label">累计闭环重大异常</div>
             <div class="q-kpi-sub">到期关闭=实际关闭</div>
           </div>
@@ -71,7 +71,7 @@
       <div class="q-kpi q-kpi-3">
         <div class="q-kpi-shine"></div>
         <div class="q-kpi-content">
-          <div>
+          <div class="q-kpi-info">
             <div class="q-kpi-label">本周新增大异常</div>
             <div class="q-kpi-sub">CW{{ closeData.currentCw }} 新增</div>
           </div>
@@ -83,7 +83,7 @@
       <div class="q-kpi q-kpi-4">
         <div class="q-kpi-shine"></div>
         <div class="q-kpi-content">
-          <div>
+          <div class="q-kpi-info">
             <div class="q-kpi-label">超期未闭环</div>
             <div class="q-kpi-sub">{{ closeData.kpi.overdue === 0 ? '全部按期关闭' : `${closeData.kpi.overdue}件超期` }}</div>
           </div>
@@ -95,12 +95,12 @@
       <div class="q-kpi q-kpi-5">
         <div class="q-kpi-shine"></div>
         <div class="q-kpi-content">
-          <div>
+          <div class="q-kpi-info">
             <div class="q-kpi-label">涉及范围</div>
             <div class="q-kpi-sub">{{ closeData.scope.workshopCount }} 车间 · {{ closeData.scope.lineCount }} 线体</div>
           </div>
           <div class="q-kpi-value-wrap">
-            <span class="q-kpi-value q-kpi-value-text">{{ closeData.scope.text }}</span>
+            <span class="q-kpi-value q-kpi-value-text" :title="closeData.scope.text">{{ closeData.scope.text }}</span>
           </div>
         </div>
       </div>
@@ -259,7 +259,19 @@ function animateKpis() {
     }, 400 + i * 80)
   })
   document.querySelectorAll('.question-screen .q-kpi-value-text').forEach((el) => {
-    setTimeout(() => el.classList.add('loaded'), 500)
+    setTimeout(() => {
+      el.classList.add('loaded')
+      // 内容过长时自动缩小字号，避免把卡片撑高
+      const wrap = el.closest('.q-kpi-value-wrap')
+      if (wrap) {
+        let fs = 28
+        el.style.fontSize = fs + 'px'
+        while (fs > 14 && el.scrollWidth > wrap.clientWidth - 4) {
+          fs -= 1
+          el.style.fontSize = fs + 'px'
+        }
+      }
+    }, 500)
   })
   document.querySelectorAll('.question-screen .q-kpi-unit').forEach((el, i) => {
     setTimeout(() => el.classList.add('loaded'), 500 + i * 80)
@@ -758,10 +770,12 @@ function openIssueDetail(it) {
   overflow: hidden;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   border-radius: 12px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border: 1px solid rgba(30, 120, 208, 0.12);
   box-shadow: 0 4px 16px rgba(30, 64, 175, 0.06), 0 1px 3px rgba(30, 64, 175, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 88px;
+  box-sizing: border-box;
 
   &::before {
     content: '';
@@ -885,30 +899,47 @@ function openIssueDetail(it) {
   justify-content: space-between;
   position: relative;
   z-index: 1;
+  height: 100%;
+  min-width: 0;
+}
+
+.q-kpi-info {
+  flex: 1;
+  min-width: 0;
+  padding-right: 8px;
 }
 
 .q-kpi-label {
   font-size: 13px;
   color: #475569;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .q-kpi-sub {
   font-size: 11px;
   color: #94a3b8;
-  margin-top: 3px;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
 .q-kpi-value-wrap {
   text-align: right;
   display: flex;
   align-items: baseline;
-  gap: 3px;
+  gap: 2px;
+  flex-shrink: 0;
+  max-width: 45%;
 }
 
 .q-kpi-value {
-  font-size: 38px;
+  font-size: 36px;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -916,6 +947,7 @@ function openIssueDetail(it) {
   opacity: 0;
   transform: translateY(8px);
   transition: all .6s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
 
   &.loaded {
     opacity: 1;
@@ -924,8 +956,23 @@ function openIssueDetail(it) {
 }
 
 .q-kpi-value-text {
-  font-size: 30px !important;
+  font-size: 28px !important;
   letter-spacing: 0;
+  font-weight: 700;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 1.1;
+  // 文本过长时自动缩小字号
+  &.loaded {
+    animation: kpiTextFit .05s forwards;
+  }
+}
+
+@keyframes kpiTextFit {
+  from { letter-spacing: 0; }
+  to   { letter-spacing: 0; }
 }
 
 .q-kpi-unit {

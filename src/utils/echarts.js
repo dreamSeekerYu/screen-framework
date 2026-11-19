@@ -13,7 +13,8 @@ import {
   DataZoomComponent,
   VisualMapComponent,
   GeoComponent,
-  ToolboxComponent
+  ToolboxComponent,
+  GraphicComponent
 } from 'echarts/components'
 
 // 引入渲染器
@@ -37,6 +38,7 @@ echarts.use([
   VisualMapComponent,
   GeoComponent,
   ToolboxComponent,
+  GraphicComponent,
   // 渲染器
   CanvasRenderer
 ])
