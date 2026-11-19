@@ -93,16 +93,21 @@ const imgStyle = computed(() => ({
   transform: `translate(${translate.value.x}px, ${translate.value.y}px) scale(${scale.value}) rotate(${rotation.value}deg)`
 }))
 
-watch(() => props.modelValue, (v) => {
-  visible.value = v
-  if (v) {
-    currentIndex.value = Math.min(props.initialIndex, Math.max(0, normalizedUrls.value.length - 1))
-    resetZoom()
-    document.body.style.overflow = 'hidden'
-  } else {
-    document.body.style.overflow = ''
-  }
-})
+watch(
+  () => props.modelValue,
+  (v, oldV) => {
+    visible.value = v
+    if (v) {
+      currentIndex.value = Math.min(props.initialIndex, Math.max(0, normalizedUrls.value.length - 1))
+      resetZoom()
+      document.body.style.overflow = 'hidden'
+    } else if (oldV !== undefined) {
+      // 首次（immediate）挂载时不要清空其他组件已设置的状态
+      document.body.style.overflow = ''
+    }
+  },
+  { immediate: true }
+)
 
 function close() {
   emit('update:modelValue', false)

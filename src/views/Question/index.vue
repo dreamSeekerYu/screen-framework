@@ -228,6 +228,8 @@ onMounted(async () => {
     ])
     closeData.value = close
     issueData.value = issues
+    // 先结束 loading，让 v-else 的页面主体挂载出来，否则下面取不到 KPI 元素、数字动画不会执行
+    loading.value = false
     await nextTick()
     animateKpis()
   } catch (e) {

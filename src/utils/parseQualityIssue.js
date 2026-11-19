@@ -4,6 +4,7 @@
  * 表头：A1~AJ1；数据行从第2行开始。
  */
 import { loadSheet } from './dataLoader.js'
+import { getImgPath } from './getDataFromJson.js'
 
 const COL_MAP = {
   cw: 'A', factory: 'B', workshop: 'C', line: 'D', title: 'E', type: 'F',
@@ -39,6 +40,23 @@ function cellAt(sheet, ref) {
   if (c == null) return ''
   if (typeof c === 'object') return c.value ?? ''
   return c
+}
+
+/**
+ * 取某个单元格里的图片真实路径
+ * indexSheet 之后图片单元格形如 { images: ['img_114'], style }
+ * getImgPath 会把 img_114 转成 /img/image108.jpeg
+ */
+function imgAt(sheet, ref) {
+  const c = sheet.cells?.[ref]
+  if (c == null) return ''
+  if (typeof c === 'object') {
+    const id = (c.images || [])[0]
+    return id ? getImgPath(sheet, id) : ''
+  }
+  const s = String(c).trim()
+  if (!s) return ''
+  return getImgPath(sheet, s) || s
 }
 
 function parseCw(v) {
@@ -78,10 +96,18 @@ function resolveStatus(closeDate, dueDateSerial) {
  */
 export async function parseQualityIssues() {
   const sheet = await loadSheet('question', 0)
-  const totalRows = sheet.totalRows || 25
+
+  // 行号取真实数据行（sheet.rows[]._row），不用 totalRows——它不含表头，
+  // 直接拿来做上限会漏掉最后一条记录
+  const realRows = (sheet.rows || [])
+    .map((r) => r._row)
+    .filter((n) => typeof n === 'number' && n >= 2)
+  const rowNums = realRows.length
+    ? realRows
+    : Array.from({ length: Math.max(0, (sheet.totalRows || 0) - 1) }, (_, i) => i + 2)
 
   const items = []
-  for (let r = 2; r <= totalRows; r++) {
+  for (const r of rowNums) {
     const get = (k) => cellAt(sheet, `${COL_MAP[k]}${r}`)
     const cw = parseCw(get('cw'))
     if (cw == null) continue
@@ -97,27 +123,16 @@ export async function parseQualityIssues() {
     const tags = splitMulti(get('tags'))
     const categories = splitMulti(get('categories'))
 
-    // 收集图片（问题现场3张+凭证3张）
-    const imgs = ['img1', 'img2', 'img3', 'proof1', 'proof2', 'proof3']
-      .map((k) => {
-        const v = get(k)
-        if (!v) return null
-        if (typeof v === 'object') {
-          // indexSheet 后可能已经解析出图片 url
-          return v.url || v.src || v.path || null
-        }
-        return String(v).trim() || null
-      })
-      .filter(Boolean)
+    // 问题现场图片 3 张 + 整改凭证 3 张（单元格内存的是图片 id，需转成真实路径）
+    const imgUrls = ['img1', 'img2', 'img3'].map((k) => imgAt(sheet, `${COL_MAP[k]}${r}`))
+    const proofUrls = ['proof1', 'proof2', 'proof3'].map((k) => imgAt(sheet, `${COL_MAP[k]}${r}`))
 
     // 进度：已完成=100；推进中按是否有节点估算（本批精选数据统一 80%）
     let progress = 100
     if (status === 'doing') progress = 80
     if (status === 'overdue') progress = 60
-    // 从责任人/节点字段可能已有 80% 文本，但本数据无，统一估算
-    const nodeText = status === 'done'
-      ? `${closeMD || ''} 已完成`
-      : `节点：${dueMD || ''}`
+    // 表格「节点」列：已关闭显示实际关闭日期，未关闭显示要求关闭日期
+    const nodeText = closeMD || dueMD || (status === 'done' ? '已完成' : '—')
 
     items.push({
       row: r,
@@ -152,7 +167,9 @@ export async function parseQualityIssues() {
       tempAction: get('tempAction'),
       permanentAction: get('permanentAction'),
       tags, categories,
-      images: imgs,
+      images: [...imgUrls, ...proofUrls].filter(Boolean),
+      imgSlots: imgUrls.map((url, i) => ({ url, label: `现场图片${i + 1}` })),
+      proofSlots: proofUrls.map((url, i) => ({ url, label: `整改凭证${i + 1}` })),
       remark: get('remark'),
       status,
       progress,
