@@ -2,14 +2,13 @@
   <div class="home-screen">
     <!-- 顶部标题栏 -->
     <ScreenHeader title="过程能力达标率及趋势分析" />
-    <div
-      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px;">
+    <!-- KPI 行：由 StatCardRow 统一做"内容自然宽度 + min/max 约束 + 剩余空间均分"的自适应布局 -->
+    <StatCardRow style="margin-bottom: 20px;" :gap="20" :min-card-width="240" :max-card-width="460">
       <StatCard v-for="(item, index) in totalKardData" :key="index" :theme="item.theme" :status="item.status"
         :title="item.title" :sub-title="item.subTitle" :value="item.value" :unit="item.unit" :trend="item.trend"
         :trend-type="item.trendType" :trend-label="item.trendLabel" :badge="item.badge" :icon-type="item.iconType"
-        :icon="item.icon">
-      </StatCard>
-    </div>
+        :icon="item.icon" />
+    </StatCardRow>
     <!-- 主体内容区 -->
     <div class="screen-content">
       <!-- 左侧区域 -->
@@ -100,6 +99,7 @@ import NumberCounter from '@/components/data/NumberCounter.vue'
 import MarqueeList from '@/components/data/MarqueeList.vue'
 import { useLazyLoad } from '@/composables/useLazyLoad'
 import StatCard from '@/components/common/NewStatCard.vue'
+import StatCardRow from '@/components/common/StatCardRow.vue'
 
 // ============ 指标数据 ============
 const totalKardData = ref([

@@ -39,12 +39,12 @@
       <div class="q-title-divider"></div>
     </div>
 
-    <!-- KPI 行：复用 NewStatCard 顶部色条主题（结构/配色/滚动/自适应均由组件提供） -->
-    <div class="q-kpi-row">
+    <!-- KPI 行：由 StatCardRow 统一做"内容自然宽度 + min/max 约束 + 剩余空间均分"的自适应布局 -->
+    <StatCardRow class="q-kpi-row" :gap="16" :min-card-width="200" :max-card-width="460">
       <NewStatCard v-for="(k, i) in kpiCards" :key="k.title" class="q-kpi" theme="kpi-top" :status="k.status"
         :title="k.title" :sub-title="k.sub" :value="k.value" :unit="k.unit" :count-up="k.countUp"
-        :fit-value="!k.countUp" animated :animation-delay="i * 80" />
-    </div>
+        :fit-value="false" animated :animation-delay="i * 80" />
+    </StatCardRow>
 
     <!-- 摘要横幅：复用 SummaryBar（图标 + 富文本 + StatusTag 标签组） -->
     <SummaryBar class="q-banner" type="primary" icon="check" :content="summaryText" :tags="summaryTags" />
@@ -148,6 +148,7 @@
 import { ref, computed, onMounted } from 'vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
 import NewStatCard from '@/components/common/NewStatCard.vue'
+import StatCardRow from '@/components/common/StatCardRow.vue'
 import SummaryBar from '@/components/common/SummaryBar.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
@@ -693,14 +694,11 @@ function openIssueDetail(it) {
   }
 }
 
-// ============ KPI 行（结构/配色/滚动/自适应均由 NewStatCard 提供，此处只做行布局） ============
+// ============ KPI 行：布局（宽度自适应 / 均分 / 约束）由 StatCardRow 统一承担 ============
 .q-kpi-row {
-  display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr;
-  gap: 12px;
   flex-shrink: 0;
-  // 固定行高：卡片等高等宽，内容再多也不撑开
   height: 88px;
+  margin-bottom: 4px;
 }
 
 .q-kpi-row .q-kpi {
