@@ -39,164 +39,104 @@
       <div class="q-title-divider"></div>
     </div>
 
-    <!-- KPI 行 -->
+    <!-- KPI 行：复用 NewStatCard 顶部色条主题（结构/配色/滚动/自适应均由组件提供） -->
     <div class="q-kpi-row">
-      <div class="q-kpi q-kpi-1">
-        <div class="q-kpi-shine"></div>
-        <div class="q-kpi-content">
-          <div class="q-kpi-info">
-            <div class="q-kpi-label">连续按期闭环率</div>
-            <div class="q-kpi-sub">{{ closeData.kpi.periodRange.replace('—', '—') }} 连续{{ closeData.kpi.consecutiveWeeks
-              }}周</div>
-          </div>
-          <div class="q-kpi-value-wrap">
-            <span class="q-kpi-value" ref="kpiVals" :data-target="closeData.kpi.consecutiveRate">0</span><span
-              class="q-kpi-unit">%</span>
-          </div>
-        </div>
-      </div>
-      <div class="q-kpi q-kpi-2">
-        <div class="q-kpi-shine"></div>
-        <div class="q-kpi-content">
-          <div class="q-kpi-info">
-            <div class="q-kpi-label">累计闭环重大异常</div>
-            <div class="q-kpi-sub">到期关闭=实际关闭</div>
-          </div>
-          <div class="q-kpi-value-wrap">
-            <span class="q-kpi-value" :data-target="closeData.kpi.cumulativeClosed">0</span><span
-              class="q-kpi-unit">件</span>
-          </div>
-        </div>
-      </div>
-      <div class="q-kpi q-kpi-3">
-        <div class="q-kpi-shine"></div>
-        <div class="q-kpi-content">
-          <div class="q-kpi-info">
-            <div class="q-kpi-label">本周新增大异常</div>
-            <div class="q-kpi-sub">CW{{ closeData.currentCw }} 新增</div>
-          </div>
-          <div class="q-kpi-value-wrap">
-            <span class="q-kpi-value" :data-target="closeData.kpi.weekNew">0</span><span class="q-kpi-unit">件</span>
-          </div>
-        </div>
-      </div>
-      <div class="q-kpi q-kpi-4">
-        <div class="q-kpi-shine"></div>
-        <div class="q-kpi-content">
-          <div class="q-kpi-info">
-            <div class="q-kpi-label">超期未闭环</div>
-            <div class="q-kpi-sub">{{ closeData.kpi.overdue === 0 ? '全部按期关闭' : `${closeData.kpi.overdue}件超期` }}</div>
-          </div>
-          <div class="q-kpi-value-wrap">
-            <span class="q-kpi-value" :data-target="closeData.kpi.overdue">0</span><span class="q-kpi-unit">件</span>
-          </div>
-        </div>
-      </div>
-      <div class="q-kpi q-kpi-5">
-        <div class="q-kpi-shine"></div>
-        <div class="q-kpi-content">
-          <div class="q-kpi-info">
-            <div class="q-kpi-label">涉及范围</div>
-            <div class="q-kpi-sub">{{ closeData.scope.workshopCount }} 车间 · {{ closeData.scope.lineCount }} 线体</div>
-          </div>
-          <div class="q-kpi-value-wrap">
-            <span class="q-kpi-value q-kpi-value-text" :title="closeData.scope.text">{{ closeData.scope.text }}</span>
-          </div>
-        </div>
-      </div>
+      <NewStatCard v-for="(k, i) in kpiCards" :key="k.title" class="q-kpi" theme="kpi-top" :status="k.status"
+        :title="k.title" :sub-title="k.sub" :value="k.value" :unit="k.unit" :count-up="k.countUp"
+        :fit-value="!k.countUp" animated :animation-delay="i * 80" />
     </div>
 
-    <!-- 摘要条 -->
-    <div class="q-banner">
-      <div class="q-banner-scan"></div>
-      <div class="q-banner-icon">✓</div>
-      <div class="q-banner-text" v-html="summaryText"></div>
-      <div class="q-banner-tags">
-        <span v-for="t in summaryTags" :key="t.text" class="q-banner-tag">{{ t.text }}</span>
-      </div>
-    </div>
+    <!-- 摘要横幅：复用 SummaryBar（图标 + 富文本 + StatusTag 标签组） -->
+    <SummaryBar class="q-banner" type="primary" icon="check" :content="summaryText" :tags="summaryTags" />
 
-    <!-- 主体网格：左大跨两行 + 右上+右下 -->
+    <!-- 主体网格：复用 ScreenCard -->
     <div class="q-main-grid">
       <!-- 累计闭环趋势（跨两行） -->
-      <div class="q-panel q-panel-trend">
-        <div class="q-panel-shine"></div>
-        <div class="q-panel-header">
-          <div>
-            <div class="q-panel-title">累计闭环趋势</div>
-            <div class="q-trend-legend">
-              <div class="q-legend-item"><span class="q-ldot q-ldot-gray"></span>到期关闭数量</div>
-              <div class="q-legend-item"><span class="q-ldot q-ldot-green"></span>实际关闭数量</div>
-              <div class="q-legend-item"><span class="q-lline q-lline-red"></span>按期闭环率</div>
-            </div>
+      <ScreenCard class="q-panel q-panel-trend" :show-corners="false">
+        <template #title>
+          <div class="q-panel-title">累计闭环趋势</div>
+        </template>
+        <template #subTitle>
+          <div class="q-trend-legend">
+            <div class="q-legend-item"><span class="q-ldot q-ldot-gray"></span>到期关闭数量</div>
+            <div class="q-legend-item"><span class="q-ldot q-ldot-green"></span>实际关闭数量</div>
+            <div class="q-legend-item"><span class="q-lline q-lline-red"></span>按期闭环率</div>
           </div>
-          <span class="q-badge q-badge-green">连续{{ closeData.kpi.consecutiveWeeks }}周100%</span>
-        </div>
+        </template>
+        <template #extra>
+          <StatusTag type="success" effect="light" size="small"
+            :text="`连续${closeData.kpi.consecutiveWeeks}周100%`" />
+        </template>
         <div class="q-chart">
           <BaseChart :option="trendChartOption" />
         </div>
-      </div>
+      </ScreenCard>
 
       <!-- 异常类型分布 -->
-      <div class="q-panel">
-        <div class="q-panel-shine"></div>
-        <div class="q-panel-header">
-          <div>
-            <div class="q-panel-title">异常类型分布</div>
-            <div class="q-panel-sub">本周{{ issueData.currentWeekItems.length }}件异常分类</div>
-          </div>
-          <span v-if="issueData.mainType" class="q-badge q-badge-orange">{{ issueData.mainType.name }}/焊接为主</span>
-        </div>
+      <ScreenCard class="q-panel" :show-corners="false">
+        <template #title>
+          <div class="q-panel-title">异常类型分布</div>
+        </template>
+        <template #subTitle>
+          <div class="q-panel-sub">本周{{ issueData.currentWeekItems.length }}件异常分类</div>
+        </template>
+        <template #extra>
+          <StatusTag v-if="issueData.mainType" type="warning" effect="light" size="small"
+            :text="`${issueData.mainType.name}/焊接为主`" />
+        </template>
         <div class="q-chart">
           <BaseChart :option="typePieOption" />
         </div>
-      </div>
+      </ScreenCard>
 
       <!-- 车间闭环达成 -->
-      <div class="q-panel">
-        <div class="q-panel-shine"></div>
-        <div class="q-panel-header">
-          <div>
-            <div class="q-panel-title">车间闭环达成</div>
-            <div class="q-panel-sub">到期/实际关闭数量对比</div>
-          </div>
-          <span class="q-badge q-badge-blue">全车间达标</span>
-        </div>
+      <ScreenCard class="q-panel" :show-corners="false">
+        <template #title>
+          <div class="q-panel-title">车间闭环达成</div>
+        </template>
+        <template #subTitle>
+          <div class="q-panel-sub">到期/实际关闭数量对比</div>
+        </template>
+        <template #extra>
+          <StatusTag type="info" effect="light" size="small" text="全车间达标" />
+        </template>
         <div class="q-chart">
           <BaseChart :option="workshopBarOption" />
         </div>
-      </div>
+      </ScreenCard>
 
       <!-- 本周异常闭环进度 -->
-      <div class="q-panel q-panel-progress" :class="{ 'q-panel-progress--hl': detailVisible }">
-        <div class="q-panel-shine"></div>
-        <div class="q-panel-header">
-          <div>
-            <div class="q-panel-title">本周异常闭环进度</div>
-            <div class="q-panel-sub">{{ issueData.currentWeekItems.length }}件异常节点跟踪</div>
-          </div>
-          <span class="q-badge q-badge-cyan">{{ issueData.weekDone }}/{{ issueData.currentWeekItems.length }}已完成</span>
-        </div>
+      <ScreenCard class="q-panel q-panel-progress" :class="{ 'q-panel-progress--hl': detailVisible }"
+        :show-corners="false">
+        <template #title>
+          <div class="q-panel-title">本周异常闭环进度</div>
+        </template>
+        <template #subTitle>
+          <div class="q-panel-sub">{{ issueData.currentWeekItems.length }}件异常节点跟踪</div>
+        </template>
+        <template #extra>
+          <StatusTag type="info" effect="light" size="small"
+            :text="`${issueData.weekDone}/${issueData.currentWeekItems.length}已完成`" />
+        </template>
         <WeekProgressList :items="issueData.currentWeekItems" :total="issueData.currentWeekItems.length"
           :done="issueData.weekDone" @select="openIssueDetail" />
-      </div>
+      </ScreenCard>
 
       <!-- 关键事实 -->
-      <div class="q-panel q-panel-highlight">
-        <div class="q-panel-shine"></div>
-        <div class="q-panel-header">
-          <div>
-            <div class="q-panel-title">关键事实</div>
-            <div class="q-panel-sub">闭环管理核心结论</div>
-          </div>
-        </div>
+      <ScreenCard class="q-panel q-panel-highlight" :show-corners="false">
+        <template #title>
+          <div class="q-panel-title">关键事实</div>
+        </template>
+        <template #subTitle>
+          <div class="q-panel-sub">闭环管理核心结论</div>
+        </template>
         <ul class="q-facts">
           <li v-for="(f, i) in facts" :key="i">
             <span class="q-fdot" :style="{ background: f.color, color: f.color }"></span>
             <span v-html="f.text"></span>
           </li>
         </ul>
-      </div>
+      </ScreenCard>
     </div>
 
     <!-- 明细台账弹窗 -->
@@ -205,8 +145,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
+import NewStatCard from '@/components/common/NewStatCard.vue'
+import SummaryBar from '@/components/common/SummaryBar.vue'
+import ScreenCard from '@/components/common/ScreenCard.vue'
+import StatusTag from '@/components/common/StatusTag.vue'
 import WeekProgressList from '@/components/common/WeekProgressList.vue'
 import QualityIssueDetail from '@/components/common/QualityIssueDetail.vue'
 import { parseQualityCloseRate } from '@/utils/parseQualityCloseRate.js'
@@ -218,7 +162,6 @@ const error = ref('')
 const closeData = ref(null)
 const issueData = ref(null)
 const detailVisible = ref(false)
-const kpiVals = ref([])
 
 onMounted(async () => {
   try {
@@ -228,10 +171,6 @@ onMounted(async () => {
     ])
     closeData.value = close
     issueData.value = issues
-    // 先结束 loading，让 v-else 的页面主体挂载出来，否则下面取不到 KPI 元素、数字动画不会执行
-    loading.value = false
-    await nextTick()
-    animateKpis()
   } catch (e) {
     console.error(e)
     error.value = e.message || String(e)
@@ -240,43 +179,39 @@ onMounted(async () => {
   }
 })
 
-function animateKpis() {
-  const els = document.querySelectorAll('.question-screen .q-kpi-value[data-target]')
-  els.forEach((el, i) => {
-    const target = parseInt(el.dataset.target, 10) || 0
-    setTimeout(() => {
-      el.classList.add('loaded')
-      const start = performance.now()
-      const dur = 1200
-      function tick(now) {
-        const p = Math.min((now - start) / dur, 1)
-        const eased = 1 - Math.pow(1 - p, 3)
-        el.textContent = Math.floor(target * eased)
-        if (p < 1) requestAnimationFrame(tick)
-        else el.textContent = target
-      }
-      requestAnimationFrame(tick)
-    }, 400 + i * 80)
-  })
-  document.querySelectorAll('.question-screen .q-kpi-value-text').forEach((el) => {
-    setTimeout(() => {
-      el.classList.add('loaded')
-      // 内容过长时自动缩小字号，避免把卡片撑高
-      const wrap = el.closest('.q-kpi-value-wrap')
-      if (wrap) {
-        let fs = 28
-        el.style.fontSize = fs + 'px'
-        while (fs > 14 && el.scrollWidth > wrap.clientWidth - 4) {
-          fs -= 1
-          el.style.fontSize = fs + 'px'
-        }
-      }
-    }, 500)
-  })
-  document.querySelectorAll('.question-screen .q-kpi-unit').forEach((el, i) => {
-    setTimeout(() => el.classList.add('loaded'), 500 + i * 80)
-  })
-}
+// KPI 卡片配置（复用 NewStatCard kpi-top 主题）
+const kpiCards = computed(() => {
+  if (!closeData.value) return []
+  const c = closeData.value
+  const k = c.kpi
+  return [
+    {
+      status: 'success', title: '连续按期闭环率',
+      sub: `${k.periodRange} 连续${k.consecutiveWeeks}周`,
+      value: k.consecutiveRate, unit: '%', countUp: true,
+    },
+    {
+      status: 'primary', title: '累计闭环重大异常',
+      sub: '到期关闭=实际关闭',
+      value: k.cumulativeClosed, unit: '件', countUp: true,
+    },
+    {
+      status: 'warning', title: '本周新增大异常',
+      sub: `CW${c.currentCw} 新增`,
+      value: k.weekNew, unit: '件', countUp: true,
+    },
+    {
+      status: 'cyan', title: '超期未闭环',
+      sub: k.overdue === 0 ? '全部按期关闭' : `${k.overdue}件超期`,
+      value: k.overdue, unit: '件', countUp: true,
+    },
+    {
+      status: 'purple', title: '涉及范围',
+      sub: `${c.scope.workshopCount} 车间 · ${c.scope.lineCount} 线体`,
+      value: c.scope.text, countUp: false,
+    },
+  ]
+})
 
 const periodRange = computed(() => {
   if (!closeData.value) return ''
@@ -297,15 +232,16 @@ const summaryText = computed(() => {
   const m6New = i.currentWeekItems.filter(x => x.workshop === 'M6').length
   const m6NewRatio = c.kpi.weekNew ? Math.round(m6New / c.kpi.weekNew * 100) : 0
   const typeStr = i.mainType ? `${i.mainType.name}${i.mainType.value}件` : ''
-  const m6NewVal = m6 ? (m6.actual - ((c.workshops.find(w => w.key === 'A1').actual) + 0)) : 0
   return `<strong>连续${c.kpi.consecutiveWeeks}周实现100%按期闭环</strong>，累计关闭${c.kpi.cumulativeClosed}件零超期；本周新增${c.kpi.weekNew}件全部按期完成，${m6 ? `${m6.key}车间${m6New}件（${m6NewRatio}%），` : ''}异常类型集中在${typeStr}；所有异常均制定永久对策，无流出风险。`
 })
 
+// 摘要标签（交给 SummaryBar 内的 StatusTag 渲染）
 const summaryTags = computed(() => {
-  const tags = [{ text: '100%按期闭环' }]
-  if (closeData.value?.kpi.overdue === 0) tags.push({ text: '零超期' })
-  if (issueData.value?.facts.permanentRate === 100) tags.push({ text: '永久对策全覆盖' })
-  if (issueData.value?.facts.leakOutCount === 0) tags.push({ text: '零流出' })
+  const base = { type: 'info', effect: 'plain', size: 'small' }
+  const tags = [{ ...base, text: '100%按期闭环' }]
+  if (closeData.value?.kpi.overdue === 0) tags.push({ ...base, text: '零超期' })
+  if (issueData.value?.facts.permanentRate === 100) tags.push({ ...base, text: '永久对策全覆盖' })
+  if (issueData.value?.facts.leakOutCount === 0) tags.push({ ...base, text: '零流出' })
   return tags
 })
 
@@ -757,348 +693,43 @@ function openIssueDetail(it) {
   }
 }
 
-// ============ KPI 行 ============
+// ============ KPI 行（结构/配色/滚动/自适应均由 NewStatCard 提供，此处只做行布局） ============
 .q-kpi-row {
   display: grid;
   grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr;
   gap: 12px;
   flex-shrink: 0;
+  // 固定行高：卡片等高等宽，内容再多也不撑开
+  height: 88px;
 }
 
-.q-kpi {
-  position: relative;
-  overflow: hidden;
+.q-kpi-row .q-kpi {
+  height: 100%;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-color: rgba(30, 120, 208, 0.12);
   border-radius: 12px;
-  padding: 10px 14px;
-  border: 1px solid rgba(30, 120, 208, 0.12);
-  box-shadow: 0 4px 16px rgba(30, 64, 175, 0.06), 0 1px 3px rgba(30, 64, 175, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
-  height: 88px;
-  box-sizing: border-box;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    border-radius: 12px 12px 0 0;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    opacity: 0.4;
-    pointer-events: none;
-  }
 
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(30, 64, 175, 0.1), 0 2px 6px rgba(30, 64, 175, 0.06);
   }
-
-  // 五色顶条 + 微光
-  &.q-kpi-1 {
-    background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 50%, #f0fdf4 100%);
-    border-color: rgba(16, 185, 129, 0.2);
-
-    &::before {
-      background: linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%);
-    }
-
-    &::after {
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
-    }
-
-    .q-kpi-value,
-    .q-kpi-unit {
-      color: #059669;
-      text-shadow: 0 2px 12px rgba(5, 150, 105, 0.2);
-    }
-
-    .q-kpi-value {
-      font-size: 40px;
-    }
-  }
-
-  &.q-kpi-2 {
-    &::before {
-      background: linear-gradient(90deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
-    }
-
-    &::after {
-      background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
-    }
-
-    .q-kpi-value,
-    .q-kpi-unit {
-      color: #1e40af;
-      text-shadow: 0 2px 12px rgba(30, 64, 175, 0.2);
-    }
-  }
-
-  &.q-kpi-3 {
-    &::before {
-      background: linear-gradient(90deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
-    }
-
-    &::after {
-      background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, transparent 70%);
-    }
-
-    .q-kpi-value,
-    .q-kpi-unit {
-      color: #d97706;
-      text-shadow: 0 2px 12px rgba(217, 119, 6, 0.2);
-    }
-  }
-
-  &.q-kpi-4 {
-    &::before {
-      background: linear-gradient(90deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%);
-    }
-
-    &::after {
-      background: radial-gradient(circle, rgba(6, 182, 212, 0.1) 0%, transparent 70%);
-    }
-
-    .q-kpi-value,
-    .q-kpi-unit {
-      color: #0891b2;
-      text-shadow: 0 2px 12px rgba(8, 145, 178, 0.2);
-    }
-  }
-
-  &.q-kpi-5 {
-    &::before {
-      background: linear-gradient(90deg, #7c3aed 0%, #8b5cf6 50%, #a78bfa 100%);
-    }
-
-    &::after {
-      background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
-    }
-
-    .q-kpi-value,
-    .q-kpi-unit {
-      color: #7c3aed;
-      text-shadow: 0 2px 12px rgba(124, 58, 237, 0.2);
-    }
-  }
 }
 
-.q-kpi-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  z-index: 1;
-  height: 100%;
-  min-width: 0;
-}
-
-.q-kpi-info {
-  flex: 1;
-  min-width: 0;
-  padding-right: 8px;
-}
-
-.q-kpi-label {
-  font-size: 13px;
-  color: #475569;
-  font-weight: 500;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.q-kpi-sub {
-  font-size: 11px;
-  color: #94a3b8;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.3;
-}
-
-.q-kpi-value-wrap {
-  text-align: right;
-  display: flex;
-  align-items: baseline;
-  gap: 2px;
-  flex-shrink: 0;
-  max-width: 45%;
-}
-
-.q-kpi-value {
-  font-size: 36px;
-  font-weight: 800;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -1px;
-  opacity: 0;
-  transform: translateY(8px);
-  transition: all .6s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-
-  &.loaded {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.q-kpi-value-text {
-  font-size: 28px !important;
-  letter-spacing: 0;
-  font-weight: 700;
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  line-height: 1.1;
-  // 文本过长时自动缩小字号
-  &.loaded {
-    animation: kpiTextFit .05s forwards;
-  }
-}
-
-@keyframes kpiTextFit {
-  from { letter-spacing: 0; }
-  to   { letter-spacing: 0; }
-}
-
-.q-kpi-unit {
-  font-size: 16px;
-  font-weight: 600;
-  margin-left: 2px;
-  opacity: 0;
-  transition: opacity .4s ease .3s;
-
-  &.loaded {
-    opacity: 1;
-  }
-}
-
-// 扫光
-.q-kpi-shine,
-.q-panel-shine,
-.q-banner-scan {
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 60%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
-  pointer-events: none;
-  z-index: 2;
-}
-
-.q-kpi-shine {
-  animation: panelShine 8s ease-in-out infinite;
-  animation-delay: 1s;
-  width: 40%;
-}
-
-// ============ 摘要横幅 ============
-.q-banner {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, #1e40af 0%, #1e78d0 40%, #0284c7 100%);
-  border-radius: 12px;
+// ============ 摘要横幅（复用 SummaryBar，仅压缩内边距与字号） ============
+.question-screen>.q-banner {
   padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  box-shadow: 0 6px 20px rgba(30, 64, 175, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  flex-shrink: 0;
+  border-radius: 12px;
 
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.03) 75%, transparent 75%);
-    background-size: 20px 20px;
-    pointer-events: none;
-  }
-}
-
-.q-banner-scan {
-  left: -60%;
-  width: 60%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-  animation: bannerScan 4s ease-in-out infinite;
-  z-index: 1;
-}
-
-@keyframes bannerScan {
-  0% {
-    left: -60%
+  :deep(.summary-bar__content) {
+    font-size: 12px;
+    line-height: 1.6;
   }
 
-  50%,
-  100% {
-    left: 120%
+  :deep(.summary-bar__icon) {
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
   }
-}
-
-.q-banner-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 14px;
-  color: #fff;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
-  position: relative;
-  z-index: 2;
-}
-
-.q-banner-text {
-  flex: 1;
-  font-size: 12px;
-  color: #fff;
-  line-height: 1.6;
-  position: relative;
-  z-index: 2;
-
-  strong {
-    color: #fef08a;
-    font-weight: 700;
-  }
-}
-
-.q-banner-tags {
-  display: flex;
-  gap: 8px;
-  position: relative;
-  z-index: 2;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
-.q-banner-tag {
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(4px);
 }
 
 // ============ 主体网格 ============
@@ -1111,33 +742,20 @@ function openIssueDetail(it) {
   gap: 12px;
 }
 
-.q-panel {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
-  border-radius: 12px;
+// 面板容器视觉沿用页面淡蓝风格，结构由 ScreenCard 提供
+.q-main-grid .q-panel {
   padding: 12px 16px 10px;
-  border: 1px solid rgba(30, 120, 208, 0.1);
+  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+  border-color: rgba(30, 120, 208, 0.1);
+  border-radius: 12px;
   box-shadow: 0 4px 16px rgba(30, 64, 175, 0.05), 0 1px 3px rgba(30, 64, 175, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: -30px;
-    right: -30px;
-    width: 120px;
-    height: 120px;
-    background: radial-gradient(circle, rgba(30, 120, 208, 0.04) 0%, transparent 70%);
-    border-radius: 50%;
-    pointer-events: none;
-  }
 
   &:hover {
     box-shadow: 0 8px 24px rgba(30, 64, 175, 0.08), 0 2px 6px rgba(30, 64, 175, 0.04);
+  }
+
+  :deep(.screen-card__header) {
+    margin-bottom: 6px;
   }
 }
 
@@ -1145,135 +763,20 @@ function openIssueDetail(it) {
   grid-row: span 2;
 }
 
-.q-panel-highlight {
+.q-main-grid .q-panel-highlight {
   border-color: rgba(16, 185, 129, 0.25);
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 12px;
-    right: 12px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #10b981, transparent);
-    opacity: 0.5;
-  }
-}
-
-.q-panel-shine {
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 40%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  pointer-events: none;
-  z-index: 2;
-  animation: panelShine 8s ease-in-out infinite;
-}
-
-.q-panel:nth-of-type(1) .q-panel-shine {
-  animation-delay: 2s;
-}
-
-.q-panel:nth-of-type(2) .q-panel-shine {
-  animation-delay: 3s;
-}
-
-.q-panel:nth-of-type(3) .q-panel-shine {
-  animation-delay: 4s;
-}
-
-.q-panel:nth-of-type(4) .q-panel-shine {
-  animation-delay: 5s;
-}
-
-.q-panel:nth-of-type(5) .q-panel-shine {
-  animation-delay: 6s;
-}
-
-@keyframes panelShine {
-  0% {
-    left: -40%
-  }
-
-  20%,
-  100% {
-    left: 140%
-  }
-}
-
-.q-panel-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 6px;
-  position: relative;
-  z-index: 1;
 }
 
 .q-panel-title {
   font-size: 15px;
   font-weight: 700;
   color: #0f2b5d;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  padding-left: 12px;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 14px;
-    border-radius: 2px;
-    background: linear-gradient(180deg, #1e78d0, #0ea5e9);
-    box-shadow: 0 0 6px rgba(30, 120, 208, 0.3);
-  }
 }
 
 .q-panel-sub {
   font-size: 11px;
   color: #94a3b8;
-  margin-top: 2px;
   font-weight: 400;
-  padding-left: 12px;
-}
-
-.q-badge {
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-
-  &.q-badge-green {
-    background: #ecfdf5;
-    color: #059669;
-    border: 1px solid rgba(16, 185, 129, 0.2);
-  }
-
-  &.q-badge-orange {
-    background: #fff7ed;
-    color: #c2410c;
-    border: 1px solid rgba(249, 115, 22, 0.2);
-  }
-
-  &.q-badge-blue {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid rgba(59, 130, 246, 0.2);
-  }
-
-  &.q-badge-cyan {
-    background: #ecfeff;
-    color: #0e7490;
-    border: 1px solid rgba(6, 182, 212, 0.2);
-  }
 }
 
 .q-chart {
@@ -1283,14 +786,13 @@ function openIssueDetail(it) {
   z-index: 1;
 }
 
-// 趋势图图例
+// 趋势图图例（放在卡片副标题位置）
 .q-trend-legend {
   display: flex;
   gap: 14px;
   font-size: 11px;
   color: #64748b;
   margin-top: 4px;
-  padding-left: 12px;
 }
 
 .q-legend-item {
@@ -1351,6 +853,7 @@ function openIssueDetail(it) {
   gap: 6px;
   position: relative;
   z-index: 1;
+  overflow: hidden;
 
   li {
     display: flex;
@@ -1385,41 +888,41 @@ function openIssueDetail(it) {
 }
 
 // 进度面板高亮（点击查看明细时）
-.q-panel-progress--hl {
+.q-main-grid .q-panel-progress--hl {
   border-color: rgba(30, 120, 208, 0.35);
   box-shadow: 0 0 0 2px rgba(30, 120, 208, 0.1), 0 8px 24px rgba(30, 64, 175, 0.12);
 }
 
-// 入场动画
-.q-kpi,
-.q-banner,
-.q-panel {
+// 入场动画（作用于组件外层容器）
+.q-kpi-row .q-kpi,
+.question-screen>.q-banner,
+.q-main-grid .q-panel {
   opacity: 0;
   transform: translateY(10px);
   animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-.q-kpi:nth-child(1) {
+.q-kpi-row .q-kpi:nth-child(1) {
   animation-delay: 0.05s;
 }
 
-.q-kpi:nth-child(2) {
+.q-kpi-row .q-kpi:nth-child(2) {
   animation-delay: 0.1s;
 }
 
-.q-kpi:nth-child(3) {
+.q-kpi-row .q-kpi:nth-child(3) {
   animation-delay: 0.15s;
 }
 
-.q-kpi:nth-child(4) {
+.q-kpi-row .q-kpi:nth-child(4) {
   animation-delay: 0.2s;
 }
 
-.q-kpi:nth-child(5) {
+.q-kpi-row .q-kpi:nth-child(5) {
   animation-delay: 0.25s;
 }
 
-.q-banner {
+.question-screen>.q-banner {
   animation-delay: 0.3s;
 }
 

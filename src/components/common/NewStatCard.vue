@@ -143,7 +143,7 @@
                             <slot name="prefix"></slot>
                             <slot name="value">
                                 <span class="kpi-top__value"
-                                    :class="{ 'kpi-top__value--loaded': !animated || entered }">{{ value
+                                    :class="{ 'kpi-top__value--loaded': !animated || entered }">{{ displayValue
                                     }}</span>
                             </slot>
                             <slot name="unit">
@@ -175,7 +175,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, useSlots } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onUnmounted, useSlots, getCurrentInstance } from 'vue'
 
 const slots = useSlots()
 const entered = ref(false)
@@ -250,7 +250,13 @@ const props = defineProps({
     // 动画延迟（ms）
     animationDelay: { type: Number, default: 0 },
     // kpi-top 第一张卡是否使用强调渐变背景（stat2 第一张绿色大卡风格）
-    accent: { type: Boolean, default: false }
+    accent: { type: Boolean, default: false },
+    // 数值是否开启滚动动画（kpi-top 主题且 value 为数字时生效）
+    countUp: { type: Boolean, default: false },
+    // 数值滚动动画时长（ms）
+    countDuration: { type: Number, default: 1200 },
+    // 数值文本过长时自动缩小字号（kpi-top 主题生效），避免长内容把卡片撑开
+    fitValue: { type: Boolean, default: false }
 })
 
 // ===== 预设状态颜色映射（扩展 stat2 的 purple/cyan） =====
@@ -477,12 +483,111 @@ const badgeStyle = computed(() => {
     }
 })
 
+// ===== kpi-top 数值滚动动画 =====
+const displayValue = ref(props.value)
+let countTimer = null
+
+function runCountUp() {
+    const target = Number(props.value)
+    if (!props.countUp || !Number.isFinite(target)) {
+        displayValue.value = props.value
+        return
+    }
+    if (countTimer) cancelAnimationFrame(countTimer)
+    const dur = props.countDuration
+    const startTime = performance.now()
+    const tick = (now) => {
+        const p = Math.min((now - startTime) / dur, 1)
+        const eased = 1 - Math.pow(1 - p, 3)
+        displayValue.value = Math.floor(target * eased)
+        if (p < 1) countTimer = requestAnimationFrame(tick)
+        else displayValue.value = target
+    }
+    countTimer = requestAnimationFrame(tick)
+}
+
+// ===== kpi-top 长数值自适应字号（内容过多时不撑开卡片） =====
+const inst = getCurrentInstance()
+
+// 字号校正调度：合并高频触发，避免反复同步重排
+let fitObserver = null
+let fitRaf = 0
+function scheduleFitValue() {
+    if (fitRaf) cancelAnimationFrame(fitRaf)
+    fitRaf = requestAnimationFrame(() => {
+        fitRaf = 0
+        applyFitValue()
+    })
+}
+
+async function applyFitValue() {
+    // 用组件根元素定位，避免模板 ref 在条件分支下取不到
+    const root = inst?.proxy?.$el
+    if (!root || typeof root.querySelector !== 'function') return
+    const valueEl = root.querySelector('.kpi-top__value')
+    if (!valueEl) return
+    if (!props.fitValue) return
+    const box = root.querySelector('.kpi-top__right')
+    if (!box || box.clientWidth === 0) return
+
+    valueEl.style.fontSize = ''
+    const cs = getComputedStyle(valueEl)
+    const base = parseFloat(cs.fontSize) || 38
+    const avail = box.clientWidth
+    const unitEl = root.querySelector('.kpi-top__unit')
+    const unitW = unitEl ? unitEl.offsetWidth + 4 : 0
+    const text = valueEl.textContent || ''
+
+    // 用 canvas 量文本自然宽度：与 DOM 布局无关，不受 flex 压缩和字体加载时序影响
+    const ctx = document.createElement('canvas').getContext('2d')
+    if (!ctx) return
+    ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${base}px ${cs.fontFamily}`
+    const textW = ctx.measureText(text).width
+    if (textW + unitW > avail) {
+        const fs = Math.max(13, Math.floor((base * (avail - unitW)) / textW))
+        valueEl.style.fontSize = fs + 'px'
+    }
+}
+
+watch(() => props.value, () => {
+    displayValue.value = props.value
+    runCountUp()
+    applyFitValue()
+})
+
 // 入场触发（kpi-top 数字的淡入上浮）
 onMounted(() => {
     if (props.animated) {
         setTimeout(() => { entered.value = true }, 30)
     } else {
         entered.value = true
+    }
+    if (props.countUp) setTimeout(runCountUp, props.animated ? 150 : 300)
+    applyFitValue()
+    // 大屏缩放、字体加载、入场动画都会在挂载后才让可用宽度稳定，多档延迟校正
+    scheduleFitValue()
+    ;[80, 200, 400, 800].forEach((t) => setTimeout(scheduleFitValue, t))
+    const rootEl = inst?.proxy?.$el
+    if (window.ResizeObserver && rootEl && typeof rootEl.querySelector === 'function') {
+        const boxEl = rootEl.querySelector('.kpi-top__right')
+        if (boxEl) {
+            fitObserver = new ResizeObserver(scheduleFitValue)
+            fitObserver.observe(boxEl)
+        }
+    }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleFitValue)
+    window.addEventListener('resize', scheduleFitValue)
+})
+
+onUnmounted(() => {
+    window.removeEventListener('resize', scheduleFitValue)
+    if (fitObserver) {
+        fitObserver.disconnect()
+        fitObserver = null
+    }
+    if (fitRaf) {
+        cancelAnimationFrame(fitRaf)
+        fitRaf = 0
     }
 })
 
@@ -893,6 +998,8 @@ defineExpose({ statusColors, hexToRgba })
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    flex: 1;
+    min-width: 0;
 }
 
 .kpi-top__left {
@@ -928,7 +1035,10 @@ defineExpose({ statusColors, hexToRgba })
 }
 
 .kpi-top__right {
-    flex-shrink: 0;
+    /* 固定占比：宽度不随数值内容浮动，字号自适应才能收敛 */
+    flex: 0 0 auto;
+    width: 58%;
+    min-width: 0;
     text-align: right;
 }
 
@@ -937,12 +1047,19 @@ defineExpose({ statusColors, hexToRgba })
     align-items: baseline;
     gap: 3px;
     justify-content: flex-end;
+    /* 阻断 min-content 传递：否则长数值会把外层 grid 的 1fr 轨道撑开，形成测量回流 */
+    min-width: 0;
 }
 
 .kpi-top__value {
     font-size: 38px;
     font-weight: 800;
     line-height: 1;
+    /* 不换行 + 裁剪：换行/溢出会污染测量，溢出部分交给字号自适应处理 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
     font-variant-numeric: tabular-nums;
     letter-spacing: -1px;
     color: var(--accent-text);
