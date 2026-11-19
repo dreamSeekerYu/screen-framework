@@ -1,94 +1,127 @@
 <template>
-  <div class="think-screen" v-loading="loading">
+  <div class="think-screen">
     <!-- 顶部标题栏 -->
     <div class="think-header">
-      <ScreenHeader :title="`${currentWeek} 周度思考`" />
+      <ScreenHeader :title="`${activeWeekLabel} 周度思考`" />
       <div class="header-actions">
         <StatusTag type="default" text="重置筛选" @click="resetFilter" />
         <StatusTag type="info" text="全屏展示" @click="toggleFullscreen" />
       </div>
     </div>
 
-    <!-- 加载/错误/空态 -->
-    <div v-if="error" class="state-box">
+    <!-- 加载态 -->
+    <div v-if="loading" class="state-box">
+      <div class="state-text">数据加载中…</div>
+    </div>
+
+    <!-- 错误态 -->
+    <div v-else-if="error" class="state-box">
       <div class="state-text">数据加载失败：{{ error }}</div>
     </div>
 
-    <template v-else-if="!loading && parsed">
-      <!-- KPI 行 -->
+    <!-- 空态 -->
+    <div v-else-if="!parsed || !parsed.weeks.length" class="state-box">
+      <div class="state-text">暂无周度思考数据</div>
+    </div>
+
+    <template v-else>
+      <!-- 周切换：当前周 = 「周度」列中周序号最大的一周 -->
+      <div class="week-bar">
+        <Tabs v-model="activeWeek" type="segment" class="week-switch">
+          <TabPane
+            v-for="w in parsed.weeks"
+            :key="w.week"
+            :label="`${w.shortText} ${w.week}`"
+            :name="w.week"
+            :badge="w.stats.total ? String(w.stats.total) : ''"
+          />
+        </Tabs>
+        <div class="week-range">
+          当前周 {{ parsed.currentWeek }} · 上周 {{ parsed.lastWeek }} · 共 {{ parsed.weeks.length }} 周数据
+        </div>
+      </div>
+
+      <!-- KPI 行（均按当前所选周统计） -->
       <div class="kpi-row">
         <StatCard
           theme="classic"
-          status="warning"
-          title="上周重点困难工作"
-          :value="parsed.overall.lastWeekCount"
+          status="primary"
+          :title="`${activeShort}重点任务`"
+          :value="activeStats.total"
           unit="项"
+          :explain="compareTip('总任务数')"
         />
         <StatCard
           theme="classic"
           status="danger"
-          title="下两周重点风险任务"
-          :value="parsed.overall.nextTwoCount"
+          :title="`${activeShort}高风险任务`"
+          :value="activeStats.high"
           unit="项"
+          :explain="compareTip('高风险任务')"
         />
         <StatCard
           theme="classic"
-          status="primary"
-          title="核心风险卡点"
-          :value="parsed.overall.riskPointCount"
+          status="warning"
+          :title="`${activeShort}核心风险卡点`"
+          :value="activeStats.coreCount"
           unit="个"
+          :explain="compareTip('核心卡点')"
         />
         <StatCard
           theme="classic"
           status="success"
-          title="需协调资源支持"
-          :value="parsed.overall.resourceCount"
+          :title="`${activeShort}需协调资源`"
+          :value="activeStats.resourceCount"
           unit="项"
+          :explain="compareTip('资源需求')"
         />
       </div>
 
       <!-- 主内容区 -->
       <div class="main-content">
-        <!-- 左列：车间看板 + 风险类型分布 -->
+        <!-- 左列：车间看板 + 风险类型分布（按周） -->
         <div class="left-col">
           <!-- 车间风险等级看板 -->
-          <ScreenCard title="车间风险等级看板">
-            <div class="workshop-grid">
+          <ScreenCard :title="`车间风险等级看板 · ${activeWeekLabel}`">
+            <div v-if="activeStats.workshopStats.length" class="workshop-grid">
               <div
-                v-for="ws in parsed.workshops"
+                v-for="ws in activeStats.workshopStats"
                 :key="ws.key"
                 class="workshop-card"
                 :class="ws.level"
               >
                 <div class="workshop-name">{{ ws.name }}</div>
-                <div class="risk-tag" :class="ws.level">
-                  {{ ws.level === 'high' ? '高风险' : ws.level === 'mid' ? '中风险' : '低风险' }}
-                </div>
+                <div class="risk-tag" :class="ws.level">{{ ws.levelText }}风险</div>
                 <div class="workshop-count">{{ ws.total }}项</div>
               </div>
             </div>
+            <div v-else class="empty-tip">该周暂无车间数据</div>
           </ScreenCard>
 
           <!-- 风险类型分布饼图 -->
           <ScreenCard title="风险类型分布" class="pie-card">
+            <template #extra>
+              <span class="card-extra">
+                卡点 {{ activeStats.riskPointCount }} 个 · 计划完成率 {{ activeStats.planRate }}%
+              </span>
+            </template>
             <div ref="pieRef" class="chart-box">
-              <BaseChart :option="pieOption" v-if="pieReady" @chart-ready="onPieReady" />
+              <BaseChart v-if="pieReady" :option="pieOption" @chart-ready="onPieReady" />
             </div>
           </ScreenCard>
         </div>
 
-        <!-- 右列：任务列表 -->
+        <!-- 右列：任务列表（按周） -->
         <div class="right-col">
-          <ScreenCard title="重点任务列表">
+          <ScreenCard :title="`重点任务列表 · ${activeWeekLabel}`">
+            <template #extra>
+              <span class="card-extra">共 {{ filteredTasks.length }} 项</span>
+            </template>
+
             <div class="filter-bar">
-              <select v-model="filterCategory" class="filter-select">
-                <option value="all">全部分类</option>
-                <option value="lastWeek">上周重大/困难工作</option>
-                <option value="nextTwo">下两周重大/风险任务</option>
-              </select>
               <select v-model="filterWorkshop" class="filter-select">
                 <option value="all">全部车间</option>
-                <option v-for="ws in parsed.workshops" :key="ws.key" :value="ws.key">
+                <option v-for="ws in activeStats.workshopStats" :key="ws.key" :value="ws.key">
                   {{ ws.name }}
                 </option>
               </select>
@@ -98,36 +131,45 @@
                 <option value="mid">中风险</option>
                 <option value="low">低风险</option>
               </select>
+              <input
+                v-model="keyword"
+                class="filter-input"
+                type="text"
+                placeholder="搜索任务 / 负责人"
+              />
             </div>
 
-            <div class="task-list" ref="listRef">
-              <template v-for="cat in categoryGroups" :key="cat.key">
-                <template v-if="groupedTasks[cat.key].length">
-                  <div class="category-title">{{ cat.title }}</div>
-                  <div
-                    v-for="t in groupedTasks[cat.key]"
-                    :key="t.taskNo"
-                    class="task-card"
-                    :class="[
-                      t.riskLevel === 'mid' ? 'mid-risk' : (t.riskLevel === 'low' ? 'low-risk' : ''),
-                      activeTask && activeTask.taskNo === t.taskNo ? 'active' : '',
-                    ]"
-                    @click="openTask(t)"
-                  >
-                    <div class="task-info">
-                      <div class="task-workshop">
-                        {{ t.workshop }}
-                        <Tag v-if="t.coreRiskCount > 0" size="small" status="danger" class="core-mini">
-                          {{ t.coreRiskCount }}个核心卡点
-                        </Tag>
-                      </div>
-                      <div class="task-desc">{{ t.desc || t.title }}</div>
-                    </div>
-                    <div class="task-risk-badge" :class="t.riskLevel">{{ t.riskText }}</div>
+            <div class="task-list">
+              <div
+                v-for="t in filteredTasks"
+                :key="t.week + t.taskNo"
+                class="task-card"
+                :class="[
+                  `${t.riskLevel}-risk`,
+                  activeTask && activeTask.taskNo === t.taskNo ? 'active' : '',
+                ]"
+                @click="openTask(t)"
+              >
+                <div class="task-info">
+                  <div class="task-workshop">
+                    <span class="ws-name">{{ t.workshop }}</span>
+                    <Tag v-if="t.coreRiskCount > 0" size="small" status="danger" class="core-mini">
+                      {{ t.coreRiskCount }}个核心卡点
+                    </Tag>
                   </div>
-                </template>
-              </template>
-              <div v-if="!filteredTasks.length" class="empty-tip">暂无符合条件的任务</div>
+                  <div class="task-desc">{{ t.desc || t.title }}</div>
+                  <div class="task-meta">
+                    <span>负责人：{{ t.owner || '—' }}</span>
+                    <span>截止：{{ t.deadline || '—' }}</span>
+                    <span>计划 {{ t.donePlanCount }}/{{ t.plans.length }}</span>
+                  </div>
+                </div>
+                <div class="task-risk-badge" :class="t.riskLevel">{{ t.riskText }}</div>
+              </div>
+
+              <div v-if="!filteredTasks.length" class="empty-tip">
+                {{ activeStats.total ? '暂无符合条件的任务' : '该周暂无任务' }}
+              </div>
             </div>
           </ScreenCard>
         </div>
@@ -145,10 +187,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
 import StatCard from '@/components/common/NewStatCard.vue'
+import Tabs from '@/components/common/Tabs.vue'
+import TabPane from '@/components/common/TabPane.vue'
 import Tag from '@/components/common/Tag.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
@@ -156,78 +200,159 @@ import ThinkTaskDetail from '@/components/common/ThinkTaskDetail.vue'
 import { loadSheet } from '@/utils/dataLoader.js'
 import { parseWeeklyThink } from '@/utils/parseWeeklyThink.js'
 import { getCssVar } from '@/utils/color.js'
+import { useThemeStore } from '@/stores/theme'
 
 // ======== 状态 ========
 const loading = ref(true)
 const error = ref('')
 const parsed = ref(null)
-const sheet = ref(null)
 
-const filterCategory = ref('all')
+// 当前选中的周（归一化标签，如 W47）
+const activeWeek = ref('')
+
 const filterWorkshop = ref('all')
 const filterRisk = ref('all')
+const keyword = ref('')
 
 const pieReady = ref(false)
 const pieRef = ref(null)
-const listRef = ref(null)
 
 const detailVisible = ref(false)
 const activeTask = ref(null)
 
+const themeStore = useThemeStore()
+
 // ======== 数据加载 ========
 onMounted(async () => {
   try {
-    sheet.value = await loadSheet('think', 0)
-    parsed.value = parseWeeklyThink(sheet.value)
+    const sheet = await loadSheet('think', 0)
+    const result = parseWeeklyThink(sheet)
+    parsed.value = result
+    // 默认展示当前周（「周度」列中周序号最大的一周）
+    activeWeek.value = result.currentWeek || (result.weeks[0] && result.weeks[0].week) || ''
   } catch (e) {
     console.error(e)
     error.value = e.message || String(e)
   } finally {
     loading.value = false
     await nextTick()
-    // 延迟让 flex 布局完成后再初始化图表
+    // 等布局完成后再挂载图表，避免容器 0 高度
     setTimeout(() => { pieReady.value = true }, 150)
   }
 })
 
-// ======== 计算属性 ========
-const currentWeek = computed(() => parsed.value?.overall?.latestWeek || '')
-
-const categoryGroups = [
-  { key: 'lastWeek', title: '上周最重大/困难的工作' },
-  { key: 'nextTwo', title: '下两周最重大/风险任务' },
-]
-
-const filteredTasks = computed(() => {
-  if (!parsed.value) return []
-  return parsed.value.allTasks.filter(t => {
-    if (filterCategory.value !== 'all' && t.category !== filterCategory.value) return false
-    if (filterWorkshop.value !== 'all' && t.workshopKey !== filterWorkshop.value) return false
-    if (filterRisk.value !== 'all' && t.riskLevel !== filterRisk.value) return false
-    return true
-  })
+// ======== 周维度计算 ========
+const activeWeekObj = computed(() => {
+  if (!parsed.value) return null
+  return parsed.value.weekMap[activeWeek.value] || parsed.value.weeks[0] || null
+})
+const activeWeekLabel = computed(() => (activeWeekObj.value ? activeWeekObj.value.week : ''))
+const activeShort = computed(() => {
+  const w = activeWeekObj.value
+  return w ? w.shortText : '当前周'
+})
+const activeStats = computed(() => {
+  const w = activeWeekObj.value
+  return w ? w.stats : emptyStats()
 })
 
-const groupedTasks = computed(() => ({
-  lastWeek: filteredTasks.value.filter(t => t.category === 'lastWeek'),
-  nextTwo: filteredTasks.value.filter(t => t.category === 'nextTwo'),
-}))
+// 对比周：本周 ↔ 上周 互相对照，历史周对比当前周
+const compareWeekObj = computed(() => {
+  const p = parsed.value
+  const w = activeWeekObj.value
+  if (!p || !w) return null
+  if (w.role === 'current') return p.weekMap[p.lastWeek] || null
+  return p.weekMap[p.currentWeek] || null
+})
+const compareShort = computed(() => {
+  const c = compareWeekObj.value
+  return c ? c.shortText : '对比周'
+})
+const compareStats = computed(() => {
+  const c = compareWeekObj.value
+  return c ? c.stats : emptyStats()
+})
 
-// 风险类型饼图
-const pieOption = computed(() => {
-  if (!parsed.value) return {}
-  const palette = {
-    '人力风险': '#f56c6c',
-    '质量风险': '#e6a23c',
-    '产能风险': '#409eff',
-    '设备风险': '#909399',
-    '普通风险': '#b37feb',
+/** KPI 副标题：与该周对照的周做差值 */
+function compareTip(label) {
+  const map = {
+    总任务数: ['total', '项'],
+    高风险任务: ['high', '项'],
+    核心卡点: ['coreCount', '个'],
+    资源需求: ['resourceCount', '项'],
   }
-  const data = parsed.value.riskTypes.map(item => ({
+  const [key, unit] = map[label]
+  if (!compareWeekObj.value) return `${label}：无对比周`
+  const d = activeStats.value[key] - compareStats.value[key]
+  if (d === 0) return `较${compareShort.value}持平`
+  return `较${compareShort.value} ${d > 0 ? '↑' : '↓'}${Math.abs(d)}${unit}`
+}
+
+function emptyStats() {
+  return {
+    total: 0, high: 0, mid: 0, low: 0, coreCount: 0, riskPointCount: 0,
+    resourceCount: 0, planTotal: 0, planDone: 0, planRate: 0,
+    workshopCount: 0, workshopStats: [], riskTypeDist: [], owners: [],
+  }
+}
+
+// 切换周时，若原车间筛选在新周不存在，则重置筛选，避免列表恒为空
+watch(activeWeek, () => {
+  if (filterWorkshop.value === 'all') return
+  const exists = activeStats.value.workshopStats.some((w) => w.key === filterWorkshop.value)
+  if (!exists) filterWorkshop.value = 'all'
+})
+
+// ======== 任务列表 ========
+const filteredTasks = computed(() => {
+  const w = activeWeekObj.value
+  if (!w) return []
+  const kw = keyword.value.trim().toLowerCase()
+  return w.tasks
+    .filter((t) => {
+      if (filterWorkshop.value !== 'all' && t.workshopKey !== filterWorkshop.value) return false
+      if (filterRisk.value !== 'all' && t.riskLevel !== filterRisk.value) return false
+      if (kw) {
+        const hay = `${t.title} ${t.desc} ${t.owner} ${t.workshop}`.toLowerCase()
+        if (!hay.includes(kw)) return false
+      }
+      return true
+    })
+    .sort((a, b) => levelOrder(b.riskLevel) - levelOrder(a.riskLevel))
+})
+
+function levelOrder(l) {
+  return l === 'high' ? 3 : l === 'mid' ? 2 : 1
+}
+
+// ======== 风险类型饼图（按周） ========
+function cssVar(name, fallback) {
+  try {
+    return getCssVar(name) || fallback
+  } catch (e) {
+    return fallback
+  }
+}
+
+const RISK_TYPE_COLOR = {
+  人力风险: '#f56c6c',
+  质量风险: '#e6a23c',
+  产能风险: '#409eff',
+  设备风险: '#909399',
+  普通风险: '#b37feb',
+}
+
+const pieOption = computed(() => {
+  // 依赖主题，切换主题时重新取色
+  const themeKey = themeStore.currentTheme
+  const textColor = cssVar('--color-text-secondary', '#909399')
+  const fallbackColor = cssVar('--color-primary', '#409eff')
+  const data = (activeStats.value.riskTypeDist || []).map((item) => ({
     name: item.name,
     value: item.value,
-    itemStyle: { color: palette[item.name] || resolveColor('--color-primary', '#409eff') },
+    itemStyle: { color: RISK_TYPE_COLOR[item.name] || fallbackColor },
   }))
+
   return {
     tooltip: {
       trigger: 'item',
@@ -238,46 +363,49 @@ const pieOption = computed(() => {
       left: 'center',
       itemWidth: 12,
       itemHeight: 10,
-      textStyle: { color: 'var(--color-text-secondary)', fontSize: 12 },
+      textStyle: { color: textColor, fontSize: 12 },
     },
-    series: [{
-      name: '风险类型',
-      type: 'pie',
-      radius: ['42%', '68%'],
-      center: ['50%', '45%'],
-      avoidLabelOverlap: true,
-      itemStyle: {
-        borderRadius: 6,
-        borderColor: 'var(--color-bg-card, #fff)',
-        borderWidth: 2,
+    series: [
+      {
+        name: '风险类型',
+        type: 'pie',
+        radius: ['42%', '68%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 6,
+          borderColor: cssVar('--color-bg-card', '#ffffff'),
+          borderWidth: 2,
+        },
+        label: {
+          show: true,
+          fontSize: 12,
+          color: textColor,
+          formatter: '{b}: {d}%',
+        },
+        labelLine: { length: 8, length2: 8 },
+        data,
       },
-      label: {
-        show: true,
-        fontSize: 12,
-        color: 'var(--color-text-secondary)',
-        formatter: '{b}: {d}%',
-      },
-      labelLine: { length: 8, length2: 8 },
-      data,
-    }],
+    ],
+    __themeKey: themeKey,
   }
 })
 
-// ======== 事件 ========
 function onPieReady(chart) {
-  // 兜底再 resize 一次，防止首次 0 高度
+  // 兜底再 resize 一次，防止首次容器高度未就绪
   setTimeout(() => chart && chart.resize(), 200)
 }
 
+// ======== 交互 ========
 function openTask(t) {
   activeTask.value = t
   detailVisible.value = true
 }
 
 function resetFilter() {
-  filterCategory.value = 'all'
   filterWorkshop.value = 'all'
   filterRisk.value = 'all'
+  keyword.value = ''
 }
 
 function toggleFullscreen() {
@@ -304,7 +432,6 @@ function onPlanToggle() {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 0;
   overflow: hidden;
 }
 
@@ -333,6 +460,31 @@ function onPlanToggle() {
   }
 }
 
+// ======== 周切换 ========
+.week-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  flex-shrink: 0;
+}
+
+.week-switch {
+  width: auto;
+
+  // 仅作为切换器使用，隐藏内容区
+  :deep(.ui-tabs__content) {
+    display: none;
+  }
+}
+
+.week-range {
+  font-size: $font-xs;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
 // ======== KPI 行 ========
 .kpi-row {
   display: grid;
@@ -353,9 +505,10 @@ function onPlanToggle() {
   overflow: hidden;
 }
 
+// 关键：给车间看板固定行高，饼图吃掉剩余高度（否则首张卡片 height:100% 会把饼图挤成 0 高）
 .left-col {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: 190px 1fr;
   gap: $spacing-md;
   min-height: 0;
   overflow: hidden;
@@ -368,6 +521,11 @@ function onPlanToggle() {
   flex-direction: column;
 }
 
+.card-extra {
+  font-size: $font-xs;
+  color: var(--color-text-secondary);
+}
+
 // ======== 车间看板 ========
 .workshop-grid {
   display: grid;
@@ -377,7 +535,7 @@ function onPlanToggle() {
 
 .workshop-card {
   border-radius: $radius-md;
-  padding: $spacing-md $spacing-sm;
+  padding: $spacing-sm;
   text-align: center;
   border: 1px solid;
 
@@ -388,59 +546,50 @@ function onPlanToggle() {
   .workshop-name {
     font-size: $font-md;
     font-weight: bold;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     color: var(--color-text-primary);
   }
   .risk-tag {
     display: inline-block;
-    padding: 2px 10px;
+    padding: 1px 10px;
     border-radius: 4px;
     font-size: $font-xs;
     color: white;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 
     &.high { background: #f56c6c; }
     &.mid { background: #e6a23c; }
     &.low { background: #67c23a; }
   }
   .workshop-count {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: bold;
     color: var(--color-text-primary);
-    font-family: 'DIN Alternate', sans-serif;
   }
 }
 
 // ======== 饼图 ========
 .pie-card {
-  flex: 1;
   min-height: 0;
-
-  :deep(.screen-card__body) {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
 }
+
 .chart-box {
-  width: 100%;
-  height: 100%;
   flex: 1;
-  min-height: 280px;
+  width: 100%;
+  min-height: 0;
 }
 
-// ======== 任务列表 ========
+// ======== 筛选栏 ========
 .filter-bar {
   display: flex;
   gap: $spacing-sm;
-  margin-bottom: $spacing-md;
+  margin-bottom: $spacing-sm;
   flex-shrink: 0;
   flex-wrap: wrap;
 }
 
-.filter-select {
+.filter-select,
+.filter-input {
   padding: 6px 12px;
   border: 1px solid var(--color-border, #dcdfe6);
   border-radius: $radius-sm;
@@ -448,11 +597,19 @@ function onPlanToggle() {
   background: var(--color-bg-card, #fff);
   color: var(--color-text-primary);
   outline: none;
-  cursor: pointer;
-
-  &:focus { border-color: var(--color-primary, #409eff); }
 }
 
+.filter-input {
+  flex: 1;
+  min-width: 120px;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+  border-color: var(--color-primary, #409eff);
+}
+
+// ======== 任务列表 ========
 .task-list {
   flex: 1;
   overflow-y: auto;
@@ -461,15 +618,6 @@ function onPlanToggle() {
 
   &::-webkit-scrollbar { width: 6px; }
   &::-webkit-scrollbar-thumb { background: var(--color-border, #c0c4cc); border-radius: 3px; }
-}
-
-.category-title {
-  font-size: $font-md;
-  font-weight: bold;
-  color: var(--color-text-primary);
-  margin: $spacing-md 0 $spacing-sm;
-
-  &:first-child { margin-top: 0; }
 }
 
 .task-card {
@@ -495,7 +643,7 @@ function onPlanToggle() {
   }
   &:hover {
     transform: translateX(3px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
   &.active {
     border-left-color: var(--color-primary, #409eff);
@@ -512,6 +660,7 @@ function onPlanToggle() {
     align-items: center;
     gap: 6px;
 
+    .ws-name { flex-shrink: 0; }
     .core-mini {
       font-weight: normal;
       flex-shrink: 0;
@@ -525,6 +674,14 @@ function onPlanToggle() {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+  .task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 4px;
+    font-size: $font-xs;
+    color: var(--color-text-muted);
   }
   .task-risk-badge {
     padding: 2px 8px;

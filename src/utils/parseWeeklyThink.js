@@ -2,44 +2,103 @@
  * 周度思考数据解析器
  *
  * 输入：经 indexSheet 处理过的「周度思考.json」sheet0（任务明细表）
- * 输出：{
- *   weeks: [{ week, tasks: [...], stats: {...} }],  // 按周分组，最新周在前
- *   workshops: [...],                              // 所有涉及车间
- *   riskTypes: [...],                              // 所有风险类型
- *   allTasks: [...],                               // 全部任务扁平列表
- *   overall: { lastWeekCount, nextTwoCount, riskPointCount, resourceCount }
- * }
  *
- * 表格结构说明：
- * - A~H 列是任务级信息（合并单元格覆盖该任务所有子项行）：
+ * 周维度口径（重要）：
+ * - 「周度」列形如 W46，数字 46 表示当年的第 46 个工作周；
+ * - 取「周度」列中周序号最大的一周为【当前周（本周）】；
+ * - 【上周】= 当前周序号 - 1；再往前的周统一归为【历史周】；
+ * - 统计与展示维度全部按周切分，每个周各自持有一份 stats。
+ *
+ * 表格结构：
+ * - A~H 列为任务级信息（合并单元格覆盖该任务的全部子项行）：
  *     周度 / 任务编号 / 任务名称 / 任务描述 / 任务风险等级 / 负责人 / 截止日期 / 涉及车间
- * - I~U 列是子项级（每行一个子项）：
+ * - I~U 列为子项级（每行一个子项）：
  *     子项序号 / 目前进展 / 风险卡点 / 卡点等级 / 风险类型 / 是否核心卡点
  *     / 下一步计划 / 计划时间 / 是否完成 / 需要资源 / 资源类型 / 协同部门 / 备注
+ *
+ * 输出：
+ * {
+ *   weeks: [{ week, rawWeek, weekNo, role, roleText, tasks, stats }],  // 按周序号倒序
+ *   weekMap,                       // week(归一化标签) -> 周对象
+ *   currentWeek, lastWeek,         // 归一化标签：W47 / W46
+ *   currentWeekNo, lastWeekNo,
+ *   current, last,                 // 周对象（可能为 null）
+ *   weekCompare,                   // 本周 vs 上周 的对比
+ *   allTasks,                      // 全部任务（含 weekRole / category）
+ *   workshops,                     // 全量车间列表
+ *   riskTypes,                     // 全量风险类型分布
+ *   overall                        // 全量汇总
+ * }
  */
 
-/** 风险等级归一化：高/中/低 */
+/** 父级（任务级）列，合并单元格需要向下续传 */
+const PARENT_KEYS = [
+  '周度',
+  '任务编号',
+  '任务名称',
+  '任务描述',
+  '任务风险等级',
+  '负责人',
+  '截止日期',
+  '涉及车间',
+]
+
+const WEEK_RE = /(\d+)/
+
+function str(v) {
+  return v === null || v === undefined ? '' : String(v).trim()
+}
+
+/** 风险等级归一化为 high / mid / low */
 function normRiskLevel(text) {
-  if (!text) return 'mid'
-  const t = String(text).trim()
+  const t = str(text)
   if (t.includes('高')) return 'high'
   if (t.includes('低')) return 'low'
   return 'mid'
 }
 
-/** 判断是否"是" */
+/** 中文字面量：高 / 中 / 低 */
+function levelText(level) {
+  return level === 'high' ? '高' : level === 'low' ? '低' : '中'
+}
+
+/** 是否勾选"是" */
 function isYes(v) {
-  if (v == null) return false
-  const t = String(v).trim()
+  const t = str(v)
   return t === '是' || t === 'Y' || t === 'y' || t === 'true' || t === '1'
 }
 
-/** 从截止日期里判断任务属于「上周」还是「下两周」（仅用于分类展示，不严格） */
-function categoryOfTask(week, deadline, allWeeks) {
-  // 最新一周 = 当前展示周，W47 的下两周任务是指未来两周
-  const latestWeek = allWeeks[0]
-  if (week === latestWeek) return 'nextTwo'
-  return 'lastWeek'
+/**
+ * 风险类型续传：表格里风险类型通常只写在任务的第一个子项行，
+ * 后续子项行留空，这里按任务向下继承（同一任务内共享同一风险类型）。
+ */
+function carryRiskType(task, rawType) {
+  if (rawType) task._lastRiskType = rawType
+  return rawType || task._lastRiskType || '普通风险'
+}
+
+/** 备注归一化：去掉"备注："前缀，过滤"有则写，无则空"这类占位文案 */
+function normalizeNote(v) {
+  const t = str(v).replace(/^备注[：:]\s*/, '')
+  if (!t) return ''
+  if (/有则写|无则空|无则填/.test(t)) return ''
+  return t
+}
+
+/** 从「周度」文本里取周序号：W46 -> 46 */
+function weekNoOf(week) {
+  const m = WEEK_RE.exec(str(week))
+  return m ? Number(m[1]) : 0
+}
+
+/** 周序号 -> 归一化标签：47 -> W47 */
+function weekLabel(no) {
+  return no > 0 ? `W${no}` : '未分周'
+}
+
+/** 车间名 -> key（A1&A2 -> A1A2），用于筛选 */
+function workshopKey(name) {
+  return str(name).replace(/[^A-Za-z0-9]/g, '')
 }
 
 /**
@@ -47,89 +106,99 @@ function categoryOfTask(week, deadline, allWeeks) {
  * @param {Object} sheet indexSheet 之后的 sheet
  */
 export function parseWeeklyThink(sheet) {
-  const rows = sheet.rows || []
-  if (!rows.length) {
-    return { weeks: [], workshops: [], riskTypes: [], allTasks: [], overall: emptyOverall() }
-  }
+  const rawRows = (sheet && sheet.rows) || []
+  if (!rawRows.length) return emptyResult()
 
-  // 1. 按"任务编号"分组（B列合并单元格里的 T01/T02/...）
-  const taskMap = new Map() // taskNo -> task
-  const weekSet = new Set()
-  const workshopSet = new Set()
-  const riskTypeSet = new Set()
+  // ---------- 1. 父级列向下续传（兼容未续填的 JSON） ----------
+  const carry = {}
+  PARENT_KEYS.forEach((k) => { carry[k] = '' })
+  const rows = rawRows.map((row) => {
+    const out = { ...row }
+    for (const k of PARENT_KEYS) {
+      const v = str(row[k])
+      if (v) carry[k] = v
+      else if (!str(out[k])) out[k] = carry[k]
+    }
+    return out
+  })
+
+  // ---------- 2. 按「周 + 任务编号」聚合任务 ----------
+  const taskMap = new Map()
+  const allRiskTypes = new Set()
 
   for (const row of rows) {
-    const taskNo = String(row['任务编号'] || '').trim()
+    const taskNo = str(row['任务编号'])
     if (!taskNo) continue
-    if (!taskMap.has(taskNo)) {
-      taskMap.set(taskNo, {
-        taskNo,
-        week: String(row['周度'] || '').trim(),
-        title: String(row['任务名称'] || '').trim(),
-        desc: String(row['任务描述'] || '').trim(),
-        riskLevel: normRiskLevel(row['任务风险等级']),
-        riskText: String(row['任务风险等级'] || '中').trim(),
-        owner: String(row['负责人'] || '').trim(),
-        deadline: String(row['截止日期'] || '').trim(),
-        workshop: String(row['涉及车间'] || '').trim(),
-        items: [], // 子项
-      })
-      weekSet.add(taskMap.get(taskNo).week)
-      workshopSet.add(taskMap.get(taskNo).workshop)
-    }
-    const task = taskMap.get(taskNo)
+    const weekRaw = str(row['周度'])
+    const key = `${weekRaw || '未分周'}#${taskNo}`
 
-    // 子项行：子项序号 / 进展 / 风险卡点 / 计划 / 资源
+    if (!taskMap.has(key)) {
+      taskMap.set(key, {
+        taskNo,
+        week: weekRaw || '未分周',
+        weekNo: weekNoOf(weekRaw),
+        title: str(row['任务名称']),
+        desc: str(row['任务描述']),
+        riskLevel: normRiskLevel(row['任务风险等级']),
+        riskText: str(row['任务风险等级']) || '中',
+        owner: str(row['负责人']),
+        deadline: str(row['截止日期']),
+        workshop: str(row['涉及车间']),
+        items: [],
+        // 内部字段：风险类型通常只写在任务的第一个子项行，需要向下续传
+        _lastRiskType: '',
+      })
+    }
+    const task = taskMap.get(key)
+
+    // 子项行：四个业务列全空且没有子项序号时跳过（空行）
     const seq = row['子项序号']
-    // 没有子项序号也不应该被跳过（兼容数据）；这里只在 4 个核心子项列都为空时跳过
-    const hasProgress = !!row['目前进展']
-    const hasRisk = !!row['风险卡点']
-    const hasPlan = !!row['下一步计划']
-    const hasResource = !!row['需要资源']
+    const hasProgress = !!str(row['目前进展'])
+    const hasRisk = !!str(row['风险卡点'])
+    const hasPlan = !!str(row['下一步计划'])
+    const hasResource = !!str(row['需要资源'])
     if (!hasProgress && !hasRisk && !hasPlan && !hasResource && seq == null) continue
 
     const item = {
-      seq: seq == null ? null : Number(seq),
-      progress: String(row['目前进展'] || '').trim(),
+      seq: seq == null || seq === '' ? null : Number(seq),
+      progress: str(row['目前进展']),
       risk: {
-        text: String(row['风险卡点'] || '').trim(),
+        text: str(row['风险卡点']),
         level: normRiskLevel(row['卡点等级']),
-        type: String(row['风险类型'] || '').trim() || '普通风险',
+        // 风险类型只有任务的第一个子项行有值，这里按任务向下续传
+        type: carryRiskType(task, str(row['风险类型'])),
         isCore: isYes(row['是否核心卡点']),
       },
       plan: {
-        text: String(row['下一步计划'] || '').trim(),
-        time: String(row['计划时间'] || '').trim(),
+        text: str(row['下一步计划']),
+        time: str(row['计划时间']),
         done: isYes(row['是否完成']),
       },
       resource: {
-        text: String(row['需要资源'] || '').trim(),
-        type: String(row['资源类型'] || '').trim(),
-        dept: String(row['协同部门'] || '').trim(),
+        text: str(row['需要资源']),
+        type: str(row['资源类型']),
+        dept: str(row['协同部门']),
       },
-      note: String(row['备注'] || '').replace(/^备注[：:]\s*/, '').trim(),
+      note: normalizeNote(row['备注']),
     }
-    // 去掉空内容的子项
+
     if (item.progress || item.risk.text || item.plan.text || item.resource.text || item.note) {
       task.items.push(item)
-      if (item.risk.text && item.risk.type) riskTypeSet.add(item.risk.type)
+      if (item.risk.text) allRiskTypes.add(item.risk.type)
     }
   }
 
-  // 2. 把每个任务聚合为前端需要的 5 块数据结构
+  // ---------- 3. 聚合任务的五块内容 ----------
   const allTasks = []
   for (const task of taskMap.values()) {
-    // 进展：汇总所有子项的 progress
-    const progress = task.items.filter(i => i.progress).map(i => i.progress)
-    // 风险卡点
+    const progress = task.items.filter((i) => i.progress).map((i) => i.progress)
     const risks = task.items
-      .filter(i => i.risk.text)
-      .map(i => ({ text: i.risk.text, level: i.risk.level, type: i.risk.type, isCore: i.risk.isCore }))
-    // 下一步计划
+      .filter((i) => i.risk.text)
+      .map((i) => ({ text: i.risk.text, level: i.risk.level, type: i.risk.type, isCore: i.risk.isCore }))
     const plans = task.items
-      .filter(i => i.plan.text)
-      .map(i => ({ text: i.plan.text, time: i.plan.time, done: i.plan.done }))
-    // 需要资源
+      .filter((i) => i.plan.text)
+      .map((i) => ({ text: i.plan.text, time: i.plan.time, done: i.plan.done }))
+
     const resources = []
     const depts = new Set()
     for (const it of task.items) {
@@ -138,121 +207,243 @@ export function parseWeeklyThink(sheet) {
         if (it.resource.dept) depts.add(it.resource.dept)
       }
     }
-    // 备注：取第一个非空
-    const note = task.items.map(i => i.note).find(Boolean) || ''
 
-    // 核心卡点数
-    const coreRisks = risks.filter(r => r.isCore).length
+    const note = task.items.map((i) => i.note).find(Boolean) || ''
+    const donePlanCount = plans.filter((p) => p.done).length
 
-    // 统计：已完成/待办计划
-    const donePlans = plans.filter(p => p.done).length
-    const todoPlans = plans.length - donePlans
-
-    // 风险等级：优先用任务级 E 列；若该任务里有高风险卡点则升为 high
+    // 任务风险等级：任务级优先，若存在高风险卡点则升级为 high
     let riskLevel = task.riskLevel
-    if (risks.some(r => r.level === 'high')) riskLevel = 'high'
+    if (risks.some((r) => r.level === 'high')) riskLevel = 'high'
+
+    // 内部字段不对外暴露
+    const { _lastRiskType, ...base } = task
 
     allTasks.push({
-      ...task,
-      category: '', // 后面按周填
-      categoryText: '',
+      ...base,
+      workshopKey: workshopKey(task.workshop),
       progress,
       risks,
       plans,
       resources,
       note,
-      coreRiskCount: coreRisks,
-      donePlanCount: donePlans,
-      todoPlanCount: todoPlans,
+      riskPointCount: risks.length,
+      coreRiskCount: risks.filter((r) => r.isCore).length,
+      donePlanCount,
+      todoPlanCount: plans.length - donePlanCount,
       deptCount: depts.size,
       riskLevel,
     })
   }
 
-  // 3. 按周分组（W47 最新），并给任务分类
-  const allWeeks = Array.from(weekSet).sort((a, b) => weekKey(b) - weekKey(a)) // 最新在前
-  for (const t of allTasks) {
-    t.category = t.week === allWeeks[0] ? 'nextTwo' : 'lastWeek'
-    t.categoryText = t.category === 'nextTwo' ? '下两周最重大/风险任务' : '上周最重大/困难的工作'
-    t.workshopKey = workshopKey(t.workshop)
+  // ---------- 4. 周维度：最大周序号 = 当前周 ----------
+  const weekNos = Array.from(new Set(allTasks.map((t) => t.weekNo))).sort((a, b) => b - a)
+  const currentWeekNo = weekNos[0] || 0
+  const lastWeekNo = currentWeekNo > 0 ? currentWeekNo - 1 : 0
+
+  const roleOf = (no) => {
+    if (no === currentWeekNo) return 'current'
+    if (no === lastWeekNo) return 'last'
+    return 'history'
+  }
+  const roleTextOf = (role, label) => {
+    if (role === 'current') return `本周（${label}）`
+    if (role === 'last') return `上周（${label}）`
+    return `${label}`
   }
 
-  const weeks = allWeeks.map(week => {
-    const weekTasks = allTasks.filter(t => t.week === week)
-    const stats = calcWeekStats(weekTasks)
-    return { week, tasks: weekTasks, stats }
-  })
+  const currentWeek = weekLabel(currentWeekNo)
+  const lastWeek = weekLabel(lastWeekNo)
 
-  // 4. 车间看板：每个车间聚合高/中风险任务数
-  const workshops = Array.from(workshopSet).map(ws => {
-    const wsTasks = allTasks.filter(t => t.workshop === ws)
-    const high = wsTasks.filter(t => t.riskLevel === 'high').length
-    const mid = wsTasks.filter(t => t.riskLevel === 'mid').length
-    const low = wsTasks.filter(t => t.riskLevel === 'low').length
-    const level = high > 0 ? 'high' : mid > 0 ? 'mid' : 'low'
+  for (const t of allTasks) {
+    t.weekLabel = weekLabel(t.weekNo)
+    t.weekRole = roleOf(t.weekNo)
+    t.category = t.weekRole // 兼容详情弹窗的分类标签
+    t.categoryText = roleTextOf(t.weekRole, t.weekLabel)
+  }
+
+  // ---------- 5. 分组统计（按周） ----------
+  const weeks = weekNos.map((no) => {
+    const label = weekLabel(no)
+    const role = roleOf(no)
+    const tasks = allTasks.filter((t) => t.weekNo === no)
     return {
-      name: ws,
-      key: workshopKey(ws),
-      high, mid, low,
-      total: wsTasks.length,
-      level,
+      week: label,
+      rawWeek: tasks[0] ? tasks[0].week : label,
+      weekNo: no,
+      role,
+      roleText: roleTextOf(role, label),
+      shortText: role === 'current' ? '本周' : role === 'last' ? '上周' : label,
+      tasks,
+      stats: calcWeekStats(tasks),
     }
   })
 
-  // 5. 风险类型分布
-  const riskTypeCount = new Map()
-  for (const t of allTasks) {
-    for (const r of t.risks) {
-      riskTypeCount.set(r.type, (riskTypeCount.get(r.type) || 0) + 1)
-    }
-  }
-  const riskTypes = Array.from(riskTypeCount.entries()).map(([name, value]) => ({ name, value }))
+  const weekMap = {}
+  weeks.forEach((w) => { weekMap[w.week] = w })
 
-  // 6. 首页 KPI
-  const lastWeekTasks = allTasks.filter(t => t.category === 'lastWeek')
-  const nextTwoTasks = allTasks.filter(t => t.category === 'nextTwo')
-  const coreRiskPoints = allTasks.reduce((n, t) => n + t.coreRiskCount, 0)
-  const resourceItems = allTasks.reduce((n, t) => n + t.resources.length, 0)
+  const current = weekMap[currentWeek] || null
+  const last = weekMap[lastWeek] || null
+
+  // ---------- 6. 本周 vs 上周 对比 ----------
+  const weekCompare = {
+    currentWeek,
+    lastWeek,
+    current: current ? current.stats : emptyStats(),
+    last: last ? last.stats : emptyStats(),
+    delta: diffStats(current ? current.stats : emptyStats(), last ? last.stats : emptyStats()),
+  }
+
+  // ---------- 7. 全量维度 ----------
+  const workshops = buildWorkshopStats(allTasks)
+  const riskTypes = buildRiskTypeDist(allTasks)
+
+  const overall = {
+    totalTasks: allTasks.length,
+    totalRiskPoints: allTasks.reduce((n, t) => n + t.riskPointCount, 0),
+    totalCore: allTasks.reduce((n, t) => n + t.coreRiskCount, 0),
+    totalResources: allTasks.reduce((n, t) => n + t.resources.length, 0),
+    currentWeekCount: current ? current.stats.total : 0,
+    lastWeekCount: last ? last.stats.total : 0,
+    currentWeek,
+    lastWeek,
+    // 兼容旧字段
+    latestWeek: currentWeek,
+    prevWeek: lastWeek,
+    nextTwoCount: current ? current.stats.total : 0,
+    riskPointCount: allTasks.reduce((n, t) => n + t.coreRiskCount, 0),
+    resourceCount: allTasks.reduce((n, t) => n + t.resources.length, 0),
+  }
 
   return {
     weeks,
+    weekMap,
+    currentWeek,
+    lastWeek,
+    currentWeekNo,
+    lastWeekNo,
+    current,
+    last,
+    weekCompare,
+    allTasks,
     workshops,
     riskTypes,
-    allTasks,
+    allRiskTypes: Array.from(allRiskTypes),
+    overall,
+  }
+}
+
+/** 单周统计 */
+function calcWeekStats(tasks) {
+  const total = tasks.length
+  const high = tasks.filter((t) => t.riskLevel === 'high').length
+  const mid = tasks.filter((t) => t.riskLevel === 'mid').length
+  const low = tasks.filter((t) => t.riskLevel === 'low').length
+  const coreCount = tasks.reduce((n, t) => n + t.coreRiskCount, 0)
+  const riskPointCount = tasks.reduce((n, t) => n + t.riskPointCount, 0)
+  const resourceCount = tasks.reduce((n, t) => n + t.resources.length, 0)
+  const planTotal = tasks.reduce((n, t) => n + t.plans.length, 0)
+  const planDone = tasks.reduce((n, t) => n + t.donePlanCount, 0)
+  const planRate = planTotal > 0 ? Math.round((planDone / planTotal) * 100) : 0
+  const workshopStats = buildWorkshopStats(tasks)
+
+  return {
+    total,
+    high,
+    mid,
+    low,
+    coreCount,
+    riskPointCount,
+    resourceCount,
+    planTotal,
+    planDone,
+    planRate,
+    workshopCount: workshopStats.length,
+    workshopStats,
+    riskTypeDist: buildRiskTypeDist(tasks),
+    owners: Array.from(new Set(tasks.map((t) => t.owner).filter(Boolean))),
+  }
+}
+
+function emptyStats() {
+  return {
+    total: 0, high: 0, mid: 0, low: 0, coreCount: 0, riskPointCount: 0,
+    resourceCount: 0, planTotal: 0, planDone: 0, planRate: 0,
+    workshopCount: 0, workshopStats: [], riskTypeDist: [], owners: [],
+  }
+}
+
+/** 车间维度统计 */
+function buildWorkshopStats(tasks) {
+  const map = new Map()
+  for (const t of tasks) {
+    const name = t.workshop || '未标注'
+    if (!map.has(name)) {
+      map.set(name, { name, key: workshopKey(name), total: 0, high: 0, mid: 0, low: 0, coreCount: 0 })
+    }
+    const w = map.get(name)
+    w.total += 1
+    w[t.riskLevel] += 1
+    w.coreCount += t.coreRiskCount
+  }
+  const list = Array.from(map.values())
+  list.forEach((w) => {
+    w.level = w.high > 0 ? 'high' : w.mid > 0 ? 'mid' : 'low'
+    w.levelText = levelText(w.level)
+  })
+  // 高风险在前
+  list.sort((a, b) => (b.high - a.high) || (b.total - a.total))
+  return list
+}
+
+/** 风险类型分布 */
+function buildRiskTypeDist(tasks) {
+  const map = new Map()
+  for (const t of tasks) {
+    for (const r of t.risks) {
+      const k = r.type || '普通风险'
+      map.set(k, (map.get(k) || 0) + 1)
+    }
+  }
+  return Array.from(map.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+}
+
+/** 两周差值 */
+function diffStats(cur, pre) {
+  return {
+    total: cur.total - pre.total,
+    high: cur.high - pre.high,
+    mid: cur.mid - pre.mid,
+    low: cur.low - pre.low,
+    coreCount: cur.coreCount - pre.coreCount,
+    riskPointCount: cur.riskPointCount - pre.riskPointCount,
+    resourceCount: cur.resourceCount - pre.resourceCount,
+    planRate: cur.planRate - pre.planRate,
+  }
+}
+
+function emptyResult() {
+  return {
+    weeks: [],
+    weekMap: {},
+    currentWeek: '',
+    lastWeek: '',
+    currentWeekNo: 0,
+    lastWeekNo: 0,
+    current: null,
+    last: null,
+    weekCompare: { currentWeek: '', lastWeek: '', current: emptyStats(), last: emptyStats(), delta: diffStats(emptyStats(), emptyStats()) },
+    allTasks: [],
+    workshops: [],
+    riskTypes: [],
+    allRiskTypes: [],
     overall: {
-      lastWeekCount: lastWeekTasks.length,
-      nextTwoCount: nextTwoTasks.length,
-      riskPointCount: coreRiskPoints,
-      resourceCount: resourceItems,
-      latestWeek: allWeeks[0] || '',
-      prevWeek: allWeeks[1] || '',
+      totalTasks: 0, totalRiskPoints: 0, totalCore: 0, totalResources: 0,
+      currentWeekCount: 0, lastWeekCount: 0, currentWeek: '', lastWeek: '',
+      latestWeek: '', prevWeek: '', nextTwoCount: 0, riskPointCount: 0, resourceCount: 0,
     },
   }
 }
 
-function emptyOverall() {
-  return { lastWeekCount: 0, nextTwoCount: 0, riskPointCount: 0, resourceCount: 0, latestWeek: '', prevWeek: '' }
-}
-
-/** W46 → 46，用于排序 */
-function weekKey(w) {
-  const m = String(w).match(/(\d+)/)
-  return m ? Number(m[1]) : 0
-}
-
-/** 车间名 → key（A1&A2 → A1A2，便于筛选） */
-function workshopKey(name) {
-  return String(name || '').replace(/[^A-Za-z0-9]/g, '')
-}
-
-function calcWeekStats(tasks) {
-  const total = tasks.length
-  const high = tasks.filter(t => t.riskLevel === 'high').length
-  const mid = tasks.filter(t => t.riskLevel === 'mid').length
-  const low = tasks.filter(t => t.riskLevel === 'low').length
-  const totalPlans = tasks.reduce((n, t) => n + t.plans.length, 0)
-  const donePlans = tasks.reduce((n, t) => n + t.donePlanCount, 0)
-  const planRate = totalPlans > 0 ? Math.round(donePlans / totalPlans * 100) : 0
-  const workshops = Array.from(new Set(tasks.map(t => t.workshop))).filter(Boolean)
-  return { total, high, mid, low, planRate, workshops, workshopCount: workshops.length }
-}
+export { weekNoOf, weekLabel, levelText, workshopKey }

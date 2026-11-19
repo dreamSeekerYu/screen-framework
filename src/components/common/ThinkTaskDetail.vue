@@ -232,8 +232,9 @@ function markDone() {
   font-size: $font-xs;
   color: white;
 
-  &.lastWeek { background: #e6a23c; }
-  &.nextTwo { background: #909399; }
+  &.current { background: #409eff; }
+  &.last { background: #e6a23c; }
+  &.history { background: #909399; }
 }
 
 .risk-badge {
