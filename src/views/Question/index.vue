@@ -1,510 +1,513 @@
 <template>
-  <div class="home-screen">
+  <ScreenContainer v-if="loading" class="question-screen">
+    <div class="loading">数据加载中...</div>
+  </ScreenContainer>
+
+  <ScreenContainer v-else-if="error" class="question-screen">
+    <div class="error-tip">数据加载失败：{{ error }}</div>
+  </ScreenContainer>
+
+  <ScreenContainer v-else class="question-screen">
     <!-- 顶部标题栏 -->
-    <ScreenHeader title="重大质量异常闭环率" />
-    <div
-      style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 32px;">
-      <StatCard v-for="(item, index) in totalKardData" :key="index" :theme="item.theme" :status="item.status"
-        :title="item.title" :sub-title="item.subTitle" :value="item.value" :unit="item.unit" :trend="item.trend"
-        :trend-type="item.trendType" :trend-label="item.trendLabel" :badge="item.badge" :icon-type="item.iconType">
-      </StatCard>
+    <ScreenHeader :title="'四、重大质量异常闭环率'" :sub-title="`统计周期 ${periodRange} · 更新 ${updateTime}`">
+      <template #right>
+        <button class="header-btn primary" @click="detailVisible = true">📋 查看异常明细</button>
+        <button class="header-btn" @click="toggleFullscreen">⛶ 全屏</button>
+      </template>
+    </ScreenHeader>
+
+    <!-- KPI 卡片 -->
+    <div class="kpi-row">
+      <StatCard
+        theme="kpi-top"
+        status="success"
+        title="连续按期闭环率"
+        :sub-title="`${closeData.kpi.periodRange} 连续${closeData.kpi.consecutiveWeeks}周`"
+        :value="closeData.kpi.consecutiveRate"
+        unit="%"
+      />
+      <StatCard
+        theme="kpi-top"
+        status="primary"
+        title="累计闭环重大异常"
+        sub-title="到期关闭=实际关闭"
+        :value="closeData.kpi.cumulativeClosed"
+        unit="件"
+      />
+      <StatCard
+        theme="kpi-top"
+        status="warning"
+        title="本周新增大异常"
+        :sub-title="`CW${closeData.currentCw} 新增`"
+        :value="closeData.kpi.weekNew"
+        unit="件"
+      />
+      <StatCard
+        theme="kpi-top"
+        status="cyan"
+        title="超期未闭环"
+        sub-title="全部按期关闭"
+        :value="closeData.kpi.overdue"
+        unit="件"
+      />
+      <StatCard
+        theme="kpi-top"
+        status="purple"
+        title="涉及范围"
+        :sub-title="`${closeData.scope.workshopCount}车间·${closeData.scope.lineCount}线体`"
+        :value="closeData.scope.text"
+      />
     </div>
-    <SummaryBar :type="summerBarData.primary" :content="summerBarData.content" :tags="summerBarData.tags" />
-    <!-- 主体内容区 -->
-    <div class="screen-content">
-      <!-- 左侧区域 -->
-      <div class="left-col">
-        <!-- 指标卡片区 -->
-        <div class="metrics-row">
-          <div class="metric-card" v-for="(metric, i) in metricsData" :key="i">
-            <ScreenCard :title="metric.label">
-              <div class="metric-value">
-                <NumberCounter :value="metric.value" :suffix="metric.suffix" />
-              </div>
-              <div class="metric-trend" :class="metric.trend > 0 ? 'up' : 'down'">
-                较上期 {{ metric.trend > 0 ? '↑' : '↓' }} {{ Math.abs(metric.trend) }}%
-              </div>
-            </ScreenCard>
-          </div>
-        </div>
 
-        <!-- 柱状图卡片 - 懒加载 -->
-        <div class="chart-card" ref="barRef">
-          <ScreenCard title="各区域业务数据统计">
-            <BaseChart :option="barChartOption" v-if="barChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
+    <!-- 摘要条 -->
+    <SummaryBar :content="summaryText" :tags="summaryTags" />
 
-        <!-- 滚动列表卡片 -->
-        <div class="list-card">
-          <ScreenCard title="实时数据排行">
-            <MarqueeList :data="rankList" />
-          </ScreenCard>
+    <!-- 主体 2x2 布局 -->
+    <div class="main-grid">
+      <!-- 左上：累计闭环趋势 -->
+      <ScreenCard title="累计闭环趋势" class="grid-card trend-card">
+        <template #extra>
+          <span class="extra-badge">连续{{ closeData.kpi.consecutiveWeeks }}周100%</span>
+        </template>
+        <div class="chart-box">
+          <BaseChart :option="trendChartOption" />
         </div>
-      </div>
+      </ScreenCard>
 
-      <!-- 中间区域 -->
-      <div class="center-col">
-        <!-- 地图/大屏主视觉区域 -->
-        <div class="main-chart-card">
-          <ScreenCard title="全国业务分布概览">
-            <div class="main-chart-placeholder">
-              <div class="placeholder-text">中间地图/核心图表区域</div>
-              <div class="placeholder-hint">可在此接入地图、3D可视化或核心业务图表</div>
-            </div>
-          </ScreenCard>
+      <!-- 右上：异常类型分布 -->
+      <ScreenCard title="异常类型分布" class="grid-card type-card">
+        <template #extra>
+          <span class="extra-badge" v-if="issueData.mainType">
+            {{ issueData.mainType.name }}为主
+          </span>
+        </template>
+        <div class="chart-box">
+          <BaseChart :option="typePieOption" />
         </div>
+      </ScreenCard>
 
-        <!-- 下方折线图 - 懒加载 -->
-        <div class="line-chart-card" ref="lineRef">
-          <ScreenCard title="近7天趋势变化">
-            <BaseChart :option="lineChartOption" v-if="lineChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
+      <!-- 左下：车间闭环达成 -->
+      <ScreenCard title="车间闭环达成" class="grid-card ws-card">
+        <template #extra>
+          <span class="extra-badge success">全车间达标</span>
+        </template>
+        <div class="chart-box">
+          <BaseChart :option="workshopBarOption" />
         </div>
-      </div>
+      </ScreenCard>
 
-      <!-- 右侧区域 -->
-      <div class="right-col">
-        <!-- 饼图卡片 - 懒加载 -->
-        <div class="pie-card" ref="pieRef">
-          <ScreenCard title="业务类型占比">
-            <BaseChart :option="pieChartOption" v-if="pieChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
+      <!-- 右下：本周异常闭环进度 -->
+      <ScreenCard title="本周异常闭环进度" class="grid-card progress-card">
+        <div class="progress-card-body">
+          <WeekProgressList
+            :items="issueData.currentWeekItems"
+            :total="issueData.currentWeekItems.length"
+            :done="issueData.weekDone"
+            @select="openIssueDetail"
+          />
         </div>
-
-        <!-- 仪表盘卡片 - 懒加载 -->
-        <div class="gauge-card" ref="gaugeRef">
-          <ScreenCard title="目标完成率">
-            <BaseChart :option="gaugeChartOption" v-if="gaugeChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-
-        <!-- 进度条卡片 -->
-        <div class="progress-card">
-          <ScreenCard title="各模块完成进度">
-            <div class="progress-list">
-              <div v-for="(item, i) in progressData" :key="i" class="progress-item">
-                <div class="progress-label">{{ item.name }}</div>
-                <div class="progress-bar-bg">
-                  <div class="progress-bar-fill" :style="{ width: item.value + '%' }"></div>
-                </div>
-                <div class="progress-value">{{ item.value }}%</div>
-              </div>
-            </div>
-          </ScreenCard>
-        </div>
-      </div>
+      </ScreenCard>
     </div>
-  </div>
+
+    <!-- 关键事实 -->
+    <div class="facts-row">
+      <ScreenCard title="关键事实" class="facts-card">
+        <ul class="facts-list">
+          <li v-for="(f, i) in facts" :key="i">
+            <span class="dot" :style="{ background: f.color }"></span>
+            <span v-html="f.text"></span>
+          </li>
+        </ul>
+      </ScreenCard>
+    </div>
+
+    <!-- 明细台账弹窗 -->
+    <QualityIssueDetail
+      v-model="detailVisible"
+      :items="issueData.items"
+      :cw-list="issueData.cwList"
+    />
+  </ScreenContainer>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import ScreenContainer from '@/components/layout/ScreenContainer.vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
-import NumberCounter from '@/components/data/NumberCounter.vue'
-import MarqueeList from '@/components/data/MarqueeList.vue'
-import { useLazyLoad } from '@/composables/useLazyLoad'
 import StatCard from '@/components/common/NewStatCard.vue'
 import SummaryBar from '@/components/common/SummaryBar.vue'
+import WeekProgressList from '@/components/common/WeekProgressList.vue'
+import QualityIssueDetail from '@/components/common/QualityIssueDetail.vue'
+import { parseQualityCloseRate } from '@/utils/parseQualityCloseRate.js'
+import { parseQualityIssues } from '@/utils/parseQualityIssue.js'
+import { getCssVar } from '@/utils/color.js'
 
-// ============ 指标数据 ============
-const totalKardData = ref([
-  {
-    theme: 'kpi-top',
-    status: 'success',
-    title: '连续按期闭环率',
-    subTitle: 'CW38—CW43 连续6周',
-    value: 100,
-    unit: '%',
-  }, {
-    theme: 'kpi-top',
-    status: 'primary',
-    title: '累计闭环重大异常',
-    subTitle: '到期关闭=实际关闭',
-    value: 153,
-    unit: '项',
-  }, {
-    theme: 'kpi-top',
-    status: 'warning',
-    title: '本周新增大异常',
-    subTitle: 'CW43 新增',
-    value: 153,
-    unit: '项',
-  }, {
-    theme: 'kpi-top',
-    status: 'cyan',
-    title: '超期未闭环',
-    subTitle: '全部按期关闭',
-    value: '2',
-    unit: '项',
-  },
-  {
-    theme: 'kpi-top',
-    status: 'purple',
-    title: '涉及范围',
-    subTitle: '3 车间 · 5 线体',
-    value: 'A3/M6',
-  },
-])
-const summerBarData = ref({
-  content: "<b>连续6周CPK达标率稳定在98.7%以上</b>,工序平均CPK1.68处于良好水平；本周仅A3-P2工序2项动态测试因样本量少CPK略低，其余8工序100%达标，过程能力整体稳定可控。",
-  tags: [
-    { text: '平均CPK 1.68', type: 'default' },
-    { text: '8/9工序100%', type: 'default' },
-    { text: '无重大风险', type: 'success' },
-    { text: '下周补测A3-P2', type: 'info' }
+const loading = ref(true)
+const error = ref('')
+const closeData = ref(null)
+const issueData = ref(null)
+const detailVisible = ref(false)
+
+onMounted(async () => {
+  try {
+    const [close, issues] = await Promise.all([
+      parseQualityCloseRate(),
+      parseQualityIssues(),
+    ])
+    closeData.value = close
+    issueData.value = issues
+  } catch (e) {
+    console.error(e)
+    error.value = e.message || String(e)
+  } finally {
+    loading.value = false
+  }
+})
+
+const periodRange = computed(() => {
+  if (!closeData.value) return ''
+  const { kpi, currentCw } = closeData.value
+  return `${kpi.periodRange.replace('—', ' - ')}`
+})
+const updateTime = computed(() => {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+})
+
+const summaryText = computed(() => {
+  if (!closeData.value || !issueData.value) return ''
+  const c = closeData.value
+  const i = issueData.value
+  const m6 = c.workshops.find((w) => w.key === 'M6')
+  const m6Ratio = c.kpi.cumulativeClosed ? Math.round((m6.actual / c.kpi.cumulativeClosed) * 100) : 0
+  const typeStr = i.mainType ? `${i.mainType.name}${i.mainType.value}件` : ''
+  return `<b>连续${c.kpi.consecutiveWeeks}周实现100%按期闭环，累计关闭${c.kpi.cumulativeClosed}件零超期</b>；本周新增${c.kpi.weekNew}件全部按期完成，${m6 ? `${m6.name.replace('集成车间','')}车间占${m6.actual}件（${m6Ratio}%），` : ''}异常类型集中在${typeStr}；所有异常均制定永久对策，无流出风险。`
+})
+
+const summaryTags = computed(() => {
+  const tags = [{ text: '100%按期闭环', type: 'success' }]
+  if (closeData.value?.kpi.overdue === 0) tags.push({ text: '零超期', type: 'primary' })
+  if (issueData.value?.facts.permanentRate === 100) tags.push({ text: '永久对策全覆盖', type: 'warning' })
+  if (issueData.value?.facts.leakOutCount === 0) tags.push({ text: '零流出', type: 'info' })
+  return tags
+})
+
+const facts = computed(() => {
+  if (!closeData.value || !issueData.value) return []
+  const c = closeData.value
+  const i = issueData.value
+  const m6 = c.workshops.find((w) => w.key === 'M6')
+  const m6Ratio = c.kpi.cumulativeClosed ? Math.round((m6.actual / c.kpi.cumulativeClosed) * 100) : 0
+  return [
+    { color: '#52c41a', text: `<b>连续${c.kpi.consecutiveWeeks}周100%闭环</b>：${c.kpi.periodRange}到期${c.kpi.weekDue}件，实际关闭${c.kpi.cumulativeClosed}件，零超期` },
+    { color: '#fa8c16', text: `<b>${m6 ? m6.key : 'M6'}为重点车间</b>：累计${m6 ? m6.actual : 0}件占${m6Ratio}%，本周${i.currentWeekItems.filter(x=>x.workshop==='M6').length}件占新增${c.kpi.weekNew ? Math.round(i.currentWeekItems.filter(x=>x.workshop==='M6').length/c.kpi.weekNew*100) : 0}%` },
+    { color: '#1890ff', text: `<b>异常类型集中</b>：${i.typeDistArr.map(t=>`${t.name}${t.value}件`).join('、')}，均为人员操作类问题` },
+    { color: '#52c41a', text: `<b>永久对策全覆盖</b>：所有异常均制定防错措施，含SOP更新、程序优化、标识区分` },
+    { color: '#8c8c8c', text: `<b>零流出</b>：所有异常均在厂内检出，未发生客户端流出事故` },
   ]
 })
 
-
-// ============ 懒加载控制 ============
-const { targetRef: barRef, isVisible: barChartVisible } = useLazyLoad()
-const { targetRef: lineRef, isVisible: lineChartVisible } = useLazyLoad()
-const { targetRef: pieRef, isVisible: pieChartVisible } = useLazyLoad()
-const { targetRef: gaugeRef, isVisible: gaugeChartVisible } = useLazyLoad()
-
-// ============ 示例图表配置 ============
-// 柱状图配置
-const barChartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-  xAxis: {
-    type: 'category',
-    data: ['华北', '华东', '华南', '华中', '西南', '西北', '东北'],
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' }
-  },
-  yAxis: {
-    type: 'value',
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' },
-    splitLine: { lineStyle: { color: 'var(--color-border-light)' } }
-  },
-  series: [{
-    data: [320, 482, 591, 354, 290, 210, 185],
-    type: 'bar',
-    barWidth: '40%',
-    itemStyle: {
-      color: {
-        type: 'linear',
-        x: 0, y: 0, x2: 0, y2: 1,
-        colorStops: [
-          { offset: 0, color: 'var(--color-primary-light)' },
-          { offset: 1, color: 'var(--color-primary-dark)' }
-        ]
+// ========== 图表配置 ==========
+const trendChartOption = computed(() => {
+  if (!closeData.value) return {}
+  const weeks = closeData.value.trendWeeks
+  const colors = {
+    due: '#94a3b8',
+    actual: getCssVar('--color-success', '#52c41a'),
+    rate: '#f5222d',
+  }
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      formatter: (params) => {
+        const [due, actual, rate] = params
+        return `${due.axisValue}<br/>
+          <span style="color:${due.color}">●</span> 到期关闭数量：<b>${due.value}</b><br/>
+          <span style="color:${actual.color}">●</span> 实际关闭数量：<b>${actual.value}</b><br/>
+          <span style="color:${rate.color}">●</span> 按期闭环率：<b>${rate.value}%</b>`
       },
-      borderRadius: [4, 4, 0, 0]
-    }
-  }]
-}))
-
-// 折线图配置
-const lineChartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['访问量', '订单量'], textStyle: { color: 'var(--color-text-secondary)' } },
-  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-  xAxis: {
-    type: 'category',
-    boundaryGap: false,
-    data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' }
-  },
-  yAxis: {
-    type: 'value',
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' },
-    splitLine: { lineStyle: { color: 'var(--color-border-light)' } }
-  },
-  series: [
-    {
-      name: '访问量',
-      type: 'line',
-      smooth: true,
-      data: [1200, 1900, 1500, 2200, 2800, 3600, 3200],
-      lineStyle: { color: 'var(--color-primary)', width: 2 },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(30, 111, 255, 0.3)' },
-            { offset: 1, color: 'rgba(30, 111, 255, 0)' }
-          ]
-        }
-      }
     },
-    {
-      name: '订单量',
-      type: 'line',
-      smooth: true,
-      data: [820, 932, 901, 1234, 1490, 1830, 1620],
-      lineStyle: { color: '#36cfc9', width: 2 },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(54, 207, 201, 0.3)' },
-            { offset: 1, color: 'rgba(54, 207, 201, 0)' }
-          ]
-        }
-      }
-    }
-  ]
-}))
-
-// 饼图配置
-const pieChartOption = computed(() => ({
-  tooltip: { trigger: 'item' },
-  legend: {
-    orient: 'vertical',
-    right: '5%',
-    top: 'center',
-    textStyle: { color: 'var(--color-text-secondary)' }
-  },
-  color: ['#1e6fff', '#00c6ff', '#36cfc9', '#ffc53d', '#ff7a45'],
-  series: [{
-    type: 'pie',
-    radius: ['40%', '70%'],
-    center: ['35%', '50%'],
-    avoidLabelOverlap: false,
-    itemStyle: { borderRadius: 6, borderColor: 'var(--color-bg-card)', borderWidth: 2 },
-    label: { show: false },
-    emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
-    labelLine: { show: false },
-    data: [
-      { value: 1048, name: '产品A' },
-      { value: 735, name: '产品B' },
-      { value: 580, name: '产品C' },
-      { value: 484, name: '产品D' },
-      { value: 300, name: '其他' }
-    ]
-  }]
-}))
-
-// 仪表盘配置
-const gaugeChartOption = computed(() => ({
-  series: [{
-    type: 'gauge',
-    startAngle: 180,
-    endAngle: 0,
-    min: 0,
-    max: 100,
-    splitNumber: 5,
-    itemStyle: { color: 'var(--color-primary)' },
-    progress: { show: true, width: 18 },
-    pointer: { show: false },
-    axisLine: { lineStyle: { width: 18, color: [[1, 'var(--color-border-light)']] } },
-    axisTick: { show: false },
-    splitLine: { show: false },
-    axisLabel: { show: false },
-    title: { show: false },
-    detail: {
-      valueAnimation: true,
-      offsetCenter: [0, '0%'],
-      fontSize: 36,
-      fontWeight: 'bold',
-      color: 'var(--color-primary)',
-      formatter: '{value}%'
+    legend: {
+      data: ['到期关闭数量', '实际关闭数量', '按期闭环率'],
+      textStyle: { color: getCssVar('--color-text-secondary', '#999'), fontSize: 11 },
+      top: 4, right: 8,
     },
-    data: [{ value: 76 }]
-  }]
-}))
+    grid: { left: '3%', right: '8%', bottom: '8%', top: '20%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: weeks.map((w) => w.label),
+      axisLine: { lineStyle: { color: getCssVar('--color-border', '#eee') } },
+      axisLabel: { color: getCssVar('--color-text-secondary', '#999'), fontSize: 11 },
+      axisTick: { show: false },
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: '件',
+        min: 180, max: 260,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: getCssVar('--color-text-secondary', '#999'), fontSize: 11 },
+        splitLine: { lineStyle: { color: getCssVar('--color-border-light', '#f0f0f0'), type: 'dashed' } },
+      },
+      {
+        type: 'value',
+        name: '%',
+        min: 0, max: 105,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: getCssVar('--color-text-secondary', '#999'), fontSize: 11, formatter: '{value}%' },
+        splitLine: { show: false },
+      },
+    ],
+    series: [
+      {
+        name: '到期关闭数量', type: 'bar', barWidth: 14,
+        itemStyle: { color: colors.due, borderRadius: [3, 3, 0, 0] },
+        data: weeks.map((w) => w.due),
+      },
+      {
+        name: '实际关闭数量', type: 'bar', barWidth: 14,
+        itemStyle: { color: colors.actual, borderRadius: [3, 3, 0, 0] },
+        data: weeks.map((w) => w.actual),
+      },
+      {
+        name: '按期闭环率', type: 'line', yAxisIndex: 1,
+        smooth: false, symbol: 'circle', symbolSize: 7,
+        lineStyle: { color: colors.rate, width: 2 },
+        itemStyle: { color: colors.rate },
+        label: { show: true, position: 'top', color: colors.rate, fontSize: 10, formatter: '{c}%' },
+        data: weeks.map((w) => Math.round(w.rate)),
+      },
+    ],
+  }
+})
 
-// ============ 排行列表数据 ============
-const rankList = ref([
-  { name: '华东区销售一部', value: '¥1,286万' },
-  { name: '华南区销售二部', value: '¥1,052万' },
-  { name: '华北区销售一部', value: '¥968万' },
-  { name: '西南区销售中心', value: '¥745万' },
-  { name: '华中区销售三部', value: '¥692万' },
-  { name: '西北区办事处', value: '¥428万' },
-  { name: '东北区办事处', value: '¥356万' }
-])
+const typePieOption = computed(() => {
+  if (!issueData.value) return {}
+  const data = issueData.value.typeDistArr
+  const colors = data.map((d) => d.color)
+  return {
+    tooltip: { trigger: 'item', formatter: '{b}: {c}件 ({d}%)' },
+    legend: {
+      orient: 'vertical', right: '5%', top: 'center',
+      textStyle: { color: getCssVar('--color-text-secondary', '#999'), fontSize: 12 },
+      itemWidth: 12, itemHeight: 12,
+    },
+    color: colors,
+    series: [{
+      type: 'pie',
+      radius: ['48%', '72%'],
+      center: ['35%', '55%'],
+      avoidLabelOverlap: false,
+      itemStyle: { borderRadius: 6, borderColor: getCssVar('--color-bg-card', '#fff'), borderWidth: 3 },
+      label: {
+        show: true, position: 'outer', fontSize: 11, color: getCssVar('--color-text-secondary', '#666'),
+        formatter: '{b}\n{c}件',
+      },
+      labelLine: { length: 8, length2: 8 },
+      emphasis: {
+        scale: true, scaleSize: 6,
+        label: { show: true, fontSize: 14, fontWeight: 'bold' },
+      },
+      data,
+    }],
+    graphic: [{
+      type: 'text', left: '32%', top: '48%',
+      style: { text: `${issueData.value.currentWeekItems.length}`, fontSize: 26, fontWeight: 700, fill: getCssVar('--color-text-primary', '#333'), textAlign: 'center' },
+    }, {
+      type: 'text', left: '30%', top: '58%',
+      style: { text: '本周异常', fontSize: 11, fill: getCssVar('--color-text-muted', '#999'), textAlign: 'center' },
+    }],
+  }
+})
 
-// ============ 进度条数据 ============
-const progressData = ref([
-  { name: '年度销售目标', value: 76 },
-  { name: '新客户拓展', value: 89 },
-  { name: '项目交付进度', value: 62 },
-  { name: '售后服务满意度', value: 94 }
-])
+const workshopBarOption = computed(() => {
+  if (!closeData.value) return {}
+  const ws = [...closeData.value.workshops].reverse() // M6..A1
+  const names = ws.map((w) => `${w.key}集成`)
+  const dueData = ws.map((w) => w.due)
+  const actualData = ws.map((w) => w.actual)
+  return {
+    tooltip: {
+      trigger: 'axis', axisPointer: { type: 'shadow' },
+      formatter: (params) => {
+        const [due, act] = params
+        const w = ws[due.dataIndex]
+        return `${names[due.dataIndex]}<br/>
+          到期：<b>${due.value}</b>件<br/>
+          实际：<b>${act.value}</b>件<br/>
+          闭环率：<b>${w.rateText}</b>`
+      },
+    },
+    legend: {
+      data: ['到期关闭数量', '实际关闭数量'],
+      textStyle: { color: getCssVar('--color-text-secondary', '#999'), fontSize: 11 },
+      top: 4, right: 40,
+    },
+    grid: { left: '3%', right: '12%', bottom: '3%', top: '20%', containLabel: true },
+    xAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: getCssVar('--color-text-secondary', '#999'), fontSize: 11 },
+      splitLine: { lineStyle: { color: getCssVar('--color-border-light', '#f0f0f0'), type: 'dashed' } },
+    },
+    yAxis: {
+      type: 'category',
+      data: names,
+      axisLine: { lineStyle: { color: getCssVar('--color-border', '#eee') } },
+      axisTick: { show: false },
+      axisLabel: { color: getCssVar('--color-text-secondary', '#999'), fontSize: 11 },
+    },
+    series: [
+      {
+        name: '到期关闭数量', type: 'bar', barWidth: 10, barGap: '-100%',
+        itemStyle: { color: '#cbd5e1', borderRadius: [0, 5, 5, 0] },
+        data: dueData,
+        label: { show: false },
+      },
+      {
+        name: '实际关闭数量', type: 'bar', barWidth: 10,
+        itemStyle: {
+          color: (p) => ws[p.dataIndex].color,
+          borderRadius: [0, 5, 5, 0],
+        },
+        data: actualData.map((v, i) => ({
+          value: v,
+          label: {
+            show: true, position: 'right',
+            color: ws[i].color, fontSize: 11, fontWeight: 600,
+            formatter: `${v}件 ${ws[i].rateText}`,
+          },
+        })),
+      },
+    ],
+  }
+})
+
+function toggleFullscreen() {
+  const el = document.documentElement
+  if (!document.fullscreenElement) el.requestFullscreen?.()
+  else document.exitFullscreen?.()
+}
+
+function openIssueDetail(it) {
+  detailVisible.value = true
+  // 明细弹窗会展示所有数据，需要在打开时定位；此处简单打开即可
+  // 若需按周筛选，后续可加 prop
+}
 </script>
 
 <style scoped lang="scss">
-.home-screen {
+.question-screen {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.screen-content {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1.4fr 1fr;
-  gap: $spacing-md;
   padding: $spacing-md;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
-.left-col,
-.center-col,
-.right-col {
+.loading, .error-tip {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-text-secondary);
+  font-size: $font-md;
+}
+
+.header-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  border-radius: $radius-sm;
+  cursor: pointer;
+  font-size: $font-sm;
+  margin-left: $spacing-sm;
+  transition: all .2s;
+  &:hover { background: var(--color-primary); color: #fff; }
+  &.primary { background: var(--color-primary); color: #fff; }
+}
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: $spacing-md;
+  margin: $spacing-md 0;
+  flex-shrink: 0;
+}
+
+.main-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: $spacing-md;
+  margin-top: $spacing-md;
+  overflow: hidden;
+}
+
+.grid-card {
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: $spacing-md;
+  :deep(.screen-card__body) {
+    flex: 1;
+    min-height: 0;
+    padding: $spacing-sm;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.chart-box {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.extra-badge {
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: $font-xs;
+  background: #fff7e6;
+  color: #fa8c16;
+  font-weight: 600;
+  &.success { background: var(--color-success-light, #f6ffed); color: var(--color-success); }
+}
+
+.progress-card-body {
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
-// ============ 指标卡片 ============
-.metrics-row {
+.facts-row {
+  flex-shrink: 0;
+  margin-top: $spacing-md;
+  height: 130px;
+}
+.facts-card {
+  height: 100%;
+  :deep(.screen-card__body) { padding: $spacing-sm $spacing-md; }
+}
+.facts-list {
+  margin: 0; padding: 0; list-style: none;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: $spacing-md;
-  flex-shrink: 0;
-}
-
-.metric-card {
-  height: 120px;
-
-  .metric-value {
-    text-align: center;
-    margin-bottom: $spacing-sm;
-  }
-
-  .metric-trend {
-    text-align: center;
-    font-size: $font-sm;
-
-    &.up {
-      color: #52c41a;
-    }
-
-    &.down {
-      color: #ff4d4f;
-    }
-  }
-}
-
-// ============ 图表卡片高度分配 ============
-.chart-card {
-  height: 320px;
-  flex-shrink: 0;
-}
-
-.list-card {
-  flex: 1;
-  min-height: 200px;
-}
-
-.main-chart-card {
-  flex: 1;
-  min-height: 400px;
-}
-
-.line-chart-card {
-  height: 280px;
-  flex-shrink: 0;
-}
-
-.pie-card {
-  height: 280px;
-  flex-shrink: 0;
-}
-
-.gauge-card {
-  height: 260px;
-  flex-shrink: 0;
-}
-
-.progress-card {
-  flex: 1;
-  min-height: 200px;
-}
-
-.chart-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  font-size: $font-sm;
-}
-
-.main-chart-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  border: 2px dashed var(--color-border);
-  border-radius: $radius-md;
-
-  .placeholder-text {
-    font-size: $font-lg;
-    margin-bottom: $spacing-sm;
-    color: var(--color-text-secondary);
-  }
-
-  .placeholder-hint {
-    font-size: $font-sm;
-  }
-}
-
-// ============ 进度条样式 ============
-.progress-list {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  padding: $spacing-sm 0;
-}
-
-.progress-item {
-  display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-
-  .progress-label {
-    width: 110px;
-    font-size: $font-sm;
-    color: var(--color-text-secondary);
-    flex-shrink: 0;
-  }
-
-  .progress-bar-bg {
-    flex: 1;
-    height: 8px;
-    background: var(--color-border-light);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-primary-dark), var(--color-primary-light));
-    border-radius: 4px;
-    transition: width 1s ease;
-  }
-
-  .progress-value {
-    width: 45px;
-    text-align: right;
-    font-size: $font-sm;
-    color: var(--color-primary);
-    font-weight: 600;
-    font-family: 'DIN Alternate', sans-serif;
-    flex-shrink: 0;
+  gap: $spacing-sm $spacing-lg;
+  li {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: $font-sm; color: var(--color-text-secondary); line-height: 1.6;
+    .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+    b { color: var(--color-text-primary); }
   }
 }
 </style>

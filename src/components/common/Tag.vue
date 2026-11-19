@@ -4,8 +4,10 @@
     :class="[
       `ui-tag-type--${type}`,
       `ui-tag-size--${size}`,
+      `ui-tag-effect--${effect}`,
       { 'is-round': round, 'is-closable': closable, 'is-close-visible': closable }
     ]"
+    :style="customStyle"
   >
     <slot>
       <span v-if="text" class="ui-tag__text">{{ text }}</span>
@@ -19,6 +21,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 const props = defineProps({
   text: { type: String, default: '' },
   type: {
@@ -26,16 +29,33 @@ const props = defineProps({
     default: 'default',
     validator: (v) => ['default', 'primary', 'success', 'info', 'warning', 'danger'].includes(v)
   },
+  effect: {
+    type: String,
+    default: 'light',
+    validator: (v) => ['light', 'plain', 'dark'].includes(v)
+  },
   size: {
     type: String,
     default: 'default',
     validator: (v) => ['small', 'default', 'large'].includes(v)
   },
   round: { type: Boolean, default: false },
-  closable: { type: Boolean, default: false }
+  closable: { type: Boolean, default: false },
+  color: { type: String, default: '' },
 })
 
 const emit = defineEmits(['close', 'click'])
+
+const customStyle = computed(() => {
+  if (!props.color) return {}
+  if (props.effect === 'dark') {
+    return { background: props.color, borderColor: props.color, color: '#fff' }
+  }
+  if (props.effect === 'plain') {
+    return { color: props.color, borderColor: props.color, background: 'transparent' }
+  }
+  return { color: props.color, borderColor: props.color + '66', background: props.color + '1a' }
+})
 
 function handleClose(e) {
   emit('close', e)

@@ -20,6 +20,7 @@ const FILE_MAP = {
   pack: 'pack客户表现.json',
   plan: '周度工作计划.json',
   think: '周度思考.json',
+  question: '重大质量异常闭环.json',
 }
 
 // 整包 JSON 缓存（未 index 的原始结构）
