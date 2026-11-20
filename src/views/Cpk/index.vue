@@ -35,8 +35,8 @@
 
     <!-- 双图区域：5:5 对称 -->
     <div class="chart-row">
-      <ScreenCard title="各车间CPK达标对比">
-        <BaseChart :option="workshopCompareOption" class="cpk-chart" />
+      <ScreenCard title="集成CPK达标趋势">
+        <BaseChart :option="trendOption" class="cpk-chart" />
       </ScreenCard>
       <ScreenCard title="各车间·工序CPK项目达成">
         <BaseChart :option="processBarOption" class="cpk-chart" />
@@ -59,10 +59,11 @@ import StatCard from '@/components/common/NewStatCard.vue'
 import StatCardRow from '@/components/common/StatCardRow.vue'
 import SummaryBar from '@/components/common/SummaryBar.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
-import { loadSheet } from '@/utils/dataLoader.js'
+import { loadSheet, loadData } from '@/utils/dataLoader.js'
 
 // ============ 数据 ============
-const processList = ref([]) // 原始工序列表
+const processList = ref([]) // 工序列表（来自 过程能力达标率.json）
+const trend = ref({ weeks: [], rates: [], total: [], pass: [] }) // 周度达标趋势（来自 data.json 合计行）
 
 // 解析 process 行
 function normalizeRows(rows) {
@@ -97,6 +98,71 @@ function normalizeRows(rows) {
     })
 }
 
+// 解析「一、过程能力趋势」合计行，按周维度取数
+function parseTrend(sheet) {
+  const cells = sheet.cells || {}
+  const cnum = L => { let n = 0; for (const ch of L) n = n * 26 + (ch.charCodeAt(0) - 64); return n }
+  const caddr = (col, row) => {
+    let s = ''
+    while (col > 0) { const m = (col - 1) % 26; s = String.fromCharCode(65 + m) + s; col = Math.floor((col - 1) / 26) }
+    return s + row
+  }
+  const val = (addr) => {
+    const c = cells[addr]
+    if (!c) return null
+    return c.value == null ? null : c.value
+  }
+  // 定位块头：找到「一、过程能力趋势」和「二、防错管理」
+  let blockStart = 0, blockEnd = 0
+  for (const addr in cells) {
+    const m = /^([A-Z]+)(\d+)$/.exec(addr)
+    if (!m) continue
+    const r = +m[2], col = cnum(m[1])
+    if (col !== 1) continue
+    const v = cells[addr] && cells[addr].value
+    if (v === '一、过程能力趋势（每月统计一次)' || v === '一、过程能力趋势（每月统计一次）') blockStart = r
+    if (v === '二、防错管理') blockEnd = r
+  }
+  if (!blockStart) return { weeks: [], rates: [], total: [], pass: [] }
+  // header 在标题下一行；合计区位于「合计」所在行，共4行：总数/合格数/合格率/目标值（B 列为 '/'，A 列为「合计」）
+  const headerRow = blockStart + 1
+  let totalRow = 0, passRow = 0, rateRow = 0
+  for (let r = blockStart + 2; r < (blockEnd || 999); r++) {
+    const name = val(`C${r}`)
+    const aCol = val(`A${r}`)
+    if (aCol === '合计' && name === '总数' && !totalRow) totalRow = r
+    if (aCol === '合计' && name === '合格数' && !passRow) passRow = r
+    if (aCol === '合计' && name === '合格率' && !rateRow) rateRow = r
+  }
+  // 从 D 列起扫描 CW 周列，收集"有数据"的周（总数/合格数/合格率三个都有数且不是 #DIV/0! 或 0 空值）
+  const weeks = []
+  for (let c = 4; c <= 60; c++) {
+    const wk = val(caddr(c, headerRow))
+    if (!wk || typeof wk !== 'string' || !/^CW\d+$/.test(wk.trim())) continue
+    const t = val(caddr(c, totalRow))
+    const p = val(caddr(c, passRow))
+    const rt = val(caddr(c, rateRow))
+    // 没有实际数据：总数=0 或 合格率为 #DIV/0! / null / 字符串异常
+    const hasData = typeof t === 'number' && t > 0 && typeof p === 'number' && typeof rt === 'number'
+    weeks.push({ week: wk.trim(), total: hasData ? t : null, pass: hasData ? p : null, rate: hasData ? Number(rt) * 100 : null })
+  }
+  // 裁剪：去除开头无数据段（项目尚未启动），并去除末尾全空的未来周
+  let firstIdx = weeks.findIndex(w => w.total !== null)
+  let lastIdx = weeks.length - 1
+  while (lastIdx >= 0 && weeks[lastIdx].total === null) lastIdx--
+  if (firstIdx < 0) firstIdx = 0
+  if (lastIdx < firstIdx) lastIdx = weeks.length - 1
+  const valid = weeks.slice(firstIdx, lastIdx + 1)
+  // 只取最近 12 周（周度粒度更合理）
+  const recent = valid.slice(-12)
+  return {
+    weeks: recent.map(w => w.week.replace(/^CW/, 'WK')),
+    total: recent.map(w => w.total),
+    pass: recent.map(w => w.pass),
+    rates: recent.map(w => w.rate == null ? null : +w.rate.toFixed(1)),
+  }
+}
+
 onMounted(async () => {
   try {
     const sheet = await loadSheet('cpk', 0)
@@ -104,6 +170,13 @@ onMounted(async () => {
     processList.value = normalizeRows(rows)
   } catch (e) {
     console.error('[Cpk] 加载过程能力达标率数据失败：', e)
+  }
+  try {
+    const main = await loadData('main')
+    const trendSheet = main.sheets && main.sheets[0]
+    if (trendSheet) trend.value = parseTrend(trendSheet)
+  } catch (e) {
+    console.error('[Cpk] 加载过程能力趋势数据失败：', e)
   }
 })
 
@@ -216,77 +289,100 @@ const summary = computed(() => {
   }
 })
 
-// ============ 左图：各车间 CPK 达标对比（堆叠柱+达标率折线） ============
-const workshopCompareOption = computed(() => {
-  const ws = workshopStats.value
-  const names = ws.map(w => w.workshop + '车间')
+// ============ 左图：集成CPK达标趋势（真实周度数据：达标率折线 + 达标项目柱） ============
+const trendOption = computed(() => {
+  const t = trend.value
+  const weeks = t.weeks || []
+  const rates = t.rates || []
+  const pass = t.pass || []
+  // 计算达标率 Y 轴 min/max，自适应
+  const validRates = rates.filter(v => v != null)
+  const rMin = validRates.length ? Math.max(90, Math.floor(Math.min(...validRates) - 1)) : 93
+  const rMax = 100
   return {
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'shadow' },
+      axisPointer: { type: 'cross', crossStyle: { color: '#94a3b8' } },
       backgroundColor: 'rgba(255,255,255,0.98)',
       borderColor: 'var(--color-border,#e2e8f0)',
       textStyle: { color: '#334155' },
+      padding: 12,
+      formatter: (params) => {
+        const idx = params[0].dataIndex
+        const wk = weeks[idx]
+        const p = pass[idx] ?? 0
+        const tot = (t.total && t.total[idx]) ?? 0
+        const rate = rates[idx]
+        let html = `<div style="font-weight:600;font-size:13px;margin-bottom:6px;">${wk}</div>`
+        for (const it of params) {
+          if (it.seriesName === '达标率' && rate != null) {
+            html += `<div style="margin:3px 0;">● ${it.seriesName}：<b>${rate.toFixed(1)}%</b></div>`
+          } else if (it.seriesName === '达标项目数') {
+            html += `<div style="margin:3px 0;">● ${it.seriesName}：<b>${p}</b> 项 / 共 ${tot} 项</div>`
+          }
+        }
+        return html
+      },
     },
     legend: {
-      data: ['达标项目', '未达标项目', '达标率'],
+      data: ['达标率', '达标项目数'],
       bottom: 0,
       textStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 12 },
-      itemWidth: 14, itemHeight: 8, itemGap: 18,
+      itemWidth: 14, itemHeight: 8, itemGap: 20,
     },
     grid: { left: 50, right: 55, top: 20, bottom: 40, containLabel: true },
     xAxis: {
-      type: 'category', data: names,
+      type: 'category', data: weeks, boundaryGap: true,
       axisLine: { lineStyle: { color: 'var(--color-border,#e2e8f0)' } },
-      axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 12 },
+      axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
       axisTick: { show: false },
     },
     yAxis: [
       {
-        type: 'value', name: '项目数',
-        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
+        type: 'value', name: '达标率(%)', min: rMin, max: rMax,
+        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, formatter: '{value}%' },
         splitLine: { lineStyle: { color: 'var(--color-border-light,#f1f5f9)', type: 'dashed' } },
-        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
+        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, padding: [0,0,0,-20] },
       },
       {
-        type: 'value', name: '达标率(%)', min: 0, max: 100,
-        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, formatter: '{value}%' },
+        type: 'value', name: '项目数',
+        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
         splitLine: { show: false },
-        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, padding: [0, -20, 0, 0] },
+        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, padding: [0,-20,0,0] },
       },
     ],
     series: [
       {
-        name: '达标项目', type: 'bar', stack: 'total',
-        data: ws.map(w => w.pass),
-        barWidth: 36,
-        itemStyle: {
+        name: '达标率', type: 'line', yAxisIndex: 0, data: rates,
+        smooth: true, connectNulls: true,
+        symbol: 'circle', symbolSize: 7,
+        lineStyle: { width: 3, color: '#10b981' },
+        itemStyle: { color: '#10b981', borderWidth: 2, borderColor: '#fff' },
+        areaStyle: {
           color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
-            { offset:0, color:'#34d399' }, { offset:1, color:'#10b981' }
+            { offset: 0, color: 'rgba(16,185,129,0.25)' },
+            { offset: 1, color: 'rgba(16,185,129,0.02)' },
           ]},
-          borderRadius: [0,0,0,0],
         },
-        label: { show:true, position:'inside', color:'#fff', fontSize:11, fontWeight:'bold', formatter: p => p.value > 0 ? p.value : '' },
+        label: {
+          show: true, position: 'top', color: '#059669', fontSize: 10, fontWeight: 'bold',
+          formatter: p => p.value != null ? p.value.toFixed(1) + '%' : '',
+        },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { color: '#ef4444', type: 'dashed', width: 1 },
+          data: [{ yAxis: 100, label: { formatter: '目标100%', color: '#ef4444', fontSize: 10, position: 'end' } }],
+        },
       },
       {
-        name: '未达标项目', type: 'bar', stack: 'total',
-        data: ws.map(w => w.fail),
-        barWidth: 36,
+        name: '达标项目数', type: 'bar', yAxisIndex: 1, data: pass, barWidth: 18,
         itemStyle: {
           color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
-            { offset:0, color:'#fb923c' }, { offset:1, color:'#f97316' }
+            { offset:0, color:'#60a5fa' }, { offset:1, color:'#3b82f6' }
           ]},
           borderRadius: [4,4,0,0],
         },
-        label: { show:true, position:'inside', color:'#fff', fontSize:11, fontWeight:'bold', formatter: p => p.value > 0 ? p.value : '' },
-      },
-      {
-        name: '达标率', type: 'line', yAxisIndex: 1,
-        data: ws.map(w => +w.rate.toFixed(1)),
-        smooth: true, symbol: 'circle', symbolSize: 8,
-        lineStyle: { width: 2.5, color: '#3b82f6' },
-        itemStyle: { color: '#3b82f6', borderWidth: 2, borderColor:'#fff' },
-        label: { show:true, position:'top', color:'#2563eb', fontSize:11, fontWeight:'bold', formatter: '{c}%' },
       },
     ],
   }
