@@ -166,7 +166,7 @@
             <div class="detail-chart-grid--wide">
               <div class="detail-chart-block full">
                 <h4 class="detail-sub-title">M5-XP 集成0KM表现</h4>
-                <div ref="chart-m5-0km" class="chart-box-h300"></div>
+                <div :ref="el => setChartRef('m5-0km', el)" class="chart-box-h300"></div>
               </div>
             </div>
             <div class="detail-table-wrap">
@@ -302,11 +302,11 @@
             <div class="issues-right">
               <div class="pack-chart-card mb">
                 <h3 class="section-title sm">问题类型分布</h3>
-                <div ref="chartIssueType" class="chart-box-h250"></div>
+                <div :ref="el => setChartRef('issueType', el)" class="chart-box-h250"></div>
               </div>
               <div class="pack-chart-card mb">
                 <h3 class="section-title sm">各客户风险评级</h3>
-                <div ref="chartRisk" class="chart-box-h250"></div>
+                <div :ref="el => setChartRef('risk', el)" class="chart-box-h250"></div>
               </div>
               <div class="pack-chart-card">
                 <h3 class="section-title sm">改进建议</h3>
@@ -340,7 +340,10 @@ const activeClient = ref('A1')
 
 const chartRefs = {}
 const chartInstances = {}
-function setChartRef(name, el) { if (el) chartRefs[name] = el }
+function setChartRef(name, el) {
+  if (el) chartRefs[name] = el
+  else delete chartRefs[name]
+}
 
 const MAIN_TABS = [
   { key: 'overview', label: '总览仪表盘', icon: '📊' },
