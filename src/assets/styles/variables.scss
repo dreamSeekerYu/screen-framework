@@ -45,6 +45,14 @@ $radius-lg: 12px;
   
   // 图表通用色系
   --chart-colors: #1e6fff, #00c6ff, #36cfc9, #ffc53d, #ff7a45, #9254de;
+
+  // 语义色别名（兼容业务代码）
+  --text-main: var(--color-text-primary);
+  --text-sub: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --color-danger: #ff4d4f;
+  --color-warning: #faad14;
+  --color-success: #00c292;
 }
 
 :root[data-theme='gov-red'] {
@@ -69,6 +77,14 @@ $radius-lg: 12px;
   
   // 图表通用色系
   --chart-colors: #c41e3a, #d4af37, #e6b800, #ff8c00, #cd5c5c, #8b0000;
+
+  // 语义色别名（兼容业务代码）
+  --text-main: var(--color-text-primary);
+  --text-sub: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --color-danger: #ff4d4f;
+  --color-warning: #d4af37;
+  --color-success: #52c41a;
 }
 
 :root[data-theme='light-business'] {
@@ -93,6 +109,14 @@ $radius-lg: 12px;
   
   // 图表通用色系
   --chart-colors: #2f54eb, #1890ff, #13c2c2, #52c41a, #faad14, #f5222d;
+
+  // 语义色别名（兼容业务代码）
+  --text-main: var(--color-text-primary);
+  --text-sub: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --color-danger: #f5222d;
+  --color-warning: #faad14;
+  --color-success: #52c41a;
 }
 
 // ========== 组件级变量 ==========

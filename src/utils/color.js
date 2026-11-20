@@ -7,9 +7,10 @@
 /**
  * 获取CSS变量的实际计算值
  * @param {string} varName - CSS变量名，支持 var(--xxx) 或 --xxx 两种形式
+ * @param {string} [fallback=''] - 读取失败时的兜底颜色/数值
  * @returns {string} 解析后的颜色/数值字符串
  */
-export const getCssVar = (varName) => {
+export const getCssVar = (varName, fallback = '') => {
   // 处理 var(--color-primary) 这种写法，提取变量名
   if (varName.startsWith('var(')) {
     varName = varName.slice(4, -1).trim()
@@ -18,10 +19,11 @@ export const getCssVar = (varName) => {
   if (!varName.startsWith('--')) {
     varName = '--' + varName
   }
-  // 从html根元素读取计算后的样式值
-  return getComputedStyle(document.documentElement)
+  // 从html根元素读取计算后的样式值；空值时回退到 fallback
+  const val = getComputedStyle(document.documentElement)
     .getPropertyValue(varName)
     .trim()
+  return val || fallback
 }
 
 /**

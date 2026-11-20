@@ -119,7 +119,7 @@ import TabPane from '@/components/common/TabPane.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import NumberCounter from '@/components/data/NumberCounter.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
-import { buildDetailTable, judgeStatus } from '@/utils/parsePack.js'
+import { buildDetailTable, judgeStatus, PERIOD_FIELD } from '@/utils/parsePack.js'
 import { getCssVar } from '@/utils/color.js'
 
 const props = defineProps({ customer: { type: Object, required: true } })
@@ -131,27 +131,23 @@ const tabLabelMap = { km0: '0KM', km3: '3MIS', km6: '6MIS', km12: '12MIS' }
 const current = computed(() => props.customer.kpi[tabPeriodMap[activeTab.value]])
 const models = computed(() => props.customer.models || [])
 const table = computed(() => {
-  // 重写：返回所有指标行
+  // 重写：返回所有指标行（统一用 PERIOD_FIELD 映射）
   const m = props.customer.metrics
   const weeks = props.customer.weeks
   // 取最近 8 个有供货的周
   const recent = []
   for (let i = weeks.length - 1; i >= 0 && recent.length < 8; i--) {
     const w = weeks[i]
-    const sv = m.supply.values[w]
+    const sv = m.supply && m.supply.values[w]
     if (sv !== null && sv !== undefined && Number(sv) > 0) recent.unshift(w)
   }
-  // 仅展示与当前 tab 相关的行 + 故障数 + 供货数
   const p = tabPeriodMap[activeTab.value]
-  const actualKey = `actual${p === 'km0' ? '0km' : p.charAt(0).toUpperCase() + p.slice(1)}`
-  const targetKey = `target${p === 'km0' ? '0km' : p.charAt(0).toUpperCase() + p.slice(1)}`
-  const failKey = { km0: 'fail', km3: 'fail3m', km6: 'fail6m', km12: 'fail12m' }[p]
-  const supplyKey = { km0: 'supply', km3: 'supply3m', km6: 'supply6m', km12: 'supply12m' }[p]
+  const f = PERIOD_FIELD[p] || PERIOD_FIELD.km0
   const rows = [
-    { name: m[targetKey].label, key: 'target', vals: recent.map(w => m[targetKey].values[w]) },
-    { name: m[actualKey].label, key: 'actual', vals: recent.map(w => m[actualKey].values[w]) },
-    { name: m[failKey].label, key: 'fail', vals: recent.map(w => m[failKey].values[w]) },
-    { name: m[supplyKey].label, key: 'supply', vals: recent.map(w => m[supplyKey].values[w]) },
+    { name: m[f.target].label, key: 'target', vals: recent.map(w => m[f.target].values[w]) },
+    { name: m[f.actual].label, key: 'actual', vals: recent.map(w => m[f.actual].values[w]) },
+    { name: m[f.fail].label,   key: 'fail',   vals: recent.map(w => m[f.fail].values[w]) },
+    { name: m[f.supply].label, key: 'supply', vals: recent.map(w => m[f.supply].values[w]) },
   ]
   return { recentWeeks: recent, rows: rows.map(r => ({ name: r.name, weekly: r.vals })) }
 })
@@ -194,16 +190,15 @@ function formatVal(v) {
 
 const chartOption = computed(() => {
   const p = tabPeriodMap[activeTab.value]
+  const f = PERIOD_FIELD[p] || PERIOD_FIELD.km0
   const labels = props.customer.months
-  const actualKey = `actual${p === 'km0' ? '0km' : p.charAt(0).toUpperCase() + p.slice(1)}`
-  const targetKey = `target${p === 'km0' ? '0km' : p.charAt(0).toUpperCase() + p.slice(1)}`
   const actual = labels.map(m => {
-    const v = props.customer.metrics[actualKey].values[m]
+    const v = props.customer.metrics[f.actual].values[m]
     return (v === null || v === undefined || isNaN(Number(v))) ? 0 : Number(v)
   })
   const target = labels.map(m => {
-    const v = props.customer.metrics[targetKey].values[m]
-    return (v === null || v === undefined) ? ({ km0: 24, km3: 5, km6: 300, km12: 105 }[p]) : Number(v)
+    const v = props.customer.metrics[f.target].values[m]
+    return (v === null || v === undefined) ? f.targetDefault : Number(v)
   })
   const cColor = getCssVar('--color-primary', '#2F7CFF')
   const cDanger = getCssVar('--color-danger', '#FF4D4F')
@@ -259,9 +254,11 @@ const m6ChartOption = computed(() => {
   const app = labels.map(l => Number((m.ppmApp && m.ppmApp.values[l]) || 0))
   const perf = labels.map(l => Number((m.ppmPerf && m.ppmPerf.values[l]) || 0))
   const tApp = labels.map(l => Number((m.targetApp && m.targetApp.values[l]) || 300))
+  const tPerf = labels.map(l => Number((m.targetPerf && m.targetPerf.values[l]) || 150))
   const cColor = getCssVar('--color-primary', '#2F7CFF')
   const cPerf = getCssVar('--color-success', '#00C292')
   const cDanger = getCssVar('--color-danger', '#FF4D4F')
+  const cWarn = getCssVar('--color-warning', '#FAAD14')
   const cText = getCssVar('--text-main', '#fff')
   const cGrid = 'rgba(255,255,255,0.08)'
   return {
@@ -274,6 +271,7 @@ const m6ChartOption = computed(() => {
       { name: '外观PPM', type: 'line', smooth: true, data: app, itemStyle: { color: cColor }, lineStyle: { width: 2.5 } },
       { name: '性能PPM', type: 'line', smooth: true, data: perf, itemStyle: { color: cPerf }, lineStyle: { width: 2.5 } },
       { name: '外观目标', type: 'line', data: tApp, itemStyle: { color: cDanger }, lineStyle: { width: 1.5, type: 'dashed' }, symbol: 'none' },
+      { name: '性能目标', type: 'line', data: tPerf, itemStyle: { color: cWarn }, lineStyle: { width: 1.5, type: 'dashed' }, symbol: 'none' },
     ]
   }
 })

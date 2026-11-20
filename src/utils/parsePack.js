@@ -221,11 +221,23 @@ function buildM6KPI(cust) {
   const { metrics, weeks } = cust
   const app = summarizePeriod(metrics.failApp, metrics.delivery, metrics.ppmApp, metrics.targetApp, weeks, 5)
   const perf = summarizePeriod(metrics.failPerf, metrics.delivery, metrics.ppmPerf, metrics.targetPerf, weeks, 5)
+  // 近 5 周外观 / 性能故障累计
+  let appFail5 = 0, perfFail5 = 0, deliv5 = 0
+  const appRecent = takeRecent(metrics.delivery, weeks, 5, v => Number(v) > 0)
+  const recentSet = new Set(appRecent.map(r => r.week))
+  for (const w of recentSet) {
+    appFail5 += Number(metrics.failApp.values[w] || 0)
+    perfFail5 += Number(metrics.failPerf.values[w] || 0)
+    deliv5 += Number(metrics.delivery.values[w] || 0)
+  }
   return {
-    km0: { ...app, status: judgeStatus(app.ppm, app.target || 300), label: '外观 PPM' },
+    km0: { ...app,  status: judgeStatus(app.ppm,  app.target  || 300), label: '外观 PPM' },
     km3: { ...perf, status: judgeStatus(perf.ppm, perf.target || 150), label: '性能 PPM' },
-    km6: { ...app, status: 'primary', label: '外观故障' },
-    km12: { ...perf, status: 'primary', label: '性能故障' },
+    // km6 / km12 在 M6 下分别承载"外观故障累计 / 性能故障累计"，用于卡片区"近 N 周累计"
+    km6: { fail: appFail5,  supply: deliv5, ppm: 0, target: 0, weeks: recentSet.size, peakWeek: null,
+           status: appFail5  > 0 ? 'warning' : 'success', label: '外观故障' },
+    km12:{ fail: perfFail5, supply: deliv5, ppm: 0, target: 0, weeks: recentSet.size, peakWeek: null,
+           status: perfFail5 > 0 ? 'warning' : 'success', label: '性能故障' },
   }
 }
 
@@ -294,14 +306,21 @@ export async function loadPackData() {
     const cust = buildCustomer(sheet.name, sheet)
     const kpi = buildCustomerKPI(cust)
     const trend = cust.isM6 ? buildM6Trend(cust) : buildATrend(cust.metrics, cust.months)
-    const passCount = [kpi.km0, kpi.km3, kpi.km6, kpi.km12].filter(k => k.status === 'success').length
-    const passRate = Math.round(passCount * 25)
+    // M6 只看外观 / 性能两维，A 型看 0KM/3MIS/6MIS/12MIS 四维
+    const passKeys = cust.isM6 ? ['km0', 'km3'] : ['km0', 'km3', 'km6', 'km12']
+    const passCount = passKeys.filter(k => kpi[k].status === 'success').length
+    const passRate = Math.round(passCount * (cust.isM6 ? 50 : 25))
+    // 故障总数：M6 = 外观 + 性能；A 型 = 0KM + 3MIS + 6MIS + 12MIS
+    const failTotal = cust.isM6
+      ? (kpi.km0.fail + kpi.km3.fail)
+      : (kpi.km0.fail + kpi.km3.fail + kpi.km6.fail + kpi.km12.fail)
     custList.push({
       ...cust,
       kpi,
       trend,
       passRate,
-      failTotal: kpi.km0.fail + kpi.km3.fail + kpi.km6.fail + kpi.km12.fail,
+      passKeys,
+      failTotal,
       supplyTotal: kpi.km0.supply,
     })
   }
@@ -339,11 +358,30 @@ export async function loadPackData() {
 }
 
 /**
+ * 周期 key → metrics 字段后缀映射
+ *   km0 → 0km（0KM-实际 / 0KM-目标）
+ *   km3 → 3m （3MIS-实际 / 3MIS-目标）
+ *   km6 → 6m
+ *   km12 → 12m
+ * M6 复用 km0/km3 槽位，对应 App(外观)/Perf(性能)，由页面单独处理
+ */
+export const PERIOD_FIELD = {
+  km0:  { actual: 'actual0km', target: 'target0km', fail: 'fail',  supply: 'supply',  label: '0KM PPM',  targetDefault: 24 },
+  km3:  { actual: 'actual3m',  target: 'target3m',  fail: 'fail3m', supply: 'supply3m', label: '3MIS PPM', targetDefault: 5 },
+  km6:  { actual: 'actual6m',  target: 'target6m',  fail: 'fail6m', supply: 'supply6m', label: '6MIS PPM', targetDefault: 300 },
+  km12: { actual: 'actual12m', target: 'target12m', fail: 'fail12m',supply: 'supply12m',label: '12MIS PPM',targetDefault: 105 },
+}
+
+/**
  * 取单个客户详情（含表格行）—— 保留供外部调用
  */
 export function buildDetailTable(cust) {
+  if (cust.isM6) {
+    // M6 详情由 PackDetail.vue 自行渲染（外观/性能专用视图），返回空骨架避免报错
+    return { recentWeeks: [], rows: [] }
+  }
   const { metrics, weeks } = cust
-  const recent = takeRecent(metrics.supply || metrics.delivery, weeks, 8, v => Number(v) > 0).map(r => r.week)
+  const recent = takeRecent(metrics.supply, weeks, 8, v => Number(v) > 0).map(r => r.week)
   const last = recent[recent.length - 1]
   const rows = [
     { name: '0KM-实际PPM', target: (metrics.target0km && metrics.target0km.values[last]) ?? 24,
