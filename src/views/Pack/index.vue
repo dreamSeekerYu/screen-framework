@@ -126,7 +126,7 @@
             <div class="detail-chart-grid">
               <div v-for="p in A_PERIODS" :key="p.key" class="detail-chart-block">
                 <h4 class="detail-sub-title">{{ p.title }}</h4>
-                <div :ref="el => setChartRef(`chart-${currentA.key}-${p.key}`, el)" class="chart-box-h280"></div>
+                <div :ref="el => { if (el && currentA) setChartRef(`chart-${currentA.key}-${p.key}`, el) }" class="chart-box-h280"></div>
               </div>
             </div>
 
@@ -326,7 +326,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, h } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, h, watch } from 'vue'
 import * as echarts from 'echarts'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import { loadPackData, PERIOD_FIELD } from '@/utils/parsePack.js'
@@ -799,6 +799,28 @@ function renderAllCharts() {
   renderIssueCharts()
 }
 
+/* 客户切换时重绘详情图：切到 M5/M6 时清理全部 A 型图表实例 */
+watch(activeClient, async () => {
+  await nextTick()
+  const target = activeClient.value
+  const DISPOSE_KEYS = ['A1','A2','A3','A4-M5','A4-M6']
+  DISPOSE_KEYS.forEach(k => {
+    if (k === target) return
+    // A 型客户有 4 个周期图
+    ;['km0','km3','km6','km12'].forEach(p => {
+      const key = `chart-${k}-${p}`
+      if (chartInstances[key]) { chartInstances[key].dispose(); delete chartInstances[key] }
+    })
+    // M5/M6 的单个图
+    if (k === 'A4-M5' && chartInstances['m5-0km']) { chartInstances['m5-0km'].dispose(); delete chartInstances['m5-0km'] }
+    if (k === 'A4-M6' && chartInstances['m6-0km']) { chartInstances['m6-0km'].dispose(); delete chartInstances['m6-0km'] }
+  })
+  if (currentA.value) renderADetailCharts(currentA.value)
+  if (target === 'A4-M5') renderM5Chart()
+  if (target === 'A4-M6') renderM6Chart()
+  resizeCharts()
+})
+
 /* 客户切换时重绘当前详情 */
 let _stopWatch = null
 onMounted(async () => {
@@ -821,24 +843,6 @@ onBeforeUnmount(() => {
   if (_stopWatch) clearInterval(_stopWatch)
   window.removeEventListener('resize', resizeCharts)
   disposeAllCharts()
-})
-
-import { watch } from 'vue'
-watch(activeClient, async () => {
-  await nextTick()
-  // 清理当前 A 型图表实例（避免旧实例残留）
-  ['A1','A2','A3'].forEach(k => {
-    if (k !== activeClient.value && activeClient.value !== 'A4-M5' && activeClient.value !== 'A4-M6') {
-      ['km0','km3','km6','km12'].forEach(p => {
-        const key = `chart-${k}-${p}`
-        if (chartInstances[key]) { chartInstances[key].dispose(); delete chartInstances[key] }
-      })
-    }
-  })
-  if (currentA.value) renderADetailCharts(currentA.value)
-  if (activeClient.value === 'A4-M5') renderM5Chart()
-  if (activeClient.value === 'A4-M6') renderM6Chart()
-  resizeCharts()
 })
 </script>
 
