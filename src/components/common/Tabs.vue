@@ -54,7 +54,12 @@ const removePane = (name) => {
   panes.value = panes.value.filter(p => p.name !== name)
   nextTick(updateBar)
 }
-provide('tabs', { addPane, removePane, currentName })
+const updatePane = (name, patch) => {
+  const p = panes.value.find(x => x.name === name)
+  if (p) Object.assign(p, patch)
+  nextTick(updateBar)
+}
+provide('tabs', { addPane, removePane, updatePane, currentName, panes })
 
 function handleClick(pane, index) {
   if (pane.disabled) return
