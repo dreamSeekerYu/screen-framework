@@ -94,11 +94,11 @@
           <div class="pack-chart-grid">
             <div class="pack-chart-card">
               <div class="chart-title"><span class="chart-bar"></span>各客户0KM PPM趋势对比</div>
-              <div ref="chartOverview0km" class="chart-box-h300"></div>
+              <div :ref="el => setChartRef('overview0km', el)" class="chart-box-h300"></div>
             </div>
             <div class="pack-chart-card">
               <div class="chart-title"><span class="chart-bar"></span>各周期PPM达标情况统计</div>
-              <div ref="chartOverviewRadar" class="chart-box-h300"></div>
+              <div :ref="el => setChartRef('overviewRadar', el)" class="chart-box-h300"></div>
             </div>
           </div>
         </div>
@@ -202,7 +202,7 @@
             <div class="detail-chart-grid">
               <div class="detail-chart-block">
                 <h4 class="detail-sub-title">小米-N1 0KM客户表现</h4>
-                <div ref="chart-m6-0km" class="chart-box-h300"></div>
+                <div :ref="el => setChartRef('m6-0km', el)" class="chart-box-h300"></div>
               </div>
               <div class="detail-chart-block">
                 <h4 class="detail-sub-title">关键指标数据</h4>
@@ -326,7 +326,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, h, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, h } from 'vue'
 import * as echarts from 'echarts'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import { loadPackData, PERIOD_FIELD } from '@/utils/parsePack.js'
@@ -799,28 +799,6 @@ function renderAllCharts() {
   renderIssueCharts()
 }
 
-/* 客户切换时重绘详情图：切到 M5/M6 时清理全部 A 型图表实例 */
-watch(activeClient, async () => {
-  await nextTick()
-  const target = activeClient.value
-  const DISPOSE_KEYS = ['A1','A2','A3','A4-M5','A4-M6']
-  DISPOSE_KEYS.forEach(k => {
-    if (k === target) return
-    // A 型客户有 4 个周期图
-    ;['km0','km3','km6','km12'].forEach(p => {
-      const key = `chart-${k}-${p}`
-      if (chartInstances[key]) { chartInstances[key].dispose(); delete chartInstances[key] }
-    })
-    // M5/M6 的单个图
-    if (k === 'A4-M5' && chartInstances['m5-0km']) { chartInstances['m5-0km'].dispose(); delete chartInstances['m5-0km'] }
-    if (k === 'A4-M6' && chartInstances['m6-0km']) { chartInstances['m6-0km'].dispose(); delete chartInstances['m6-0km'] }
-  })
-  if (currentA.value) renderADetailCharts(currentA.value)
-  if (target === 'A4-M5') renderM5Chart()
-  if (target === 'A4-M6') renderM6Chart()
-  resizeCharts()
-})
-
 /* 客户切换时重绘当前详情 */
 let _stopWatch = null
 onMounted(async () => {
@@ -844,10 +822,28 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeCharts)
   disposeAllCharts()
 })
+
+import { watch } from 'vue'
+watch(activeClient, async () => {
+  await nextTick()
+  // 清理当前 A 型图表实例（避免旧实例残留）
+  ['A1','A2','A3'].forEach(k => {
+    if (k !== activeClient.value && activeClient.value !== 'A4-M5' && activeClient.value !== 'A4-M6') {
+      ['km0','km3','km6','km12'].forEach(p => {
+        const key = `chart-${k}-${p}`
+        if (chartInstances[key]) { chartInstances[key].dispose(); delete chartInstances[key] }
+      })
+    }
+  })
+  if (currentA.value) renderADetailCharts(currentA.value)
+  if (activeClient.value === 'A4-M5') renderM5Chart()
+  if (activeClient.value === 'A4-M6') renderM6Chart()
+  resizeCharts()
+})
 </script>
 
-<style lang="scss" scoped>
-@import '@/assets/styles/variables.scss';
+<style lang="scss" >
+@use '@/assets/styles/variables.scss';
 
 .pack-screen {
   padding: $spacing-md;

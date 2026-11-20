@@ -138,6 +138,54 @@ function buildCustomer(key, sheet) {
   const noteCell = cells[`B${noteRow}`]
   const note = noteCell && noteCell.value ? String(noteCell.value) : ''
 
+  /* ---------- 裁剪尾部"未发生"周：从末尾往前，供货=0 且全部故障=0/null 的周视为未填写 ---------- */
+  if (!isM6) {
+    let end = weeks.length
+    while (end > 0) {
+      const w = weeks[end - 1]
+      const supplyV = num(metrics.supply.values[w])
+      const failAllZero =
+        (num(metrics.fail.values[w])    ?? 0) === 0 &&
+        (num(metrics.fail3m.values[w])  ?? 0) === 0 &&
+        (num(metrics.fail6m.values[w])  ?? 0) === 0 &&
+        (num(metrics.fail12m.values[w]) ?? 0) === 0
+      // 供货为 0 且全部故障为 0/null → 视为未发生
+      if ((supplyV ?? 0) === 0 && failAllZero) {
+        end--
+      } else {
+        break
+      }
+    }
+    if (end < weeks.length) weeks.length = end
+
+    // 月份同步裁剪：末尾月份供货=0 且全部故障=0 的月视为未到
+    let mend = months.length
+    while (mend > 0) {
+      const m = months[mend - 1]
+      const supplyV = num(metrics.supply.values[m])
+      const failAllZero =
+        (num(metrics.fail.values[m])    ?? 0) === 0 &&
+        (num(metrics.fail3m.values[m])  ?? 0) === 0 &&
+        (num(metrics.fail6m.values[m])  ?? 0) === 0 &&
+        (num(metrics.fail12m.values[m]) ?? 0) === 0
+      if ((supplyV ?? 0) === 0 && failAllZero) mend--
+      else break
+    }
+    if (mend < months.length) months.length = mend
+  } else {
+    // M6 同理：周交付=0 且外观/性能故障=0/null 的周裁掉
+    let end = weeks.length
+    while (end > 0) {
+      const w = weeks[end - 1]
+      const deliv = num(metrics.delivery.values[w])
+      const fApp = num(metrics.failApp.values[w]) ?? 0
+      const fPerf = num(metrics.failPerf.values[w]) ?? 0
+      if ((deliv ?? 0) === 0 && fApp === 0 && fPerf === 0) end--
+      else break
+    }
+    if (end < weeks.length) weeks.length = end
+  }
+
   return { key, isM6, meta: CUSTOMER_META[key] || { name: key }, weeks, months, metrics, models, note }
 }
 
