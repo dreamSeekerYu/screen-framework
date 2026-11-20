@@ -1,545 +1,450 @@
 <template>
-  <div class="home-screen">
+  <div class="cpk-screen">
     <!-- 顶部标题栏 -->
-    <ScreenHeader title="过程能力达标率及趋势分析" />
-    <!-- KPI 行：由 StatCardRow 统一做"内容自然宽度 + min/max 约束 + 剩余空间均分"的自适应布局 -->
-    <StatCardRow style="margin-bottom: 20px;" :gap="20" :min-card-width="240" :max-card-width="460">
-      <StatCard v-for="(item, index) in totalKardData" :key="index" :theme="item.theme" :status="item.status"
-        :title="item.title" :sub-title="item.subTitle" :value="item.value" :unit="item.unit" :trend="item.trend"
-        :trend-type="item.trendType" :trend-label="item.trendLabel" :badge="item.badge" :icon-type="item.iconType"
-        :icon="item.icon" />
+    <ScreenHeader title="过程能力达标率" subtitle="过程能力指数（CPK）≥1.33 项目达标率统计" />
+
+    <!-- KPI 卡片区：4 张等宽 -->
+    <StatCardRow style="margin-bottom: 16px;" :gap="16" :min-card-width="200" :max-card-width="420">
+      <StatCard
+        v-for="(item, idx) in kpiCards"
+        :key="idx"
+        :theme="item.theme"
+        :status="item.status"
+        :title="item.title"
+        :sub-title="item.subTitle"
+        :value="item.value"
+        :unit="item.unit"
+        :trend="item.trend"
+        :trend-type="item.trendType"
+        :trend-label="item.trendLabel"
+        :badge="item.badge"
+      />
     </StatCardRow>
-    <!-- 主体内容区 -->
-    <div class="screen-content">
-      <!-- 左侧区域 -->
-      <div class="left-col">
-        <!-- 指标卡片区 -->
-        <div class="metrics-row">
 
-        </div>
-        <!-- 柱状图卡片 - 懒加载 -->
-        <div class="chart-card" ref="barRef">
-          <ScreenCard title="各区域业务数据统计">
-            <BaseChart :option="barChartOption" v-if="barChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-        <!-- 滚动列表卡片 -->
-        <div class="list-card">
-          <ScreenCard title="实时数据排行">
-            <MarqueeList :data="rankList" />
-          </ScreenCard>
-        </div>
-      </div>
-      <!-- 中间区域 -->
-      <div class="center-col">
-        <!-- 地图/大屏主视觉区域 -->
-        <div class="main-chart-card">
-          <ScreenCard title="全国业务分布概览">
-            <div class="main-chart-placeholder">
-              <div class="placeholder-text">中间地图/核心图表区域</div>
-              <div class="placeholder-hint">可在此接入地图、3D可视化或核心业务图表</div>
-            </div>
-          </ScreenCard>
-        </div>
+    <!-- 结论条 -->
+    <SummaryBar
+      :type="summary.type"
+      :icon="summary.icon"
+      style="margin-bottom: 16px; flex-shrink: 0;"
+    >
+      {{ summary.text }}
+      <template #tags>
+        <StatusTag v-for="(tag, i) in summary.tags" :key="i" :text="tag.text" :type="tag.type" effect="dark" round />
+      </template>
+    </SummaryBar>
 
-        <!-- 下方折线图 - 懒加载 -->
-        <div class="line-chart-card" ref="lineRef">
-          <ScreenCard title="近7天趋势变化">
-            <BaseChart :option="lineChartOption" v-if="lineChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-      </div>
+    <!-- 双图区域：5:5 对称 -->
+    <div class="chart-row">
+      <ScreenCard title="各车间CPK达标对比">
+        <BaseChart :option="workshopCompareOption" class="cpk-chart" />
+      </ScreenCard>
+      <ScreenCard title="各车间·工序CPK项目达成">
+        <BaseChart :option="processBarOption" class="cpk-chart" />
+      </ScreenCard>
+    </div>
 
-      <!-- 右侧区域 -->
-      <div class="right-col">
-        <!-- 饼图卡片 - 懒加载 -->
-        <div class="pie-card" ref="pieRef">
-          <ScreenCard title="业务类型占比">
-            <BaseChart :option="pieChartOption" v-if="pieChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-
-        <!-- 仪表盘卡片 - 懒加载 -->
-        <div class="gauge-card" ref="gaugeRef">
-          <ScreenCard title="目标完成率">
-            <BaseChart :option="gaugeChartOption" v-if="gaugeChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-
-        <!-- 进度条卡片 -->
-        <div class="progress-card">
-          <ScreenCard title="各模块完成进度">
-            <div class="progress-list">
-              <div v-for="(item, i) in progressData" :key="i" class="progress-item">
-                <div class="progress-label">{{ item.name }}</div>
-                <div class="progress-bar-bg">
-                  <div class="progress-bar-fill" :style="{ width: item.value + '%' }"></div>
-                </div>
-                <div class="progress-value">{{ item.value }}%</div>
-              </div>
-            </div>
-          </ScreenCard>
-        </div>
-
-      </div>
+    <!-- 工序统计 -->
+    <div class="action-row">
+      <span class="action-hint">共 {{ processList.length }} 条工序记录 · 达标 {{ passCount }} 条 · 未达标 {{ failCount }} 条 · 未开线 {{ noDataCount }} 条</span>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
-import NumberCounter from '@/components/data/NumberCounter.vue'
-import MarqueeList from '@/components/data/MarqueeList.vue'
-import { useLazyLoad } from '@/composables/useLazyLoad'
 import StatCard from '@/components/common/NewStatCard.vue'
 import StatCardRow from '@/components/common/StatCardRow.vue'
+import SummaryBar from '@/components/common/SummaryBar.vue'
+import StatusTag from '@/components/common/StatusTag.vue'
+import { loadSheet } from '@/utils/dataLoader.js'
 
-// ============ 指标数据 ============
-const totalKardData = ref([
-  {
-    theme: 'kpi-side',
-    status: 'success',
-    title: '本周CPK达标率',
-    subTitle: 'CW44周度',
-    value: 98.7,
-    unit: '%',
-    trend: '1.33p',
-    trendType: 'down',
-    trendLabel: '较上周',
-    badge: '达标',
-    // iconType: 'x_y_down',
-    icon: '📈',
-  }, {
-    theme: 'kpi-side',
-    status: 'primary',
-    title: '累计CPK项目',
-    subTitle: '本周覆盖',
-    value: 153,
-    unit: '项',
-    trend: '8项',
-    trendType: 'up',
-    trendLabel: '较上周',
-    iconType: 'text_card',
-  }, {
-    theme: 'kpi-side',
-    status: 'cyan',
-    title: '本周达标项目数',
-    subTitle: '合格工序',
-    value: 153,
-    unit: '项',
-    trend: '151项',
-    trendType: 'up',
-    trendLabel: '较上周',
-    iconType: 'right',
-  }, {
-    theme: 'kpi-side',
-    status: 'warning',
-    title: '未达标项目',
-    subTitle: 'A3-P2待补测',
-    value: '2',
-    unit: '项',
-    trend: '2项',
-    trendType: 'down',
-    trendLabel: '较上周',
-    iconType: 'warning',
-  },
-  // {
-  //   theme: 'kpi-side',
-  //   status: 'purple',
-  //   title: '工序平均CPK值',
-  //   subTitle: '本周整体',
-  //   value: '1.68',
-  //   unit: '',
-  //   trend: '-0.02',
-  //   trendType: 'down',
-  //   trendLabel: '较上周',
-  //   iconType: 'warning',
-  // },
-])
+// ============ 数据 ============
+const processList = ref([]) // 原始工序列表
 
-// ============ 懒加载控制 ============
-const { targetRef: barRef, isVisible: barChartVisible } = useLazyLoad()
-const { targetRef: lineRef, isVisible: lineChartVisible } = useLazyLoad()
-const { targetRef: pieRef, isVisible: pieChartVisible } = useLazyLoad()
-const { targetRef: gaugeRef, isVisible: gaugeChartVisible } = useLazyLoad()
-
-// ============ 示例图表配置 ============
-// 柱状图配置
-const barChartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-  xAxis: {
-    type: 'category',
-    data: ['华北', '华东', '华南', '华中', '西南', '西北', '东北'],
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' }
-  },
-  yAxis: {
-    type: 'value',
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' },
-    splitLine: { lineStyle: { color: 'var(--color-border-light)' } }
-  },
-  series: [{
-    data: [320, 482, 591, 354, 290, 210, 185],
-    type: 'bar',
-    barWidth: '20%',
-    itemStyle: {
-      color: {
-        type: 'linear',
-        x: 0, y: 0, x2: 0, y2: 1,
-        colorStops: [
-          { offset: 0, color: 'var(--color-primary-light)' },
-          { offset: 1, color: 'var(--color-primary-dark)' }
-        ]
-      },
-      borderRadius: [4, 4, 0, 0]
-    }
-  },
-
-  {
-    data: [320, 482, 591, 354, 290, 210, 185],
-    type: 'bar',
-    barWidth: '20%',
-    itemStyle: {
-      // color: {
-      //   type: 'linear',
-      //   x: 0, y: 0, x2: 0, y2: 1,
-      //   colorStops: [
-      //     { offset: 0, color: 'var(--color-primary-light)' },
-      //     { offset: 1, color: 'var(--color-primary-dark)' }
-      //   ]
-      // },
-      borderRadius: [4, 4, 0, 0]
-    }
-  },
-  {
-    data: [320, 482, 591, 354, 290, 210, 185],
-    type: 'line',
-    barWidth: '40%',
-    itemStyle: {
-      color: {
-        type: 'linear',
-        x: 0, y: 0, x2: 0, y2: 1,
-        colorStops: [
-          { offset: 0, color: 'var(--color-primary-light)' },
-          { offset: 1, color: 'var(--color-primary-dark)' }
-        ]
-      },
-      borderRadius: [4, 4, 0, 0]
-    }
-  }]
-}))
-
-// 折线图配置
-const lineChartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['访问量', '订单量'], textStyle: { color: 'var(--color-text-secondary)' } },
-  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-  xAxis: {
-    type: 'category',
-    boundaryGap: false,
-    data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' }
-  },
-  yAxis: {
-    type: 'value',
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' },
-    splitLine: { lineStyle: { color: 'var(--color-border-light)' } }
-  },
-  series: [
-    {
-      name: '访问量',
-      type: 'line',
-      smooth: true,
-      data: [1200, 1900, 1500, 2200, 2800, 3600, 3200],
-      lineStyle: { color: 'var(--color-primary)', width: 2 },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(30, 111, 255, 0.3)' },
-            { offset: 1, color: 'rgba(30, 111, 255, 0)' }
-          ]
-        }
+// 解析 process 行
+function normalizeRows(rows) {
+  // 补全合并单元格：车间列向下填充
+  let lastWorkshop = ''
+  return rows
+    .filter(r => r['车间'] || r['工序']) // 去除空行
+    .map(r => {
+      const ws = r['车间'] || lastWorkshop
+      if (r['车间']) lastWorkshop = r['车间']
+      const totalRaw = r['CPK项目总数']
+      const passRaw = r['合格数']
+      const rateRaw = r['达成率']
+      const remark = (r['备注'] && r['备注'] !== '/') ? String(r['备注']).trim() : '/'
+      const hasData = typeof totalRaw === 'number' && typeof passRaw === 'number'
+      const total = hasData ? totalRaw : '-'
+      const pass = hasData ? passRaw : '-'
+      const rate = hasData ? Number(rateRaw) * 100 : null
+      let status = '无数据'
+      if (hasData) {
+        status = (rate >= 100) ? '达标' : '未达标'
+      } else if (remark && remark.includes('未开线')) {
+        status = '无数据'
       }
+      return {
+        workshop: ws,
+        process: r['工序'],
+        total, pass, rate,
+        status,
+        remark,
+      }
+    })
+}
+
+onMounted(async () => {
+  try {
+    const sheet = await loadSheet('cpk', 0)
+    const rows = sheet.rows || []
+    processList.value = normalizeRows(rows)
+  } catch (e) {
+    console.error('[Cpk] 加载过程能力达标率数据失败：', e)
+  }
+})
+
+// ============ 汇总统计 ============
+const validList = computed(() => processList.value.filter(r => r.status !== '无数据'))
+const totalProjects = computed(() => validList.value.reduce((s, r) => s + r.total, 0))
+const passProjects = computed(() => validList.value.reduce((s, r) => s + r.pass, 0))
+const failProjects = computed(() => totalProjects.value - passProjects.value)
+const overallRate = computed(() => totalProjects.value ? (passProjects.value / totalProjects.value * 100) : 0)
+const passCount = computed(() => processList.value.filter(r => r.status === '达标').length)
+const failCount = computed(() => processList.value.filter(r => r.status === '未达标').length)
+const noDataCount = computed(() => processList.value.filter(r => r.status === '无数据').length)
+
+// 未达标工序
+const failProcesses = computed(() => processList.value.filter(r => r.status === '未达标'))
+
+// 车间维度汇总（给左图用）
+const workshopStats = computed(() => {
+  const map = {}
+  for (const r of validList.value) {
+    if (!map[r.workshop]) map[r.workshop] = { workshop: r.workshop, total: 0, pass: 0 }
+    map[r.workshop].total += r.total
+    map[r.workshop].pass += r.pass
+  }
+  return Object.values(map).map(w => ({
+    ...w,
+    fail: w.total - w.pass,
+    rate: w.total ? (w.pass / w.total * 100) : 0,
+  }))
+})
+
+// ============ KPI 卡片 ============
+const kpiCards = computed(() => {
+  const failList = failProcesses.value
+  const failHint = failList.length
+    ? failList.map(f => `${f.workshop}-${f.process}`).join('、')
+    : '全部达标'
+  const rateVal = overallRate.value
+  const rateStatus = rateVal >= 99 ? 'success' : (rateVal >= 95 ? 'warning' : 'danger')
+  return [
+    {
+      theme: 'kpi-side',
+      status: rateStatus,
+      title: '本周CPK达标率',
+      subTitle: 'CPK≥1.33',
+      value: rateVal.toFixed(1),
+      unit: '%',
+      trend: rateVal >= 100 ? '全部达标' : `${failProjects.value}项未达标`,
+      trendType: rateVal >= 100 ? 'up' : 'down',
+      trendLabel: '本周',
+      badge: rateVal >= 100 ? '达标' : '待改善',
     },
     {
-      name: '订单量',
-      type: 'line',
-      smooth: true,
-      data: [820, 932, 901, 1234, 1490, 1830, 1620],
-      lineStyle: { color: '#36cfc9', width: 2 },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(54, 207, 201, 0.3)' },
-            { offset: 1, color: 'rgba(54, 207, 201, 0)' }
-          ]
-        }
-      }
-    }
+      theme: 'kpi-side',
+      status: 'primary',
+      title: '项目总数',
+      subTitle: '覆盖已开线工序',
+      value: totalProjects.value,
+      unit: '项',
+      trend: `${validList.value.length} 个工序`,
+      trendType: 'up',
+      trendLabel: '覆盖',
+    },
+    {
+      theme: 'kpi-side',
+      status: 'success',
+      title: '达标项目',
+      subTitle: 'CPK≥1.33',
+      value: passProjects.value,
+      unit: '项',
+      trend: `${passCount.value} 个工序达标`,
+      trendType: 'up',
+      trendLabel: '合格',
+      badge: '合格',
+    },
+    {
+      theme: 'kpi-side',
+      status: 'warning',
+      title: '未达标项目',
+      subTitle: failHint,
+      value: failProjects.value,
+      unit: '项',
+      trend: `${failCount.value} 个工序`,
+      trendType: failProjects.value ? 'down' : 'up',
+      trendLabel: '需改善',
+      badge: failProjects.value ? '关注' : '无',
+    },
   ]
-}))
+})
 
-// 饼图配置
-const pieChartOption = computed(() => ({
-  tooltip: { trigger: 'item' },
-  legend: {
-    orient: 'vertical',
-    right: '5%',
-    top: 'center',
-    textStyle: { color: 'var(--color-text-secondary)' }
-  },
-  color: ['#1e6fff', '#00c6ff', '#36cfc9', '#ffc53d', '#ff7a45'],
-  series: [{
-    type: 'pie',
-    radius: ['40%', '70%'],
-    center: ['35%', '50%'],
-    avoidLabelOverlap: false,
-    itemStyle: { borderRadius: 6, borderColor: 'var(--color-bg-card)', borderWidth: 2 },
-    label: { show: false },
-    emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
-    labelLine: { show: false },
-    data: [
-      { value: 1048, name: '产品A' },
-      { value: 735, name: '产品B' },
-      { value: 580, name: '产品C' },
-      { value: 484, name: '产品D' },
-      { value: 300, name: '其他' }
-    ]
-  }]
-}))
+// ============ 结论条 ============
+const summary = computed(() => {
+  const rate = overallRate.value
+  const failList = failProcesses.value
+  if (failList.length === 0) {
+    return {
+      type: 'success',
+      icon: 'success',
+      text: `本周过程能力达标率 <strong>${rate.toFixed(1)}%</strong>，所有已开线工序 CPK 均达标，整体质量稳定。`,
+      tags: [{ text: '全部工序达标', type: 'success' }],
+    }
+  }
+  const names = failList.map(f => `<strong>${f.workshop}车间-${f.process}工序</strong>`).join('、')
+  const first = failList[0]
+  return {
+    type: 'warning',
+    icon: 'warning',
+    text: `本周过程能力达标率 <strong>${rate.toFixed(1)}%</strong>，整体质量基本稳定。未达标工序：${names}，需重点改善。${first.remark && first.remark !== '/' ? '其中 ' + first.workshop + '-' + first.process + ' 存在 CPK 偏低项目，已启动改善。' : ''}`,
+    tags: failList.map(f => ({ text: `${f.workshop}-${f.process} ${f.rate.toFixed(0)}%`, type: 'danger' })),
+  }
+})
 
-// 仪表盘配置
-const gaugeChartOption = computed(() => ({
-  series: [{
-    type: 'gauge',
-    startAngle: 180,
-    endAngle: 0,
-    min: 0,
-    max: 100,
-    splitNumber: 5,
-    itemStyle: { color: 'var(--color-primary)' },
-    progress: { show: true, width: 18 },
-    pointer: { show: false },
-    axisLine: { lineStyle: { width: 18, color: [[1, 'var(--color-border-light)']] } },
-    axisTick: { show: false },
-    splitLine: { show: false },
-    axisLabel: { show: false },
-    title: { show: false },
-    detail: {
-      valueAnimation: true,
-      offsetCenter: [0, '0%'],
-      fontSize: 36,
-      fontWeight: 'bold',
-      color: 'var(--color-primary)',
-      formatter: '{value}%'
+// ============ 左图：各车间 CPK 达标对比（堆叠柱+达标率折线） ============
+const workshopCompareOption = computed(() => {
+  const ws = workshopStats.value
+  const names = ws.map(w => w.workshop + '车间')
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      backgroundColor: 'rgba(255,255,255,0.98)',
+      borderColor: 'var(--color-border,#e2e8f0)',
+      textStyle: { color: '#334155' },
     },
-    data: [{ value: 76 }]
-  }]
-}))
+    legend: {
+      data: ['达标项目', '未达标项目', '达标率'],
+      bottom: 0,
+      textStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 12 },
+      itemWidth: 14, itemHeight: 8, itemGap: 18,
+    },
+    grid: { left: 50, right: 55, top: 20, bottom: 40, containLabel: true },
+    xAxis: {
+      type: 'category', data: names,
+      axisLine: { lineStyle: { color: 'var(--color-border,#e2e8f0)' } },
+      axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 12 },
+      axisTick: { show: false },
+    },
+    yAxis: [
+      {
+        type: 'value', name: '项目数',
+        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
+        splitLine: { lineStyle: { color: 'var(--color-border-light,#f1f5f9)', type: 'dashed' } },
+        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
+      },
+      {
+        type: 'value', name: '达标率(%)', min: 0, max: 100,
+        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, formatter: '{value}%' },
+        splitLine: { show: false },
+        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, padding: [0, -20, 0, 0] },
+      },
+    ],
+    series: [
+      {
+        name: '达标项目', type: 'bar', stack: 'total',
+        data: ws.map(w => w.pass),
+        barWidth: 36,
+        itemStyle: {
+          color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
+            { offset:0, color:'#34d399' }, { offset:1, color:'#10b981' }
+          ]},
+          borderRadius: [0,0,0,0],
+        },
+        label: { show:true, position:'inside', color:'#fff', fontSize:11, fontWeight:'bold', formatter: p => p.value > 0 ? p.value : '' },
+      },
+      {
+        name: '未达标项目', type: 'bar', stack: 'total',
+        data: ws.map(w => w.fail),
+        barWidth: 36,
+        itemStyle: {
+          color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
+            { offset:0, color:'#fb923c' }, { offset:1, color:'#f97316' }
+          ]},
+          borderRadius: [4,4,0,0],
+        },
+        label: { show:true, position:'inside', color:'#fff', fontSize:11, fontWeight:'bold', formatter: p => p.value > 0 ? p.value : '' },
+      },
+      {
+        name: '达标率', type: 'line', yAxisIndex: 1,
+        data: ws.map(w => +w.rate.toFixed(1)),
+        smooth: true, symbol: 'circle', symbolSize: 8,
+        lineStyle: { width: 2.5, color: '#3b82f6' },
+        itemStyle: { color: '#3b82f6', borderWidth: 2, borderColor:'#fff' },
+        label: { show:true, position:'top', color:'#2563eb', fontSize:11, fontWeight:'bold', formatter: '{c}%' },
+      },
+    ],
+  }
+})
 
-// ============ 排行列表数据 ============
-const rankList = ref([
-  { name: '华东区销售一部', value: '¥1,286万' },
-  { name: '华南区销售二部', value: '¥1,052万' },
-  { name: '华北区销售一部', value: '¥968万' },
-  { name: '西南区销售中心', value: '¥745万' },
-  { name: '华中区销售三部', value: '¥692万' },
-  { name: '西北区办事处', value: '¥428万' },
-  { name: '东北区办事处', value: '¥356万' }
-])
-
-// ============ 进度条数据 ============
-const progressData = ref([
-  { name: '年度销售目标', value: 76 },
-  { name: '新客户拓展', value: 89 },
-  { name: '项目交付进度', value: 62 },
-  { name: '售后服务满意度', value: 94 }
-])
+// ============ 右图：各车间·工序 CPK 项目达成（按原型） ============
+const processBarOption = computed(() => {
+  const list = processList.value
+  const categories = list.map(r => `${r.workshop}/${r.process}`)
+  const passArr = list.map(r => r.pass === '-' ? 0 : r.pass)
+  const failArr = list.map(r => (r.total !== '-' ? (r.total - r.pass) : 0))
+  const rateArr = list.map(r => r.rate)
+  const isNoData = list.map(r => r.status === '无数据')
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      backgroundColor: 'rgba(255,255,255,0.98)',
+      borderColor: 'var(--color-border,#e2e8f0)',
+      textStyle: { color: '#334155', fontSize: 12 },
+      formatter: (params) => {
+        const idx = params[0].dataIndex
+        const d = list[idx]
+        let html = `<div style="font-weight:600;font-size:13px;margin-bottom:6px;">${d.workshop}车间 / ${d.process}工序</div>`
+        if (d.status === '无数据') {
+          html += `<div style="color:#64748b;font-size:12px;">${d.remark}</div>`
+          return html
+        }
+        for (const p of params) {
+          if (p.seriesName === '达标项目')
+            html += `<div style="margin:3px 0;">● ${p.seriesName}：<b>${d.pass}</b> 项</div>`
+          else if (p.seriesName === '未达标项目')
+            html += `<div style="margin:3px 0;">● ${p.seriesName}：<b>${d.total - d.pass}</b> 项</div>`
+          else if (p.seriesName === '达成率')
+            html += `<div style="margin:3px 0;">● ${p.seriesName}：<b>${d.rate.toFixed(1)}%</b></div>`
+        }
+        if (d.remark && d.remark !== '/') {
+          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;font-size:12px;color:#475569;line-height:1.5;">
+            <span style="color:#64748b;">备注：</span><br>${d.remark.replace(/\n/g,'<br>')}
+          </div>`
+        }
+        return html
+      },
+    },
+    legend: {
+      data: ['达标项目','未达标项目','达成率'],
+      bottom: 0,
+      textStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 12 },
+      itemWidth: 14, itemHeight: 8, itemGap: 18,
+    },
+    grid: { left: 45, right: 55, top: 20, bottom: 50, containLabel: true },
+    xAxis: {
+      type: 'category', data: categories,
+      axisLine: { lineStyle: { color: 'var(--color-border,#e2e8f0)' } },
+      axisLabel: {
+        color: 'var(--color-text-secondary,#64748b)', fontSize: 11, interval: 0,
+        formatter: v => v.replace('/', '\n'),
+      },
+      axisTick: { show: false },
+    },
+    yAxis: [
+      {
+        type: 'value', name: '项目数',
+        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
+        splitLine: { lineStyle: { color: 'var(--color-border-light,#f1f5f9)', type: 'dashed' } },
+        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
+      },
+      {
+        type: 'value', name: '达成率(%)', min: 0, max: 100,
+        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, formatter: '{value}%' },
+        splitLine: { show: false },
+        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, padding: [0,-20,0,0] },
+      },
+    ],
+    series: [
+      {
+        name: '达标项目', type: 'bar', stack: 'total',
+        data: passArr.map((v, i) => ({
+          value: v,
+          itemStyle: { color: isNoData[i] ? '#e2e8f0' : { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
+            { offset:0, color:'#34d399' },{ offset:1, color:'#10b981' }
+          ]}},
+        })),
+        barWidth: 26,
+        label: {
+          show:true, position:'inside', color:'#fff', fontSize:10, fontWeight:'bold',
+          formatter: p => isNoData[p.dataIndex] ? '-' : (p.value > 0 ? p.value : ''),
+        },
+      },
+      {
+        name: '未达标项目', type: 'bar', stack: 'total',
+        data: failArr.map((v, i) => ({
+          value: v,
+          itemStyle: { color: isNoData[i] ? '#e2e8f0' : { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
+            { offset:0, color:'#fb923c' },{ offset:1, color:'#f97316' }
+          ]}},
+        })),
+        barWidth: 26,
+        itemStyle: { borderRadius: [4,4,0,0] },
+        label: {
+          show:true, position:'inside', color:'#fff', fontSize:10, fontWeight:'bold',
+          formatter: p => p.value > 0 ? p.value : '',
+        },
+      },
+      {
+        name: '达成率', type: 'line', yAxisIndex: 1,
+        data: rateArr,
+        smooth: true, symbol: 'circle', symbolSize: 7,
+        lineStyle: { width: 2.5, color: '#3b82f6' },
+        itemStyle: { color: '#3b82f6', borderWidth: 2, borderColor:'#fff' },
+        connectNulls: false,
+        label: {
+          show:true, position:'top', color:'#2563eb', fontSize:10, fontWeight:'bold',
+          formatter: p => p.value !== null && p.value !== undefined ? p.value + '%' : '',
+        },
+      },
+    ],
+  }
+})
 </script>
 
 <style scoped lang="scss">
-.home-screen {
+.cpk-screen {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-
-}
-
-.screen-content {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1.4fr 1fr;
-  gap: $spacing-md;
   padding: $spacing-md;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
-.left-col,
-.center-col,
-.right-col {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  overflow: hidden;
-}
-
-// ============ 指标卡片 ============
-.metrics-row {
+.chart-row {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr 1fr;
   gap: $spacing-md;
-  flex-shrink: 0;
-}
+  margin-bottom: 12px;
 
-.metric-card {
-  height: 120px;
-
-  .metric-value {
-    text-align: center;
-    margin-bottom: $spacing-sm;
-  }
-
-  .metric-trend {
-    text-align: center;
-    font-size: $font-sm;
-
-    &.up {
-      color: #52c41a;
-    }
-
-    &.down {
-      color: #ff4d4f;
-    }
-  }
-}
-
-// ============ 图表卡片高度分配 ============
-.chart-card {
-  height: 320px;
-  flex-shrink: 0;
-}
-
-.list-card {
-  flex: 1;
-  min-height: 200px;
-}
-
-.main-chart-card {
-  flex: 1;
-  min-height: 400px;
-}
-
-.line-chart-card {
-  height: 280px;
-  flex-shrink: 0;
-}
-
-.pie-card {
-  height: 280px;
-  flex-shrink: 0;
-}
-
-.gauge-card {
-  height: 260px;
-  flex-shrink: 0;
-}
-
-.progress-card {
-  flex: 1;
-  min-height: 200px;
-}
-
-.chart-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  font-size: $font-sm;
-}
-
-.main-chart-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  border: 2px dashed var(--color-border);
-  border-radius: $radius-md;
-
-  .placeholder-text {
-    font-size: $font-lg;
-    margin-bottom: $spacing-sm;
-    color: var(--color-text-secondary);
-  }
-
-  .placeholder-hint {
-    font-size: $font-sm;
-  }
-}
-
-// ============ 进度条样式 ============
-.progress-list {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  padding: $spacing-sm 0;
-}
-
-.progress-item {
-  display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-
-  .progress-label {
-    width: 110px;
-    font-size: $font-sm;
-    color: var(--color-text-secondary);
-    flex-shrink: 0;
-  }
-
-  .progress-bar-bg {
-    flex: 1;
-    height: 8px;
-    background: var(--color-border-light);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .progress-bar-fill {
+  .cpk-chart {
+    width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, var(--color-primary-dark), var(--color-primary-light));
-    border-radius: 4px;
-    transition: width 1s ease;
-  }
-
-  .progress-value {
-    width: 45px;
-    text-align: right;
-    font-size: $font-sm;
-    color: var(--color-primary);
-    font-weight: 600;
-    font-family: 'DIN Alternate', sans-serif;
-    flex-shrink: 0;
+    min-height: 320px;
   }
 }
+
+.action-row {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+}
+
+.action-hint {
+  font-size: 12px;
+  color: var(--color-text-muted, #94a3b8);
+}
+
 </style>
