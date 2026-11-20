@@ -842,7 +842,7 @@ watch(activeClient, async () => {
 })
 </script>
 
-<style lang="scss" >
+<style lang="scss" scoped>
 @use '@/assets/styles/variables.scss';
 
 .pack-screen {
