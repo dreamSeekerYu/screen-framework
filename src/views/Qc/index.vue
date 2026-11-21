@@ -63,11 +63,11 @@
           <div class="gauge-meta">
             <div class="meta-item">
               <span class="meta-label">支援占比</span>
-              <span class="meta-value primary">{{ kpi.supportRate }}%</span>
+              <span class="meta-value primary">{{ qc.kpi.supportRate }}%</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">预离职占比</span>
-              <span class="meta-value danger">{{ kpi.preLeaveRate }}%</span>
+              <span class="meta-value danger">{{ qc.kpi.preLeaveRate }}%</span>
             </div>
           </div>
         </ScreenCard>
