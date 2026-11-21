@@ -252,27 +252,31 @@ function draw(t) {
   const outerR = innerR * 1.62
 
   // ====== 托盘大弧几何（与中心圆不同心） ======
-  // 关键：卡片弧的圆心 arcC 不在屏幕中心 (cx,cy)，而是下移到中心圆下方很远；
-  //       因此弧半径 arcR 可以做得很大，而弧在中心圆下方只"露"出一小段平缓的托弧，
-  //       形成"大半径、小弧度、托举中心圆"的视觉。
+  // 关键：卡片弧的圆心 arcC 不在屏幕中心 (cx,cy)，而是**上移**到中心圆上方很远；
+  //       弧向下凸（∩ 形/手掌形），在中心圆下方只"露"出一小段平缓的托弧，
+  //       形成"大半径、小弧度、从下方托举中心圆"的视觉。
   //
-  //   (cx, cy) ── 中心 CALB 圆圆心
+  //   (cx, cy - arcOffsetY) = arcC ── 卡片托盘弧的圆心（屏幕中心正上方很远）
   //        │
   //        │ arcOffsetY (向下偏移量，越大弧越平)
   //        ▼
-  //   (cx, cy + arcOffsetY) = arcC ── 卡片托盘弧的圆心
-  //        ↑
-  //   以 arcC 为圆心、arcR 为半径画圆；在这个大圆上取一小段（±arcHalfSpan 角）
-  //   位于中心圆下方的弧 → 就是"托举"中心圆的浅托盘。
+  //   (cx, cy) ── 中心 CALB 圆圆心
+  //        │
+  //        │ cardYAtCenter
+  //        ▼
+  //   选中卡（位于弧最低点） → (cx, cy + cardYAtCenter)
   //
-  // 要让选中卡（正下方那一张）的位置固定在中心圆下方 (cx, cy + cardYAtCenter)，
-  // 由勾股定理/几何关系：arcR - arcOffsetY = cardYAtCenter（即从 arcC 向上量 arcR 到选中卡外弧顶端），
-  // 我们选择 arcR 很大、arcOffsetY ≈ arcR - cardYAtCenter → 弧在中心圆附近极平缓。
+  // 以 arcC 为圆心、arcR 为半径画圆；在这个大圆上取一小段（±arcHalfSpan 角）
+  // 位于中心圆下方的弧 → 就是"托举"中心圆的浅托盘。
+  //
+  // 几何关系：选中卡是弧上最低点，arcCy + arcR = cy + cardYAtCenter
+  //           arcCy = cy - arcOffsetY → arcR - arcOffsetY = cardYAtCenter
+  //           → arcOffsetY = arcR - cardYAtCenter
   const cardYAtCenter = vmin * 0.20   // 选中卡中线在中心圆下方多远（从 cy 往下量）
   const arcR          = vmin * 1.20   // 托盘弧半径（很大 → 弧度平缓）
-  const arcOffsetY    = arcR - cardYAtCenter  // 弧心下移距离
+  const arcOffsetY    = arcR - cardYAtCenter  // 弧心上移距离
   const arcCx         = cx
-  const arcCy         = cy + arcOffsetY       // 弧心位置（屏幕中心正下方很远）
+  const arcCy         = cy - arcOffsetY       // 弧心位置（屏幕中心正上方很远）
   const arcHalfSpan   = Math.PI * 0.17        // 托盘弧可见半角（≈30°，弧度很小）
 
   // ---- 三层同心圆 ----
@@ -409,14 +413,14 @@ function draw(t) {
     displayAbsIdx = targetAbsIdx
   }
 
-  // ====== 卡片布局：沿"下移弧心"的大托盘弧分布 ======
+  // ====== 卡片布局：沿"上移弧心"的大托盘弧分布 ======
   // 每张卡片是一段同心圆弧扇片（以 arcC 为圆心），左右边沿径向（指向 arcC），
   // 顶底是大半径同心圆的圆弧；因弧半径很大、跨度角很小，卡片外观接近水平扁宽玻璃瓦片，
   // 但左右边保持径向垂直于弧切线 → 整体像被一个平缓大弧从下方"托"住中心圆。
   //
-  // 角度约定（在以 arcC 为原点的极坐标里）：
-  //   正下方（选中卡位置）ang = -π/2（向上指屏幕中心方向）
-  //   向左/向右各 k 张 = ang = -π/2 ± k*stepAng
+  // 角度约定（在以 arcC 为原点的极坐标里，0=右、π/2=下、π=左、-π/2=上）：
+  //   正下方（选中卡位置，弧最低点）ang = +π/2（向下指屏幕下方）
+  //   向左/向右各 k 张 = ang = π/2 ± k*stepAng
   // 可见 5 张在 ±arcHalfSpan 范围内（约 ±30°），之外自然渐隐。
   const stepAng     = arcHalfSpan * 2 / 7 // 8张均匀铺满比可见区稍大一点的范围（≈15°/步）
   const cardSpan    = stepAng * 0.70      // 卡片自身跨角（留出间隙 ≈30%）
@@ -424,7 +428,7 @@ function draw(t) {
   const rCornerOut  = vmin * 0.010
   const rCornerIn   = vmin * 0.006
 
-  // 底部贯穿发光弧带（贴合卡片外弧下方，位于托盘弧外弧之外）
+  // 底部贯穿发光弧带（贴合卡片外弧下方，位于托盘弧外弧之外，即 R 更大的同圆弧）
   ctx.save()
   const bandR2 = arcR + cardRadialH * 0.5 + 4
   const bandG2 = ctx.createRadialGradient(arcCx, arcCy, bandR2 - 8, arcCx, arcCy, bandR2 + 12)
@@ -437,21 +441,21 @@ function draw(t) {
   ctx.shadowBlur = 24
   ctx.beginPath()
   ctx.arc(arcCx, arcCy, bandR2,
-          -Math.PI/2 - arcHalfSpan * 1.08,
-          -Math.PI/2 + arcHalfSpan * 1.08)
+          Math.PI/2 - arcHalfSpan * 1.08,
+          Math.PI/2 + arcHalfSpan * 1.08)
   ctx.stroke()
   ctx.shadowBlur = 0
   ctx.restore()
 
-  // 遍历全部卡片（8 路由沿大托盘弧均匀分布；选中卡固定在正下方）
+  // 遍历全部卡片（8 路由沿大托盘弧均匀分布；选中卡固定在弧最低点）
   for (let k = -(n - 1); k <= n - 1; k++) {
     const realIdx = Math.round(displayAbsIdx) + k
     const modIdx  = ((realIdx % n) + n) % n
     const route   = routes[modIdx]
     const dist    = Math.abs(k)
 
-    // 选中卡在正下方（相对 arcC 的正上方，即 -π/2），其他按 stepAng 沿大弧向两侧排布
-    const ang = -Math.PI / 2 + k * stepAng
+    // 选中卡在弧最低点（相对 arcC 的正下方，即 +π/2），其他按 stepAng 沿大弧向两侧排布
+    const ang = Math.PI / 2 + k * stepAng
 
     // 衰减：大弧度下 dist>=3 的卡离弧可见区较远，直接隐藏
     let alpha, scale, extraR
@@ -464,8 +468,8 @@ function draw(t) {
     // 卡片内外弧半径（以 arcC 为圆心）
     const midRc = arcR + extraR
     const hR    = cardRadialH * scale * 0.5
-    const R1    = midRc - hR              // 内弧（靠近 arcC → 远离屏幕方向）
-    const R2    = midRc + hR              // 外弧（靠近屏幕中心圆方向）
+    const R1    = midRc - hR              // 内弧（靠近 arcC → 屏幕上方、靠近中心圆）
+    const R2    = midRc + hR              // 外弧（远离 arcC → 屏幕下方、朝外）
     const spanA = cardSpan * scale
     const ro    = rCornerOut * scale
     const ri    = rCornerIn * scale
@@ -473,7 +477,7 @@ function draw(t) {
     ctx.save()
     ctx.globalAlpha = alpha * sc
 
-    // 选中卡底部向外发光（朝屏幕中心方向，即从 arcC 指向 -π/2 方向）
+    // 选中卡底部向外发光（朝外下方，即从 arcC 指向 +π/2 方向）
     if (dist === 0) {
       const bp = 0.5 + 0.35 * Math.sin(t * 0.004)
       const bx = arcCx + Math.cos(ang) * (R2 + 22)
@@ -502,16 +506,16 @@ function draw(t) {
     ctx.fillStyle = fillGrad
     ctx.fill()
 
-    // ---- 内高光（靠近屏幕一侧的内弧边白色反光带） ----
+    // ---- 内高光（靠近中心圆一侧的内弧边白色反光带，即卡片顶边） ----
     ctx.save()
     ctx.globalAlpha = dist === 0 ? 0.28 : 0.15
     ctx.beginPath()
-    const hlR1 = R2 - (R2 - R1) * 0.22
-    const hlR2 = R2 - 2
+    const hlR1 = R1 + 2
+    const hlR2 = R1 + (R2 - R1) * 0.22
     drawArcTrapezoid(arcCx, arcCy, hlR1, hlR2, ang, spanA * 0.96, ri * 0.5, ri * 0.3)
     const hlG = ctx.createRadialGradient(arcCx, arcCy, hlR1, arcCx, arcCy, hlR2)
-    hlG.addColorStop(0, 'rgba(220, 240, 255, 0)')
-    hlG.addColorStop(1, 'rgba(220, 240, 255, 0.85)')
+    hlG.addColorStop(0, 'rgba(220, 240, 255, 0.85)')
+    hlG.addColorStop(1, 'rgba(220, 240, 255, 0)')
     ctx.fillStyle = hlG
     ctx.fill()
     ctx.restore()
@@ -544,7 +548,7 @@ function draw(t) {
     const ty = arcCy + Math.sin(ang) * midRc
     ctx.save()
     ctx.translate(tx, ty)
-    ctx.rotate(ang + Math.PI / 2)   // 文字基线沿大弧切线方向（大半径→接近水平）
+    ctx.rotate(ang - Math.PI / 2)   // 文字基线沿大弧切线方向（顺时针方向沿弧）
     ctx.font = `bold ${fs}px "Microsoft YaHei", "PingFang SC", sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
