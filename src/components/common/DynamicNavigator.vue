@@ -1,597 +1,667 @@
 <template>
   <Teleport to="body">
-    <Transition name="nav-fade">
-      <div v-if="visible" class="dn-overlay" @click.self="close">
-        <!-- 中心光环背景 -->
-        <div class="dn-halo">
-          <div class="dn-ring dn-ring--outer"></div>
-          <div class="dn-ring dn-ring--mid"></div>
-          <div class="dn-ring dn-ring--inner"></div>
-          <div class="dn-center-title">
-            <div class="dn-center-logo">CALB</div>
-            <div class="dn-center-sub">集成工厂质量周报</div>
-          </div>
-        </div>
-
-        <!-- 弧形导航卡片带：固定视窗 5 张（当前 ±2） -->
-        <!-- key 使用"绝对位置+path"复合 key，确保光标移动时每个位置的 DOM 被正确复用，
-             避免 Vue 因 key 重叠误判为节点增删，导致入场 dn-pop 动画在切换时被重放产生闪动 -->
-        <div class="dn-arc" ref="arcRef">
-          <div
-            v-for="(item, vi) in visibleItems"
-            :key="`${currentAbsIdx - 2 + vi}-${item.key}`"
-            class="dn-card"
-            :class="{
-              'dn-card--active': vi === ACTIVE_IDX,
-              'dn-card--near': Math.abs(vi - ACTIVE_IDX) === 1,
-              'dn-card--side': Math.abs(vi - ACTIVE_IDX) === 2,
-            }"
-            :style="cardStyle(vi)"
-            @click="jumpTo(item.key)"
-          >
-            <div class="dn-card-inner">
-              <div class="dn-card-idx">{{ String(item.index + 1).padStart(2, '0') }}</div>
-              <div class="dn-card-title">{{ item.title }}</div>
-              <div class="dn-card-name">{{ item.name }}</div>
-            </div>
-            <div v-if="vi === ACTIVE_IDX" class="dn-card-glow"></div>
-          </div>
-          <!-- 选中项底部指示光 -->
-          <div class="dn-indicator"></div>
-        </div>
-
-        <!-- 底部快捷键提示 -->
-        <div class="dn-tips">
-          <span><kbd>Alt</kbd>+<kbd>K</kbd> 唤起/关闭</span>
-          <span><kbd>↑</kbd><kbd>↓</kbd>/滚轮 切换</span>
-          <span><kbd>Enter</kbd>/松键 跳转</span>
-          <span><kbd>Alt</kbd>+<kbd>[</kbd>/<kbd>]</kbd> 快速翻页</span>
-          <span><kbd>Esc</kbd> 关闭</span>
-        </div>
+    <div v-show="visible" class="dynav" ref="wrapRef">
+      <canvas ref="canvasRef" class="dynav-canvas"></canvas>
+      <div class="dynav-hint">
+        <kbd>Alt</kbd>+<kbd>K</kbd> 唤起/关闭 ·
+        <kbd>↑</kbd><kbd>↓</kbd> 或 滚轮 选择 ·
+        <kbd>Enter</kbd> 跳转 ·
+        <kbd>Alt</kbd>+<kbd>[</kbd><kbd>]</kbd> 直接翻页
       </div>
-    </Transition>
+    </div>
   </Teleport>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
-const props = defineProps({
-  // 过滤掉非大屏页（noScale=true 的组件演示页默认不显示在导航器）
-  filterNoScale: { type: Boolean, default: true },
-})
-const emit = defineEmits(['change', 'select'])
-
-const route = useRoute()
 const router = useRouter()
+const route = useRoute()
 
-// ============ 从路由动态读取导航项 ============
-const navItems = computed(() => {
-  return router.options.routes
-    .filter(r => !props.filterNoScale || !r.meta?.noScale)
-    .map((r, i) => ({
-      key: r.path,
-      name: r.name || r.path,
-      title: r.meta?.title || r.name,
-      index: i,
-    }))
-})
-
-// ============ 状态 ============
 const visible = ref(false)
-// currentAbsIdx 是完整 navItems 中当前高亮项的下标
-// visible 视窗固定显示 5 张卡片，当前项始终居中（activeIdx 永远 = 2）
-const currentAbsIdx = ref(0)
-const ACTIVE_IDX = 2
-const VISIBLE_COUNT = 5
-const HALF = Math.floor(VISIBLE_COUNT / 2)
+const wrapRef = ref(null)
+const canvasRef = ref(null)
+let ctx = null
+let dpr = 1
+let W = 0
+let H = 0
+let rafId = 0
+let lastT = 0
+const dashOffset = ref(0)
+let animScale = 0
+let animatingCard = false
+let cardAnimT = 0
+let lastRenderedAbs = -1
+let targetAbsIdx = 0
+let displayAbsIdx = 0
 
-// 动画锁：切换动画进行中不接受下一次 move，彻底消除闪动
-let animating = false
-const ANIM_DURATION = 360 // 必须与 CSS transition 保持一致（ms）
+let pendingIdx = null
+let arrowHeld = false
+let wakeLock = 0
 
-// 滚轮节流锁（独立于动画锁，防止滚轮事件过于密集触发）
-let wheelLock = false
-const WHEEL_THROTTLE = 240
-// 唤起瞬间屏蔽滚轮，避免按 Alt+K 时手指在滚轮上导致的误触
-let wakeLock = false
-let wakeTimer = null
+const PARTICLES = 60
+const particles = []
 
-// 「按住未释放」光标位置：第一次按方向键时设为 currentAbsIdx，
-// 移动时只更新 pendingIdx（不立刻提交到路由），keyup 时一次性 jumpTo。
-// 这确保无论 move 是否被动画锁挡住，松手时都能准确跳到最后光标所在位置。
-let pendingIdx = -1
-
-const visibleItems = computed(() => {
-  const total = navItems.value.length
-  if (total === 0) return []
-  const start = currentAbsIdx.value - HALF
-  const arr = []
-  for (let i = 0; i < VISIBLE_COUNT; i++) {
-    let idx = start + i
-    if (idx < 0) idx = total + idx
-    if (idx >= total) idx = idx - total
-    arr.push(navItems.value[idx])
-  }
-  return arr
-})
-
-// ============ 打开/关闭 ============
-const open = () => {
-  const curPath = route.path
-  const i = navItems.value.findIndex(n => n.key === curPath)
-  currentAbsIdx.value = i >= 0 ? i : 0
-  pendingIdx = currentAbsIdx.value
-  visible.value = true
-  // 唤起瞬间短暂屏蔽滚轮
-  wakeLock = true
-  clearTimeout(wakeTimer)
-  wakeTimer = setTimeout(() => { wakeLock = false }, 280)
-}
-const close = () => {
-  visible.value = false
-  animating = false
-  wakeLock = false
-  pendingIdx = -1
-  clearTimeout(wakeTimer)
-}
-const jumpTo = (key) => {
-  if (route.path === key) { close(); return }
-  router.push(key).then(() => close())
-}
-
-// ============ 切换（光标移动，只改 currentAbsIdx，不跳转） ============
-const move = (delta) => {
-  if (animating) return false
-  const total = navItems.value.length
-  if (total === 0) return false
-  let next = currentAbsIdx.value + delta
-  if (next < 0) next = total - 1
-  if (next >= total) next = 0
-  if (next === currentAbsIdx.value) return false
-  currentAbsIdx.value = next
-  pendingIdx = next
-  animating = true
-  setTimeout(() => { animating = false }, ANIM_DURATION)
-  return true
-}
-
-// ============ 提交：松手/Enter 时跳转到 pendingIdx ============
-const commitPending = () => {
-  if (pendingIdx < 0) return
-  const target = navItems.value[pendingIdx]
-  pendingIdx = -1
-  if (target) jumpTo(target.key)
-}
-
-// ============ 卡片弧形布局 ============
-const cardStyle = (vi) => {
-  const step = 18
-  const R = 560
-  const angle = (vi - ACTIVE_IDX) * step
-  const dist = Math.abs(vi - ACTIVE_IDX)
-  const isActive = vi === ACTIVE_IDX
-  const scale = isActive ? 1.1 : (dist === 1 ? 0.9 : 0.75)
-  const opacity = isActive ? 1 : (dist === 1 ? 0.85 : 0.55)
-  const z = isActive ? 30 : (dist === 1 ? 20 : 10)
-  return {
-    transform: `rotate(${angle}deg) translateY(-${R}px) rotate(${-angle}deg) scale(${scale})`,
-    opacity,
-    zIndex: z,
+function initParticles() {
+  particles.length = 0
+  for (let i = 0; i < PARTICLES; i++) {
+    particles.push({
+      x: Math.random() * 2 - 1,
+      y: Math.random() * 2 - 1,
+      r: Math.random() * 1.8 + 0.4,
+      vx: (Math.random() - 0.5) * 0.00025,
+      vy: (Math.random() - 0.5) * 0.00025,
+      a: Math.random() * 0.6 + 0.2,
+      ph: Math.random() * Math.PI * 2,
+    })
   }
 }
 
-// ============ 判断是否在可编辑元素内（输入框/文本域等，不拦截快捷键） ============
-const isInEditable = (el) => {
-  if (!el) return false
-  const tag = el.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
-    el.isContentEditable === true
+function getRoutes() {
+  const all = router.options.routes || []
+  const result = []
+  const walk = (list) => {
+    list.forEach((r) => {
+      if (!r.meta || r.meta.noScale !== true) {
+        if (r.path && r.path !== '/' && r.path !== '/:pathMatch(.*)*' && r.name) {
+          result.push({
+            path: r.path,
+            name: r.meta && r.meta.title ? r.meta.title : (r.name || r.path),
+            sub: r.meta && r.meta.subtitle ? r.meta.subtitle : '',
+          })
+        }
+      }
+      if (r.children) walk(r.children)
+    })
+  }
+  walk(all)
+  return result
 }
 
-// ============ 键盘事件 ============
-// 用 e.repeat（浏览器原生标记）判断长按重复，不再依赖自维护的 arrowHeld 标志位——
-// 这是消除"按住闪动"最可靠的方式：浏览器保证第一次按下 repeat=false，
-// 操作系统产生的自动重复事件 repeat=true，不会因为 keyup 丢失而卡死。
-const onKeyDown = (e) => {
-  // 在输入框内不拦截
-  if (isInEditable(e.target)) return
+function currentIndex(routes) {
+  const p = route.path
+  const i = routes.findIndex((r) => r.path === p)
+  return i < 0 ? 0 : i
+}
 
-  // Alt+K：唤起/关闭。必须 !e.repeat，避免按住 Alt 时反复开关导致闪动
-  if (!e.repeat && e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'k' || e.key === 'K')) {
-    e.preventDefault()
-    e.stopPropagation()
-    visible.value ? close() : open()
+function resize() {
+  if (!canvasRef.value) return
+  dpr = Math.min(window.devicePixelRatio || 1, 2)
+  W = window.innerWidth
+  H = window.innerHeight
+  canvasRef.value.width = W * dpr
+  canvasRef.value.height = H * dpr
+  canvasRef.value.style.width = W + 'px'
+  canvasRef.value.style.height = H + 'px'
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+}
+
+// 菱形斜切角：四角切 cutRatio，圆角 r，中心在(0,0)
+function drawRoundedDiamondAtOrigin(w, h, cutRatio = 0.18, r = 8) {
+  const cw = w * cutRatio
+  const ch = h * cutRatio
+  ctx.beginPath()
+  ctx.moveTo(-w / 2 + cw, -h / 2)
+  ctx.lineTo(w / 2 - cw, -h / 2)
+  ctx.arcTo(w / 2, -h / 2, w / 2, -h / 2 + ch, r)
+  ctx.lineTo(w / 2, h / 2 - ch)
+  ctx.arcTo(w / 2, h / 2, w / 2 - cw, h / 2, r)
+  ctx.lineTo(-w / 2 + cw, h / 2)
+  ctx.arcTo(-w / 2, h / 2, -w / 2, h / 2 - ch, r)
+  ctx.lineTo(-w / 2, -h / 2 + ch)
+  ctx.arcTo(-w / 2, -h / 2, -w / 2 + cw, -h / 2, r)
+  ctx.closePath()
+}
+
+function draw(t) {
+  if (!ctx) return
+  const dt = lastT ? t - lastT : 16
+  lastT = t
+
+  ctx.clearRect(0, 0, W, H)
+
+  // ---- 背景 ----
+  const bgGrad = ctx.createRadialGradient(W / 2, H / 2, 50, W / 2, H / 2, Math.max(W, H) * 0.7)
+  bgGrad.addColorStop(0, '#0d2a5e')
+  bgGrad.addColorStop(0.55, '#071a40')
+  bgGrad.addColorStop(1, '#030c24')
+  ctx.fillStyle = bgGrad
+  ctx.fillRect(0, 0, W, H)
+
+  // 网格
+  ctx.strokeStyle = 'rgba(120, 180, 255, 0.08)'
+  ctx.lineWidth = 1
+  const gs = 60
+  ctx.beginPath()
+  for (let x = 0; x < W; x += gs) { ctx.moveTo(x, 0); ctx.lineTo(x, H) }
+  for (let y = 0; y < H; y += gs) { ctx.moveTo(0, y); ctx.lineTo(W, y) }
+  ctx.stroke()
+
+  // 四角光晕
+  const cornerGlow = (x, y, rx, ry, color) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry))
+    g.addColorStop(0, color)
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, W, H)
+  }
+  cornerGlow(0, 0, 500, 400, 'rgba(40, 120, 255, 0.25)')
+  cornerGlow(W, 0, 500, 400, 'rgba(20, 80, 200, 0.22)')
+  cornerGlow(W, H, 500, 400, 'rgba(10, 60, 160, 0.2)')
+  cornerGlow(0, H, 500, 400, 'rgba(30, 100, 220, 0.2)')
+
+  // 左上角小柱图
+  ctx.save()
+  ctx.globalAlpha = 0.32
+  const barX = 60, barY = H - 180
+  const barH = [20, 40, 28, 55, 70, 50, 85, 100, 75, 120]
+  barH.forEach((h, i) => {
+    const grad = ctx.createLinearGradient(0, barY - h, 0, barY)
+    grad.addColorStop(0, 'rgba(80,180,255,0.9)')
+    grad.addColorStop(1, 'rgba(20,80,180,0.2)')
+    ctx.fillStyle = grad
+    ctx.fillRect(barX + i * 14, barY - h, 10, h)
+  })
+  ctx.restore()
+
+  // 右上角小柱图
+  ctx.save()
+  ctx.globalAlpha = 0.28
+  const barX2 = W - 220, barY2 = H - 120
+  const barH2 = [30, 60, 45, 80, 55, 95, 70, 110]
+  barH2.forEach((h, i) => {
+    const grad = ctx.createLinearGradient(0, barY2 - h, 0, barY2)
+    grad.addColorStop(0, 'rgba(80,200,255,0.9)')
+    grad.addColorStop(1, 'rgba(20,100,200,0.2)')
+    ctx.fillStyle = grad
+    ctx.fillRect(barX2 + i * 18, barY2 - h, 12, h)
+  })
+  ctx.restore()
+
+  // 入场缩放
+  const sc = animScale
+  ctx.save()
+  ctx.translate(W / 2, H / 2)
+  ctx.scale(sc, sc)
+  ctx.translate(-W / 2, -H / 2)
+
+  const cx = W / 2
+  const cy = H / 2
+
+  const innerR = Math.min(W, H) * 0.17
+  const midR = innerR * 1.28
+  const outerR = innerR * 1.65
+  const cardR = Math.min(W, H) * 0.42  // 卡片弧半径
+
+  // ---- 三层同心圆 ----
+  // 内层亮环
+  ctx.beginPath()
+  ctx.arc(cx, cy, innerR, 0, Math.PI * 2)
+  const inG = ctx.createRadialGradient(cx, cy, innerR - 20, cx, cy, innerR + 4)
+  inG.addColorStop(0, 'rgba(120, 200, 255, 0)')
+  inG.addColorStop(0.85, 'rgba(140, 220, 255, 0.5)')
+  inG.addColorStop(1, 'rgba(180, 230, 255, 0.95)')
+  ctx.strokeStyle = inG
+  ctx.lineWidth = 2.5
+  ctx.shadowColor = 'rgba(120, 220, 255, 0.9)'
+  ctx.shadowBlur = 20
+  ctx.stroke()
+  ctx.shadowBlur = 0
+
+  // 中层实环
+  ctx.beginPath()
+  ctx.arc(cx, cy, midR, 0, Math.PI * 2)
+  const midG = ctx.createLinearGradient(cx - midR, cy, cx + midR, cy)
+  midG.addColorStop(0, 'rgba(40, 120, 220, 0.2)')
+  midG.addColorStop(0.5, 'rgba(80, 170, 255, 0.8)')
+  midG.addColorStop(1, 'rgba(40, 120, 220, 0.2)')
+  ctx.strokeStyle = midG
+  ctx.lineWidth = 2
+  ctx.shadowColor = 'rgba(60, 150, 255, 0.7)'
+  ctx.shadowBlur = 16
+  ctx.stroke()
+  ctx.shadowBlur = 0
+
+  // 外层虚线自转环
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(dashOffset.value)
+  ctx.beginPath()
+  ctx.arc(0, 0, outerR, 0, Math.PI * 2)
+  ctx.setLineDash([8, 14])
+  ctx.strokeStyle = 'rgba(140, 200, 255, 0.55)'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.restore()
+
+  // ---- 两条斜向光束 ----
+  const pulse = 0.45 + 0.25 * Math.sin(t * 0.0015)
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.translate(cx, cy)
+  for (let a of [-Math.PI / 4, Math.PI / 4]) {
+    ctx.save()
+    ctx.rotate(a)
+    const beam = ctx.createLinearGradient(-outerR * 1.6, 0, outerR * 1.6, 0)
+    beam.addColorStop(0, 'rgba(100, 190, 255, 0)')
+    beam.addColorStop(0.45, `rgba(140, 220, 255, ${0.25 * pulse})`)
+    beam.addColorStop(0.5, `rgba(200, 240, 255, ${0.55 * pulse})`)
+    beam.addColorStop(0.55, `rgba(140, 220, 255, ${0.25 * pulse})`)
+    beam.addColorStop(1, 'rgba(100, 190, 255, 0)')
+    ctx.fillStyle = beam
+    ctx.fillRect(-outerR * 1.6, -1, outerR * 3.2, 2)
+    ctx.restore()
+  }
+  ctx.restore()
+
+  // ---- 粒子 ----
+  particles.forEach((p) => {
+    p.x += p.vx * dt
+    p.y += p.vy * dt
+    if (p.x > 1.2) p.x = -1.2
+    if (p.x < -1.2) p.x = 1.2
+    if (p.y > 1.2) p.y = -1.2
+    if (p.y < -1.2) p.y = 1.2
+    const px = cx + p.x * W / 2
+    const py = cy + p.y * H / 2
+    const alpha = p.a * (0.6 + 0.4 * Math.sin(t * 0.002 + p.ph))
+    ctx.beginPath()
+    ctx.arc(px, py, p.r, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(160, 220, 255, ${alpha})`
+    ctx.shadowColor = 'rgba(120, 200, 255, 0.8)'
+    ctx.shadowBlur = 6
+    ctx.fill()
+  })
+  ctx.shadowBlur = 0
+
+  // ---- 中心文字 ----
+  ctx.save()
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = 'bold 92px Arial Black, "Helvetica Neue", sans-serif'
+  const calbGrad = ctx.createLinearGradient(cx, cy - 80, cx, cy + 20)
+  calbGrad.addColorStop(0, '#e8f4ff')
+  calbGrad.addColorStop(0.45, '#9ec8ff')
+  calbGrad.addColorStop(0.55, '#c9e2ff')
+  calbGrad.addColorStop(1, '#3a6bb5')
+  ctx.fillStyle = calbGrad
+  ctx.shadowColor = 'rgba(100, 180, 255, 0.9)'
+  ctx.shadowBlur = 24
+  ctx.strokeStyle = 'rgba(180, 220, 255, 0.7)'
+  ctx.lineWidth = 1.5
+  ctx.strokeText('CALB', cx, cy - 28)
+  ctx.fillText('CALB', cx, cy - 28)
+  ctx.shadowBlur = 0
+
+  ctx.font = 'bold 50px "Microsoft YaHei", "PingFang SC", sans-serif'
+  const subGrad = ctx.createLinearGradient(cx, cy + 20, cx, cy + 90)
+  subGrad.addColorStop(0, '#ffffff')
+  subGrad.addColorStop(1, '#9ecbff')
+  ctx.fillStyle = subGrad
+  ctx.shadowColor = 'rgba(100, 180, 255, 0.8)'
+  ctx.shadowBlur = 16
+  ctx.fillText('集成工厂质量周报', cx, cy + 55)
+  ctx.shadowBlur = 0
+  ctx.restore()
+
+  // ---- 卡片排布 ----
+  const routes = getRoutes()
+  const n = routes.length
+  if (n === 0) {
+    ctx.restore()
+    rafId = requestAnimationFrame(draw)
     return
   }
-
-  // Alt+[ / Alt+]：快速翻页（不唤起导航器，直接跳转）
-  if (!e.repeat && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-    if (e.key === '[') {
-      e.preventDefault()
-      e.stopPropagation()
-      quickJump(-1)
-      return
+  if (animatingCard) {
+    cardAnimT += dt / 380
+    if (cardAnimT >= 1) {
+      cardAnimT = 1
+      animatingCard = false
+      displayAbsIdx = targetAbsIdx
+    } else {
+      const k = 1 - Math.pow(1 - cardAnimT, 3)
+      displayAbsIdx = lastRenderedAbs + (targetAbsIdx - lastRenderedAbs) * k
     }
-    if (e.key === ']') {
-      e.preventDefault()
-      e.stopPropagation()
-      quickJump(1)
-      return
-    }
-  }
-
-  if (!visible.value) return
-
-  if (e.key === 'Escape') {
-    e.preventDefault()
-    e.stopPropagation()
-    close()
-    return
-  }
-
-  // 方向键：repeat=true 的事件全部丢弃，彻底消除按住闪动
-  if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!e.repeat) {
-      pendingIdx = currentAbsIdx.value
-      move(-1)
-    }
-    return
-  }
-  if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!e.repeat) {
-      pendingIdx = currentAbsIdx.value
-      move(1)
-    }
-    return
-  }
-
-  if (e.key === 'Enter' && !e.repeat) {
-    e.preventDefault()
-    e.stopPropagation()
-    commitPending()
-    return
-  }
-}
-
-const onKeyUp = (e) => {
-  // 方向键抬起：提交 pending 跳转
-  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-    if (visible.value) {
-      commitPending()
-    }
-    return
-  }
-  // 如果是 Alt 键本身抬起（例如用户按了 Alt+K 后释放 Alt），
-  // 不做任何处理，避免误触发 close
-}
-
-// 页面失焦（切窗口/Alt+Tab 切标签）时，如果导航器打开且有 pending，
-// 不自动跳转，直接关闭——避免"回到页面发现已经跳了"的诡异体验
-const onBlur = () => {
-  if (visible.value) close()
-}
-
-// 快速翻页（不打开导航器）
-const quickJump = (delta) => {
-  const total = navItems.value.length
-  if (total === 0) return
-  let i = navItems.value.findIndex(n => n.key === route.path)
-  i = (i + delta + total) % total
-  const target = navItems.value[i]
-  if (target && target.key !== route.path) router.push(target.key)
-}
-
-// ============ 滚轮切换 ============
-const onWheel = (e) => {
-  if (!visible.value) return
-  if (wakeLock) { e.preventDefault(); return }
-  e.preventDefault()
-  if (wheelLock) return
-  // trackpad 双指缩放或横向滚动忽略
-  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
-  wheelLock = true
-  if (e.deltaY > 0) move(1)
-  else if (e.deltaY < 0) move(-1)
-  setTimeout(() => { wheelLock = false }, WHEEL_THROTTLE)
-}
-
-// ============ 路由变化时同步选中项 ============
-watch(() => route.path, (p) => {
-  if (visible.value) {
-    // 路由变了说明已经完成跳转，关闭导航器
-    close()
   } else {
-    const i = navItems.value.findIndex(n => n.key === p)
-    if (i >= 0) currentAbsIdx.value = i
+    displayAbsIdx = targetAbsIdx
   }
-})
+
+  const visibleCount = 5
+  const halfSpan = Math.floor(visibleCount / 2) // 2
+  // 弧角度（极坐标：0=右，π/2=下，π=左）
+  const startAngle = Math.PI * 0.80   // 左下 144°
+  const endAngle = Math.PI * 0.20     // 右下 36°
+  const arcSpan = startAngle - endAngle
+  const step = arcSpan / (visibleCount - 1)
+
+  // 底部发光弧线（在卡片外弧下方）
+  ctx.save()
+  const arcR = cardR + 110
+  const botG = ctx.createLinearGradient(cx, cy + arcR - 80, cx, cy + arcR + 20)
+  botG.addColorStop(0, 'rgba(80, 180, 255, 0)')
+  botG.addColorStop(0.6, 'rgba(100, 200, 255, 0.9)')
+  botG.addColorStop(1, 'rgba(180, 230, 255, 0.3)')
+  ctx.strokeStyle = botG
+  ctx.lineWidth = 3
+  ctx.shadowColor = 'rgba(100, 200, 255, 0.8)'
+  ctx.shadowBlur = 18
+  ctx.beginPath()
+  ctx.arc(cx, cy, arcR, endAngle - 0.05, startAngle + 0.05)
+  ctx.stroke()
+  ctx.shadowBlur = 0
+  ctx.restore()
+
+  for (let i = 0; i < visibleCount; i++) {
+    let realIdx = Math.round(displayAbsIdx) - halfSpan + i
+    let rel = realIdx - displayAbsIdx
+    let modIdx = ((realIdx % n) + n) % n
+    const route = routes[modIdx]
+
+    const dist = Math.abs(rel)
+    let scale, alpha, yOff
+    if (dist <= 0.5) { scale = 1.08; alpha = 1; yOff = 0 }
+    else if (dist <= 1.5) { scale = 0.92; alpha = 0.82; yOff = 10 }
+    else { scale = 0.76; alpha = 0.55; yOff = 22 }
+
+    const ang = startAngle - i * step
+    const px = cx + Math.cos(ang) * cardR
+    const py = cy + Math.sin(ang) * cardR + yOff
+
+    const cw = 210 * scale
+    const ch = 120 * scale
+
+    ctx.save()
+    ctx.globalAlpha = alpha * sc
+
+    // 移到卡片中心并旋转：让卡片"顶边朝外"——正下方时卡片竖直朝上（rotate 0）
+    ctx.translate(px, py)
+    ctx.rotate(ang - Math.PI / 2) // 极角90°(下)→0°旋转，144°→+54°，36°→-54°
+
+    // 选中卡底部光束（在旋转坐标系里朝下+y方向发光）
+    if (dist <= 0.5) {
+      const beamG = ctx.createRadialGradient(0, ch / 2 + 10, 4, 0, ch / 2 + 30, 120)
+      const bp = 0.45 + 0.35 * Math.sin(t * 0.004)
+      beamG.addColorStop(0, `rgba(120, 220, 255, ${0.75 * bp})`)
+      beamG.addColorStop(1, 'rgba(80, 160, 255, 0)')
+      ctx.fillStyle = beamG
+      ctx.beginPath()
+      ctx.ellipse(0, ch / 2 + 30, cw * 0.55, 50, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    // 卡片主体（菱形斜切角）
+    drawRoundedDiamondAtOrigin(cw, ch, 0.18, 8 * scale)
+
+    if (dist <= 0.5) {
+      const cardG = ctx.createLinearGradient(0, -ch / 2, 0, ch / 2)
+      cardG.addColorStop(0, 'rgba(40, 130, 240, 0.95)')
+      cardG.addColorStop(0.5, 'rgba(20, 90, 210, 0.9)')
+      cardG.addColorStop(1, 'rgba(10, 50, 150, 0.9)')
+      ctx.fillStyle = cardG
+      ctx.shadowColor = 'rgba(80, 180, 255, 0.95)'
+      ctx.shadowBlur = 28
+    } else {
+      const cardG = ctx.createLinearGradient(0, -ch / 2, 0, ch / 2)
+      cardG.addColorStop(0, 'rgba(40, 80, 160, 0.7)')
+      cardG.addColorStop(1, 'rgba(15, 35, 90, 0.75)')
+      ctx.fillStyle = cardG
+      ctx.shadowColor = 'rgba(40, 100, 200, 0.4)'
+      ctx.shadowBlur = 12
+    }
+    ctx.fill()
+    ctx.shadowBlur = 0
+
+    // 上高光 + 描边
+    ctx.save()
+    ctx.clip()
+    const hi = ctx.createLinearGradient(0, -ch / 2, 0, -ch / 2 + ch * 0.35)
+    hi.addColorStop(0, 'rgba(255,255,255,0.25)')
+    hi.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = hi
+    ctx.fillRect(-cw, -ch, cw * 2, ch)
+    ctx.strokeStyle = dist <= 0.5 ? 'rgba(180, 230, 255, 0.8)' : 'rgba(120, 180, 255, 0.4)'
+    ctx.lineWidth = 1.2
+    ctx.stroke()
+    ctx.restore()
+
+    // 文字（跟随卡片旋转）
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    // 序号（顶部）
+    ctx.fillStyle = dist <= 0.5 ? 'rgba(220, 240, 255, 0.95)' : 'rgba(160, 200, 240, 0.7)'
+    ctx.font = `bold ${12 * scale}px "Microsoft YaHei", sans-serif`
+    ctx.fillText(`NO.${String(modIdx + 1).padStart(2, '0')}`, 0, -ch * 0.33)
+    // 标题
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `bold ${20 * scale}px "Microsoft YaHei", sans-serif`
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'
+    ctx.shadowBlur = 4
+    const title = route.name.length > 7 ? route.name.slice(0, 7) : route.name
+    ctx.fillText(title, 0, 2 * scale)
+    ctx.shadowBlur = 0
+    // 副标题
+    if (route.sub) {
+      ctx.fillStyle = dist <= 0.5 ? 'rgba(200, 230, 255, 0.8)' : 'rgba(150, 190, 230, 0.6)'
+      ctx.font = `${11 * scale}px "Microsoft YaHei", sans-serif`
+      ctx.fillText(route.sub, 0, ch * 0.3)
+    }
+
+    ctx.restore()
+  }
+
+  ctx.restore()
+
+  dashOffset.value += 0.0008 * dt
+
+  if (visible.value) {
+    if (animScale < 1) animScale = Math.min(1, animScale + dt / 420)
+    rafId = requestAnimationFrame(draw)
+  }
+}
+
+function openNav() {
+  if (visible.value) { closeNav(); return }
+  const routes = getRoutes()
+  const ci = currentIndex(routes)
+  targetAbsIdx = ci
+  displayAbsIdx = ci
+  lastRenderedAbs = ci
+  pendingIdx = ci
+  animatingCard = false
+  cardAnimT = 0
+  animScale = 0
+  wakeLock = performance.now()
+  arrowHeld = false
+  initParticles()
+  visible.value = true
+  nextTick(() => {
+    resize()
+    cancelAnimationFrame(rafId)
+    lastT = 0
+    rafId = requestAnimationFrame(draw)
+  })
+}
+
+function closeNav(commit = false) {
+  if (commit && pendingIdx !== null) {
+    const routes = getRoutes()
+    const n = routes.length
+    const idx = ((pendingIdx % n) + n) % n
+    if (routes[idx] && routes[idx].path !== route.path) {
+      router.push(routes[idx].path)
+    }
+  }
+  visible.value = false
+  cancelAnimationFrame(rafId)
+  pendingIdx = null
+  arrowHeld = false
+  animScale = 0
+}
+
+function move(delta) {
+  if (!visible.value) return
+  if (animatingCard) return
+  const routes = getRoutes()
+  const n = routes.length
+  if (n === 0) return
+  lastRenderedAbs = displayAbsIdx
+  const base = pendingIdx !== null ? pendingIdx : targetAbsIdx
+  pendingIdx = base + delta
+  targetAbsIdx = pendingIdx
+  animatingCard = true
+  cardAnimT = 0
+}
+
+function onKeyDown(e) {
+  const t = e.target
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+
+  if (e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && (e.key === 'k' || e.key === 'K')) {
+    if (e.repeat) return
+    e.preventDefault(); e.stopPropagation()
+    openNav(); return
+  }
+  if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === '[') {
+    if (e.repeat) return
+    e.preventDefault(); e.stopPropagation()
+    const routes = getRoutes(); const n = routes.length; const ci = currentIndex(routes)
+    const next = (ci - 1 + n) % n
+    if (routes[next]) router.push(routes[next].path)
+    return
+  }
+  if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === ']') {
+    if (e.repeat) return
+    e.preventDefault(); e.stopPropagation()
+    const routes = getRoutes(); const n = routes.length; const ci = currentIndex(routes)
+    const next = (ci + 1) % n
+    if (routes[next]) router.push(routes[next].path)
+    return
+  }
+  if (!visible.value) return
+
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+    if (e.repeat) { e.preventDefault(); return }
+    e.preventDefault(); e.stopPropagation()
+    arrowHeld = true; move(1); return
+  }
+  if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+    if (e.repeat) { e.preventDefault(); return }
+    e.preventDefault(); e.stopPropagation()
+    arrowHeld = true; move(-1); return
+  }
+  if (e.key === 'Enter') {
+    if (e.repeat) return
+    e.preventDefault(); closeNav(true); return
+  }
+  if (e.key === 'Escape') {
+    if (e.repeat) return
+    e.preventDefault(); closeNav(false); return
+  }
+}
+
+function onKeyUp(e) {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+    arrowHeld = false
+    if (visible.value) closeNav(true)
+    return
+  }
+  if (e.key === 'Alt' && visible.value && arrowHeld) {
+    arrowHeld = false; closeNav(true)
+  }
+}
+
+let wheelLock = 0
+function onWheel(e) {
+  if (!visible.value) return
+  const now = performance.now()
+  if (now - wakeLock < 280) { e.preventDefault(); return }
+  if (now - wheelLock < 260) { e.preventDefault(); return }
+  wheelLock = now
+  e.preventDefault()
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && Math.abs(e.deltaY) > 5) {
+    move(e.deltaY > 0 ? 1 : -1)
+    clearTimeout(onWheel._t)
+    onWheel._t = setTimeout(() => { if (visible.value) closeNav(true) }, 420)
+  }
+}
+
+function onClick(e) {
+  if (!visible.value) return
+  if (e.target === canvasRef.value || e.target === wrapRef.value) closeNav(false)
+}
+
+function onResize() { if (visible.value) resize() }
+function onBlur() { if (visible.value) closeNav(false) }
 
 onMounted(() => {
-  // 用 capture:true 在捕获阶段处理，优先于页面其他监听；
-  // 同时避免事件冒泡被其他组件拦截/重复响应。
-  window.addEventListener('keydown', onKeyDown, { capture: true })
-  window.addEventListener('keyup', onKeyUp, { capture: true })
+  nextTick(() => {
+    if (canvasRef.value) ctx = canvasRef.value.getContext('2d')
+    resize()
+  })
+  window.addEventListener('keydown', onKeyDown, true)
+  window.addEventListener('keyup', onKeyUp, true)
   window.addEventListener('wheel', onWheel, { passive: false, capture: true })
+  window.addEventListener('resize', onResize)
   window.addEventListener('blur', onBlur)
-  const i = navItems.value.findIndex(n => n.key === route.path)
-  if (i >= 0) currentAbsIdx.value = i
-})
-onUnmounted(() => {
-  window.removeEventListener('keydown', onKeyDown, { capture: true })
-  window.removeEventListener('keyup', onKeyUp, { capture: true })
-  window.removeEventListener('wheel', onWheel, { capture: true })
-  window.removeEventListener('blur', onBlur)
-  clearTimeout(wakeTimer)
+  document.addEventListener('click', onClick)
 })
 
-defineExpose({ open, close, toggle: () => visible.value ? close() : open() })
+onUnmounted(() => {
+  cancelAnimationFrame(rafId)
+  window.removeEventListener('keydown', onKeyDown, true)
+  window.removeEventListener('keyup', onKeyUp, true)
+  window.removeEventListener('wheel', onWheel, { passive: false, capture: true })
+  window.removeEventListener('resize', onResize)
+  window.removeEventListener('blur', onBlur)
+  document.removeEventListener('click', onClick)
+  clearTimeout(onWheel._t)
+})
 </script>
 
-<style lang="scss" scoped>
-.dn-overlay {
+<style scoped lang="scss">
+.dynav {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: radial-gradient(ellipse at center, rgba(5, 20, 50, 0.78) 0%, rgba(2, 8, 24, 0.92) 100%);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  user-select: none;
+  background: rgba(3, 10, 30, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: dn-fade 0.32s ease-out;
 }
-
-// ========== 中心光环 ==========
-.dn-halo {
+@keyframes dn-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.dynav-canvas {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-  pointer-events: none;
+  inset: 0;
+  display: block;
 }
-.dn-ring {
-  position: absolute;
-  border-radius: 50%;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  border: 1px solid rgba(64, 158, 255, 0.35);
-}
-.dn-ring--outer {
-  width: 780px; height: 780px;
-  border: 1px dashed rgba(64, 158, 255, 0.4);
-  animation: dn-rotate 40s linear infinite;
-}
-.dn-ring--mid {
-  width: 620px; height: 620px;
-  border: 1px solid rgba(64, 158, 255, 0.5);
-  box-shadow: 0 0 40px rgba(64, 158, 255, 0.25) inset, 0 0 40px rgba(64, 158, 255, 0.2);
-}
-.dn-ring--inner {
-  width: 460px; height: 460px;
-  border: 2px solid rgba(100, 200, 255, 0.6);
-  box-shadow: 0 0 60px rgba(100, 200, 255, 0.35) inset;
-}
-.dn-center-title {
-  position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  pointer-events: none;
-  .dn-center-logo {
-    font-size: 92px;
-    font-weight: 900;
-    letter-spacing: 8px;
-    background: linear-gradient(180deg, #e8f4ff 0%, #5ab4ff 55%, #1a6cc9 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    text-shadow: 0 0 30px rgba(90, 180, 255, 0.4);
-    font-family: 'Arial Black', sans-serif;
-  }
-  .dn-center-sub {
-    margin-top: 12px;
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: 6px;
-    color: #cfe7ff;
-    text-shadow: 0 0 20px rgba(90, 180, 255, 0.6);
-  }
-}
-
-// ========== 弧形卡片带 ==========
-.dn-arc {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0; height: 0;
-  transform: translate(-50%, 20px);
-}
-
-.dn-card {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 220px;
-  height: 130px;
-  margin-left: -110px;
-  margin-top: -65px;
-  transform-origin: center center;
-  transition: transform 0.36s cubic-bezier(.2,.8,.2,1),
-              opacity 0.3s ease,
-              background 0.3s ease,
-              border-color 0.3s ease,
-              box-shadow 0.3s ease;
-  will-change: transform, opacity;
-  cursor: pointer;
-  border-radius: 16px;
-  background: linear-gradient(145deg, rgba(20, 55, 110, 0.85), rgba(10, 30, 70, 0.9));
-  border: 1px solid rgba(100, 180, 255, 0.4);
-  box-shadow:
-    0 6px 24px rgba(0, 0, 0, 0.5),
-    0 0 16px rgba(64, 158, 255, 0.2) inset;
-  backdrop-filter: blur(4px);
-  overflow: hidden;
-
-  &::before, &::after {
-    content: '';
-    position: absolute;
-    left: 8%; right: 8%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(120, 200, 255, 0.7), transparent);
-  }
-  &::before { top: 6px; }
-  &::after { bottom: 6px; }
-}
-.dn-card-inner {
-  position: relative;
-  width: 100%; height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  color: #cfe7ff;
-}
-.dn-card-idx {
-  position: absolute;
-  top: 8px; left: 12px;
-  font-size: 12px;
-  color: rgba(120, 200, 255, 0.7);
-  font-family: 'Courier New', monospace;
-  letter-spacing: 1px;
-}
-.dn-card-title {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-shadow: 0 0 10px rgba(90, 180, 255, 0.4);
-  transition: color 0.3s, font-size 0.3s;
-}
-.dn-card-name {
-  margin-top: 6px;
-  font-size: 13px;
-  color: rgba(180, 220, 255, 0.7);
-  letter-spacing: 1px;
-  transition: color 0.3s;
-}
-
-.dn-card--active {
-  background: linear-gradient(145deg, rgba(40, 130, 230, 0.95), rgba(15, 60, 140, 0.95));
-  border-color: rgba(180, 230, 255, 0.9);
-  box-shadow:
-    0 10px 40px rgba(0, 30, 80, 0.7),
-    0 0 30px rgba(90, 180, 255, 0.8),
-    0 0 60px rgba(90, 180, 255, 0.4) inset;
-  .dn-card-title { color: #fff; font-size: 30px; }
-  .dn-card-name { color: #dff1ff; }
-  .dn-card-idx { color: #bfe4ff; }
-}
-.dn-card--near {
-  background: linear-gradient(145deg, rgba(25, 70, 135, 0.88), rgba(12, 38, 85, 0.9));
-}
-.dn-card-glow {
-  position: absolute;
-  left: -20%; right: -20%;
-  bottom: -40%;
-  height: 80%;
-  background: radial-gradient(ellipse at center, rgba(120, 210, 255, 0.6) 0%, transparent 70%);
-  pointer-events: none;
-  animation: dn-pulse 2s ease-in-out infinite;
-}
-
-// 选中项底部光束
-.dn-indicator {
-  position: absolute;
-  left: 50%;
-  bottom: -180px;
-  width: 4px;
-  height: 220px;
-  transform: translateX(-50%);
-  background: linear-gradient(180deg, rgba(100, 200, 255, 0.9), rgba(100, 200, 255, 0));
-  filter: blur(2px);
-}
-.dn-indicator::before {
-  content: '';
-  position: absolute;
-  left: -14px; top: 0;
-  width: 32px; height: 4px;
-  background: rgba(180, 230, 255, 0.9);
-  border-radius: 2px;
-  box-shadow: 0 0 20px rgba(100, 200, 255, 0.9);
-}
-
-// ========== 底部提示 ==========
-.dn-tips {
+.dynav-hint {
   position: absolute;
   bottom: 36px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
-  gap: 24px;
-  color: rgba(180, 220, 255, 0.75);
+  color: rgba(200, 225, 255, 0.75);
   font-size: 13px;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 90vw;
+  font-family: "Microsoft YaHei", sans-serif;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 8px rgba(0, 20, 60, 0.8);
+  user-select: none;
+  pointer-events: none;
   kbd {
     display: inline-block;
     padding: 2px 8px;
     margin: 0 2px;
-    background: rgba(64, 158, 255, 0.2);
-    border: 1px solid rgba(100, 180, 255, 0.5);
     border-radius: 4px;
-    font-family: 'Courier New', monospace;
+    background: linear-gradient(180deg, rgba(80,140,220,0.4), rgba(30,80,160,0.4));
+    border: 1px solid rgba(140,190,255,0.5);
+    color: #e6f2ff;
     font-size: 12px;
-    color: #dff1ff;
+    font-family: "SF Mono", Consolas, monospace;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
   }
 }
-
-// ========== 动画 ==========
-@keyframes dn-rotate {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to   { transform: translate(-50%, -50%) rotate(360deg); }
-}
-@keyframes dn-pulse {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.08); }
-}
-
-// ========== 进出动画 ==========
-.nav-fade-enter-active, .nav-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.nav-fade-enter-from, .nav-fade-leave-to {
-  opacity: 0;
-}
-.nav-fade-enter-active .dn-card,
-.nav-fade-enter-active .dn-center-title,
-.nav-fade-enter-active .dn-tips {
-  animation: dn-pop 0.4s cubic-bezier(.2,.8,.2,1) both;
-}
-.nav-fade-leave-active .dn-card,
-.nav-fade-leave-active .dn-center-title,
-.nav-fade-leave-active .dn-tips {
-  animation: dn-pop 0.25s reverse both;
-}
-@keyframes dn-pop {
-  from { opacity: 0; transform: scale(0.92); }
-  to   { opacity: 1; transform: scale(1); }
-}
-.nav-fade-enter-active .dn-ring--outer { animation: dn-pop 0.5s 0.05s both, dn-rotate 40s linear infinite 0.55s; }
-.nav-fade-enter-active .dn-ring--mid   { animation: dn-pop 0.5s 0.1s both; }
-.nav-fade-enter-active .dn-ring--inner { animation: dn-pop 0.5s 0.15s both; }
-
-.nav-fade-enter-active .dn-card:nth-child(1) { animation-delay: 0.05s; }
-.nav-fade-enter-active .dn-card:nth-child(2) { animation-delay: 0.1s; }
-.nav-fade-enter-active .dn-card:nth-child(3) { animation-delay: 0.15s; }
-.nav-fade-enter-active .dn-card:nth-child(4) { animation-delay: 0.2s; }
-.nav-fade-enter-active .dn-card:nth-child(5) { animation-delay: 0.25s; }
 </style>
