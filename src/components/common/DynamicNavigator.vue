@@ -58,25 +58,26 @@ function initParticles() {
   }
 }
 
+// 大屏业务页白名单：按展示顺序排列，不在名单中的页面（组件演示页等）不出现在导航器里
+const NAV_ROUTES = [
+  { path: '/',      key: 'Home',     title: '大屏首页',   subtitle: 'Dashboard' },
+  { path: '/pack',  key: 'Pack',     title: '客户表现',   subtitle: 'PACK' },
+  { path: '/question', key: 'Question', title: '异常闭环', subtitle: 'Question' },
+  { path: '/cpk',   key: 'Cpk',      title: '过程能力',   subtitle: 'CPK' },
+  { path: '/qc',    key: 'Qc',       title: '人力规划',   subtitle: 'QC HR' },
+  { path: '/plain', key: 'Plain',    title: '工作计划',   subtitle: 'Plan' },
+  { path: '/think', key: 'Think',    title: '周度思考',   subtitle: 'Thinking' },
+  // { path: '/LPA',   key: 'LPA',      title: '过程审核',   subtitle: 'LPA' },
+]
+
 function getRoutes() {
-  const all = router.options.routes || []
-  const result = []
-  const walk = (list) => {
-    list.forEach((r) => {
-      if (!r.meta || r.meta.noScale !== true) {
-        if (r.path && r.path !== '/' && r.path !== '/:pathMatch(.*)*' && r.name) {
-          result.push({
-            path: r.path,
-            name: r.meta && r.meta.title ? r.meta.title : (r.name || r.path),
-            sub: r.meta && r.meta.subtitle ? r.meta.subtitle : '',
-          })
-        }
-      }
-      if (r.children) walk(r.children)
-    })
-  }
-  walk(all)
-  return result
+  // 以白名单为准，只有真实存在的路由才显示（避免页面未开发时出现空链接）
+  const existing = new Set((router.options.routes || []).map(r => r.path))
+  return NAV_ROUTES.filter(r => existing.has(r.path)).map(r => ({
+    path: r.path,
+    name: r.title,
+    sub: r.subtitle,
+  }))
 }
 
 function currentIndex(routes) {
@@ -189,10 +190,12 @@ function draw(t) {
   const cx = W / 2
   const cy = H / 2
 
-  const innerR = Math.min(W, H) * 0.17
+  // 整体尺寸：中心圆占视口 1/3，卡片弧占视口约 1/2（宽高均为页面的 1/2）
+  const vmin = Math.min(W, H)
+  const innerR = vmin * 0.085     // 中心亮圆半径（CALB 字装下即可）
   const midR = innerR * 1.28
-  const outerR = innerR * 1.65
-  const cardR = Math.min(W, H) * 0.42  // 卡片弧半径
+  const outerR = innerR * 1.62
+  const cardR = vmin * 0.20       // 卡片弧半径（整体视觉直径 ≈ 2*(cardR+ch/2) ≈ vmin*0.48 ≈ 1/2 视口）
 
   // ---- 三层同心圆 ----
   // 内层亮环
@@ -280,29 +283,29 @@ function draw(t) {
   ctx.save()
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = 'bold 92px Arial Black, "Helvetica Neue", sans-serif'
-  const calbGrad = ctx.createLinearGradient(cx, cy - 80, cx, cy + 20)
+  ctx.font = 'bold 54px Arial Black, "Helvetica Neue", sans-serif'
+  const calbGrad = ctx.createLinearGradient(cx, cy - 45, cx, cy + 12)
   calbGrad.addColorStop(0, '#e8f4ff')
   calbGrad.addColorStop(0.45, '#9ec8ff')
   calbGrad.addColorStop(0.55, '#c9e2ff')
   calbGrad.addColorStop(1, '#3a6bb5')
   ctx.fillStyle = calbGrad
   ctx.shadowColor = 'rgba(100, 180, 255, 0.9)'
-  ctx.shadowBlur = 24
+  ctx.shadowBlur = 14
   ctx.strokeStyle = 'rgba(180, 220, 255, 0.7)'
-  ctx.lineWidth = 1.5
-  ctx.strokeText('CALB', cx, cy - 28)
-  ctx.fillText('CALB', cx, cy - 28)
+  ctx.lineWidth = 1
+  ctx.strokeText('CALB', cx, cy - 18)
+  ctx.fillText('CALB', cx, cy - 18)
   ctx.shadowBlur = 0
 
-  ctx.font = 'bold 50px "Microsoft YaHei", "PingFang SC", sans-serif'
-  const subGrad = ctx.createLinearGradient(cx, cy + 20, cx, cy + 90)
+  ctx.font = 'bold 26px "Microsoft YaHei", "PingFang SC", sans-serif'
+  const subGrad = ctx.createLinearGradient(cx, cy + 6, cx, cy + 48)
   subGrad.addColorStop(0, '#ffffff')
   subGrad.addColorStop(1, '#9ecbff')
   ctx.fillStyle = subGrad
   ctx.shadowColor = 'rgba(100, 180, 255, 0.8)'
-  ctx.shadowBlur = 16
-  ctx.fillText('集成工厂质量周报', cx, cy + 55)
+  ctx.shadowBlur = 12
+  ctx.fillText('集成工厂质量周报', cx, cy + 30)
   ctx.shadowBlur = 0
   ctx.restore()
 
@@ -338,7 +341,7 @@ function draw(t) {
 
   // 底部发光弧线（在卡片外弧下方）
   ctx.save()
-  const arcR = cardR + 110
+  const arcR = cardR + 60
   const botG = ctx.createLinearGradient(cx, cy + arcR - 80, cx, cy + arcR + 20)
   botG.addColorStop(0, 'rgba(80, 180, 255, 0)')
   botG.addColorStop(0.6, 'rgba(100, 200, 255, 0.9)')
@@ -369,8 +372,8 @@ function draw(t) {
     const px = cx + Math.cos(ang) * cardR
     const py = cy + Math.sin(ang) * cardR + yOff
 
-    const cw = 210 * scale
-    const ch = 120 * scale
+    const cw = 128 * scale
+    const ch = 70 * scale
 
     ctx.save()
     ctx.globalAlpha = alpha * sc
@@ -381,18 +384,18 @@ function draw(t) {
 
     // 选中卡底部光束（在旋转坐标系里朝下+y方向发光）
     if (dist <= 0.5) {
-      const beamG = ctx.createRadialGradient(0, ch / 2 + 10, 4, 0, ch / 2 + 30, 120)
+      const beamG = ctx.createRadialGradient(0, ch / 2 + 6, 3, 0, ch / 2 + 16, 72)
       const bp = 0.45 + 0.35 * Math.sin(t * 0.004)
       beamG.addColorStop(0, `rgba(120, 220, 255, ${0.75 * bp})`)
       beamG.addColorStop(1, 'rgba(80, 160, 255, 0)')
       ctx.fillStyle = beamG
       ctx.beginPath()
-      ctx.ellipse(0, ch / 2 + 30, cw * 0.55, 50, 0, 0, Math.PI * 2)
+      ctx.ellipse(0, ch / 2 + 16, cw * 0.55, 28, 0, 0, Math.PI * 2)
       ctx.fill()
     }
 
     // 卡片主体（菱形斜切角）
-    drawRoundedDiamondAtOrigin(cw, ch, 0.18, 8 * scale)
+    drawRoundedDiamondAtOrigin(cw, ch, 0.18, 5 * scale)
 
     if (dist <= 0.5) {
       const cardG = ctx.createLinearGradient(0, -ch / 2, 0, ch / 2)
@@ -401,14 +404,14 @@ function draw(t) {
       cardG.addColorStop(1, 'rgba(10, 50, 150, 0.9)')
       ctx.fillStyle = cardG
       ctx.shadowColor = 'rgba(80, 180, 255, 0.95)'
-      ctx.shadowBlur = 28
+      ctx.shadowBlur = 22
     } else {
       const cardG = ctx.createLinearGradient(0, -ch / 2, 0, ch / 2)
       cardG.addColorStop(0, 'rgba(40, 80, 160, 0.7)')
       cardG.addColorStop(1, 'rgba(15, 35, 90, 0.75)')
       ctx.fillStyle = cardG
       ctx.shadowColor = 'rgba(40, 100, 200, 0.4)'
-      ctx.shadowBlur = 12
+      ctx.shadowBlur = 10
     }
     ctx.fill()
     ctx.shadowBlur = 0
@@ -422,7 +425,7 @@ function draw(t) {
     ctx.fillStyle = hi
     ctx.fillRect(-cw, -ch, cw * 2, ch)
     ctx.strokeStyle = dist <= 0.5 ? 'rgba(180, 230, 255, 0.8)' : 'rgba(120, 180, 255, 0.4)'
-    ctx.lineWidth = 1.2
+    ctx.lineWidth = 1
     ctx.stroke()
     ctx.restore()
 
@@ -431,21 +434,21 @@ function draw(t) {
     ctx.textBaseline = 'middle'
     // 序号（顶部）
     ctx.fillStyle = dist <= 0.5 ? 'rgba(220, 240, 255, 0.95)' : 'rgba(160, 200, 240, 0.7)'
-    ctx.font = `bold ${12 * scale}px "Microsoft YaHei", sans-serif`
+    ctx.font = `bold ${9 * scale}px "Microsoft YaHei", sans-serif`
     ctx.fillText(`NO.${String(modIdx + 1).padStart(2, '0')}`, 0, -ch * 0.33)
     // 标题
     ctx.fillStyle = '#ffffff'
-    ctx.font = `bold ${20 * scale}px "Microsoft YaHei", sans-serif`
+    ctx.font = `bold ${14 * scale}px "Microsoft YaHei", sans-serif`
     ctx.shadowColor = 'rgba(0,0,0,0.5)'
-    ctx.shadowBlur = 4
+    ctx.shadowBlur = 3
     const title = route.name.length > 7 ? route.name.slice(0, 7) : route.name
-    ctx.fillText(title, 0, 2 * scale)
+    ctx.fillText(title, 0, 0)
     ctx.shadowBlur = 0
     // 副标题
     if (route.sub) {
       ctx.fillStyle = dist <= 0.5 ? 'rgba(200, 230, 255, 0.8)' : 'rgba(150, 190, 230, 0.6)'
-      ctx.font = `${11 * scale}px "Microsoft YaHei", sans-serif`
-      ctx.fillText(route.sub, 0, ch * 0.3)
+      ctx.font = `${8 * scale}px "Microsoft YaHei", sans-serif`
+      ctx.fillText(route.sub, 0, ch * 0.32)
     }
 
     ctx.restore()
@@ -625,9 +628,9 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(3, 10, 30, 0.55);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: rgba(3, 10, 30, 0.35);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   animation: dn-fade 0.32s ease-out;
 }
 @keyframes dn-fade {

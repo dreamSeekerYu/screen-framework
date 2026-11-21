@@ -1,9 +1,9 @@
 <template>
   <ScreenContainer v-if="!$route.meta?.noScale">
     <router-view v-slot="{ Component }">
-      <div class="router-link-container">
+      <!-- <div class="router-link-container">
         <RouterLink v-for="(route, index) in routeList" :key="index" :to="route.path"> {{ route.name }}</RouterLink>
-      </div>
+      </div> -->
       <transition name="fade" mode="out-in">
         <component :is="Component" />
       </transition>
