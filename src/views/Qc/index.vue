@@ -1,459 +1,711 @@
 <template>
-  <div class="home-screen">
+  <div class="qc-screen">
     <!-- 顶部标题栏 -->
-    <ScreenHeader title="数据可视化大屏演示系统" />
-    qc
-    <!-- 主体内容区 -->
-    <div class="screen-content">
-      <!-- 左侧区域 -->
-      <div class="left-col">
-        <!-- 指标卡片区 -->
-        <div class="metrics-row">
-          <div class="metric-card" v-for="(metric, i) in metricsData" :key="i">
-            <ScreenCard :title="metric.label">
-              <div class="metric-value">
-                <NumberCounter :value="metric.value" :suffix="metric.suffix" />
+    <ScreenHeader title="集成工厂QC人力规划" subtitle="制程质量部门 · 车间人力配置与缺口监控" />
+
+    <!-- KPI 卡片区：4 张等宽 -->
+    <StatCardRow class="qc-kpi-row" :gap="12" :min-card-width="200" :max-card-width="420">
+      <StatCard
+        v-for="(item, idx) in kpiCards"
+        :key="idx"
+        :theme="item.theme"
+        :status="item.status"
+        :title="item.title"
+        :sub-title="item.subTitle"
+        :value="item.value"
+        :unit="item.unit"
+        :trend="item.trend"
+        :trend-type="item.trendType"
+        :trend-label="item.trendLabel"
+        :badge="item.badge"
+      />
+    </StatCardRow>
+
+    <!-- 主体三列 Bento 布局 -->
+    <div class="qc-main">
+      <!-- 左侧：风险预警 + 人员充足率 -->
+      <div class="qc-col qc-col--left">
+        <!-- 风险预警 -->
+        <ScreenCard class="qc-risk" title="风险预警">
+          <template #extra>
+            <span class="qc-risk-count" :class="{ warn: qc.warnCount > 0 }">
+              {{ qc.highRiskCount }}个高风险
+            </span>
+          </template>
+          <div class="risk-list">
+            <div
+              v-for="(r, i) in topRisks"
+              :key="i"
+              class="risk-item"
+              :class="'risk-item--' + r.level"
+            >
+              <div class="risk-row">
+                <span class="risk-name">{{ r.name }}车间</span>
+                <span class="risk-gap">{{ r.gapText }}</span>
               </div>
-              <div class="metric-trend" :class="metric.trend > 0 ? 'up' : 'down'">
-                较上期 {{ metric.trend > 0 ? '↑' : '↓' }} {{ Math.abs(metric.trend) }}%
+              <p class="risk-msg">{{ r.msg }}</p>
+            </div>
+            <div v-if="!topRisks.length" class="risk-item risk-item--ok">
+              <div class="risk-row">
+                <span class="risk-name">全部车间</span>
+                <span class="risk-gap" style="background:var(--color-success,#10b981)">充足</span>
               </div>
-            </ScreenCard>
+              <p class="risk-msg">各车间人力配置正常，无显著缺口</p>
+            </div>
           </div>
-        </div>
-        
-        <!-- 柱状图卡片 - 懒加载 -->
-        <div class="chart-card" ref="barRef">
-          <ScreenCard title="各区域业务数据统计">
-            <BaseChart :option="barChartOption" v-if="barChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-        
-        <!-- 滚动列表卡片 -->
-        <div class="list-card">
-          <ScreenCard title="实时数据排行">
-            <MarqueeList :data="rankList" />
-          </ScreenCard>
-        </div>
-      </div>
-      
-      <!-- 中间区域 -->
-      <div class="center-col">
-        <!-- 地图/大屏主视觉区域 -->
-        <div class="main-chart-card">
-          <ScreenCard title="全国业务分布概览">
-            <div class="main-chart-placeholder">
-              <div class="placeholder-text">中间地图/核心图表区域</div>
-              <div class="placeholder-hint">可在此接入地图、3D可视化或核心业务图表</div>
+        </ScreenCard>
+
+        <!-- 人员充足率仪表盘 -->
+        <ScreenCard class="qc-gauge" title="人员充足率">
+          <div class="gauge-wrap">
+            <BaseChart :option="gaugeOption" class="gauge-chart" />
+          </div>
+          <div class="gauge-meta">
+            <div class="meta-item">
+              <span class="meta-label">支援占比</span>
+              <span class="meta-value primary">{{ kpi.supportRate }}%</span>
             </div>
+            <div class="meta-item">
+              <span class="meta-label">预离职占比</span>
+              <span class="meta-value danger">{{ kpi.preLeaveRate }}%</span>
+            </div>
+          </div>
+        </ScreenCard>
+      </div>
+
+      <!-- 中间：人力配置柱状图 + 饼图 + 缺口对比图 -->
+      <div class="qc-col qc-col--center">
+        <ScreenCard class="qc-bar" title="各车间人力配置对比">
+          <BaseChart :option="barOption" class="bar-chart" />
+        </ScreenCard>
+        <div class="qc-center-bottom">
+          <ScreenCard class="qc-pie" title="人力分布结构">
+            <BaseChart :option="pieOption" class="pie-chart" />
           </ScreenCard>
-        </div>
-        
-        <!-- 下方折线图 - 懒加载 -->
-        <div class="line-chart-card" ref="lineRef">
-          <ScreenCard title="近7天趋势变化">
-            <BaseChart :option="lineChartOption" v-if="lineChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
+          <ScreenCard class="qc-compare" title="当前vs预计缺口">
+            <BaseChart :option="compareOption" class="compare-chart" />
           </ScreenCard>
         </div>
       </div>
-      
-      <!-- 右侧区域 -->
-      <div class="right-col">
-        <!-- 饼图卡片 - 懒加载 -->
-        <div class="pie-card" ref="pieRef">
-          <ScreenCard title="业务类型占比">
-            <BaseChart :option="pieChartOption" v-if="pieChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-        
-        <!-- 仪表盘卡片 - 懒加载 -->
-        <div class="gauge-card" ref="gaugeRef">
-          <ScreenCard title="目标完成率">
-            <BaseChart :option="gaugeChartOption" v-if="gaugeChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-        
-        <!-- 进度条卡片 -->
-        <div class="progress-card">
-          <ScreenCard title="各模块完成进度">
-            <div class="progress-list">
-              <div v-for="(item, i) in progressData" :key="i" class="progress-item">
-                <div class="progress-label">{{ item.name }}</div>
-                <div class="progress-bar-bg">
-                  <div class="progress-bar-fill" :style="{ width: item.value + '%' }"></div>
-                </div>
-                <div class="progress-value">{{ item.value }}%</div>
+
+      <!-- 右侧：支援人员来源 + 预离职人员分布 -->
+      <div class="qc-col qc-col--right">
+        <ScreenCard class="qc-support" title="支援人员来源">
+          <div class="support-list">
+            <div v-for="(s, i) in qc.supportSources" :key="i" class="support-item">
+              <div class="support-head">
+                <span class="support-name">{{ s.name }}</span>
+                <span class="support-count">{{ s.count }}人</span>
               </div>
+              <div class="support-bar">
+                <div
+                  class="support-fill"
+                  :class="'support-fill--' + s.color"
+                  :style="{ width: (qc.maxSupport > 0 ? s.count / qc.maxSupport * 100 : 0) + '%' }"
+                ></div>
+              </div>
+              <p class="support-desc">{{ s.desc }}</p>
             </div>
-          </ScreenCard>
-        </div>
+            <div v-if="qc.externalWait > 0" class="support-item support-item--ext">
+              <div class="support-head">
+                <span class="support-name">待外部支援</span>
+                <span class="support-count warn">{{ qc.externalWait }}人</span>
+              </div>
+              <p class="support-desc">A2车间缺口最大，优先补充</p>
+            </div>
+          </div>
+        </ScreenCard>
+
+        <ScreenCard class="qc-leave" title="预离职人员分布">
+          <div class="leave-wrap">
+            <BaseChart :option="leaveOption" class="leave-chart" />
+          </div>
+          <div class="leave-legend">
+            <div v-for="(l, i) in qc.leaveDist" :key="i" class="legend-item">
+              <span class="legend-dot" :style="{ background: pieColors[i % pieColors.length] }"></span>
+              <span class="legend-name">{{ l.name }}车间</span>
+              <span class="legend-value">{{ l.value }}人 ({{ l.percent }}%)</span>
+            </div>
+            <div v-if="!qc.leaveDist.length" class="legend-empty">暂无预离职</div>
+          </div>
+        </ScreenCard>
       </div>
     </div>
+
+    <!-- 底部结论条 -->
+    <SummaryBar
+      class="qc-summary"
+      :type="summary.type"
+      icon="warning"
+    >
+      {{ summary.text }}
+      <template #tags>
+        <StatusTag v-for="(tag, i) in summary.tags" :key="i" :text="tag.text" :type="tag.type" effect="dark" round />
+      </template>
+    </SummaryBar>
   </div>
 </template>
-
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
-import NumberCounter from '@/components/data/NumberCounter.vue'
-import MarqueeList from '@/components/data/MarqueeList.vue'
-import { useLazyLoad } from '@/composables/useLazyLoad'
+import StatCard from '@/components/common/NewStatCard.vue'
+import StatCardRow from '@/components/common/StatCardRow.vue'
+import SummaryBar from '@/components/common/SummaryBar.vue'
+import StatusTag from '@/components/common/StatusTag.vue'
+import { parseQcData } from '@/utils/parseQc.js'
 
-// ============ 指标数据 ============
-const metricsData = ref([
-  { label: '累计访问量', value: 128569, suffix: '', trend: 12.5 },
-  { label: '今日订单', value: 3862, suffix: '单', trend: 8.2 },
-  { label: '总交易额', value: 8965.3, suffix: '万', trend: 15.6 },
-  { label: '活跃用户', value: 28956, suffix: '人', trend: -2.3 }
-])
+// ============ 数据 ============
+const qc = ref({
+  total: {}, shops: [], riskList: [], highRiskCount: 0, warnCount: 0,
+  supportSources: [], externalWait: 0, maxSupport: 0, leaveDist: [],
+  kpi: {
+    totalConfig: 0, onjob: 0, configRate: 0, actual: 0, onjobFillRate: 0,
+    gapNow: 0, gapRate: 0, gapExpect: 0, preLeave: 0, totalSupport: 0,
+    fillRate: 0, supportRate: 0, preLeaveRate: 0,
+  },
+})
 
-// ============ 懒加载控制 ============
-const { targetRef: barRef, isVisible: barChartVisible } = useLazyLoad()
-const { targetRef: lineRef, isVisible: lineChartVisible } = useLazyLoad()
-const { targetRef: pieRef, isVisible: pieChartVisible } = useLazyLoad()
-const { targetRef: gaugeRef, isVisible: gaugeChartVisible } = useLazyLoad()
+const loadError = ref('')
+const loaded = ref(false)
 
-// ============ 示例图表配置 ============
-// 柱状图配置
-const barChartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-  xAxis: {
-    type: 'category',
-    data: ['华北', '华东', '华南', '华中', '西南', '西北', '东北'],
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' }
-  },
-  yAxis: {
-    type: 'value',
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' },
-    splitLine: { lineStyle: { color: 'var(--color-border-light)' } }
-  },
-  series: [{
-    data: [320, 482, 591, 354, 290, 210, 185],
-    type: 'bar',
-    barWidth: '40%',
-    itemStyle: {
-      color: {
-        type: 'linear',
-        x: 0, y: 0, x2: 0, y2: 1,
-        colorStops: [
-          { offset: 0, color: 'var(--color-primary-light)' },
-          { offset: 1, color: 'var(--color-primary-dark)' }
-        ]
-      },
-      borderRadius: [4, 4, 0, 0]
-    }
-  }]
-}))
+onMounted(async () => {
+  try {
+    qc.value = await parseQcData()
+    loaded.value = true
+  } catch (e) {
+    console.error('[QC] 数据加载失败', e)
+    loadError.value = e.message || String(e)
+  }
+})
 
-// 折线图配置
-const lineChartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['访问量', '订单量'], textStyle: { color: 'var(--color-text-secondary)' } },
-  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-  xAxis: {
-    type: 'category',
-    boundaryGap: false,
-    data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' }
-  },
-  yAxis: {
-    type: 'value',
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' },
-    splitLine: { lineStyle: { color: 'var(--color-border-light)' } }
-  },
-  series: [
+// ============ 颜色 ============
+const pieColors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de']
+
+// ============ 派生：风险 Top3 ============
+const topRisks = computed(() =>
+  qc.value.riskList
+    .filter(r => r.level !== 'ok')
+    .sort((a, b) => {
+      const lv = { danger: 0, warning: 1 }
+      if (lv[a.level] !== lv[b.level]) return lv[a.level] - lv[b.level]
+      return a.gapNow - b.gapNow
+    })
+    .slice(0, 3)
+)
+
+// ============ KPI 卡片 ============
+const kpiCards = computed(() => {
+  const k = qc.value.kpi
+  return [
     {
-      name: '访问量',
-      type: 'line',
-      smooth: true,
-      data: [1200, 1900, 1500, 2200, 2800, 3600, 3200],
-      lineStyle: { color: 'var(--color-primary)', width: 2 },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(30, 111, 255, 0.3)' },
-            { offset: 1, color: 'rgba(30, 111, 255, 0)' }
-          ]
-        }
-      }
+      title: '总配置人力',
+      subTitle: `在职${k.onjob}人`,
+      value: k.totalConfig,
+      unit: '人',
+      theme: 'blue',
+      status: 'default',
+      trendLabel: `架构配置完成率 ${k.configRate.toFixed(1)}%`,
+      trendType: 'up',
+      trend: k.configRate - 100,
     },
     {
-      name: '订单量',
-      type: 'line',
-      smooth: true,
-      data: [820, 932, 901, 1234, 1490, 1830, 1620],
-      lineStyle: { color: '#36cfc9', width: 2 },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(54, 207, 201, 0.3)' },
-            { offset: 1, color: 'rgba(54, 207, 201, 0)' }
-          ]
-        }
-      }
-    }
+      title: '当前实际人力',
+      subTitle: '含内部/其他工厂支援',
+      value: k.actual,
+      unit: '人',
+      theme: 'green',
+      status: 'default',
+      trendLabel: `实际人力配置率 ${k.onjobFillRate.toFixed(1)}%`,
+      trendType: k.onjobFillRate >= 100 ? 'up' : 'down',
+      trend: k.onjobFillRate - 100,
+    },
+    {
+      title: '当前缺口',
+      subTitle: '实际人力 - 配置',
+      value: Math.abs(k.gapNow),
+      unit: '人',
+      theme: 'orange',
+      status: k.gapNow < 0 ? 'warning' : 'success',
+      trendLabel: `缺口比例 ${k.gapRate.toFixed(1)}%`,
+      trendType: k.gapNow < 0 ? 'down' : 'up',
+      trend: -k.gapRate,
+    },
+    {
+      title: '预计总缺口',
+      subTitle: `预离职${k.preLeave}人`,
+      value: Math.abs(k.gapExpect),
+      unit: '人',
+      theme: 'red',
+      status: k.gapExpect < 0 ? 'danger' : 'success',
+      trendLabel: `其他工厂预计支援${k.totalSupport}人`,
+      trendType: k.gapExpect < 0 ? 'down' : 'up',
+      trend: k.gapExpect,
+    },
   ]
-}))
+})
 
-// 饼图配置
-const pieChartOption = computed(() => ({
-  tooltip: { trigger: 'item' },
-  legend: {
-    orient: 'vertical',
-    right: '5%',
-    top: 'center',
-    textStyle: { color: 'var(--color-text-secondary)' }
-  },
-  color: ['#1e6fff', '#00c6ff', '#36cfc9', '#ffc53d', '#ff7a45'],
-  series: [{
-    type: 'pie',
-    radius: ['40%', '70%'],
-    center: ['35%', '50%'],
-    avoidLabelOverlap: false,
-    itemStyle: { borderRadius: 6, borderColor: 'var(--color-bg-card)', borderWidth: 2 },
-    label: { show: false },
-    emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
-    labelLine: { show: false },
-    data: [
-      { value: 1048, name: '产品A' },
-      { value: 735, name: '产品B' },
-      { value: 580, name: '产品C' },
-      { value: 484, name: '产品D' },
-      { value: 300, name: '其他' }
-    ]
-  }]
-}))
+// ============ 图表 Option ============
+const COLOR_PRIMARY = getCssVar('--color-primary', '#2563eb')
+const COLOR_SECONDARY = getCssVar('--color-primary-light', '#0ea5e9')
+const COLOR_WARNING = getCssVar('--color-warning', '#f59e0b')
+const COLOR_DANGER = getCssVar('--color-danger', '#ef4444')
+const COLOR_SUCCESS = getCssVar('--color-success', '#10b981')
+const COLOR_TEXT = getCssVar('--color-text-secondary', '#64748b')
+const COLOR_GRID = getCssVar('--color-border-light', '#f1f5f9')
 
-// 仪表盘配置
-const gaugeChartOption = computed(() => ({
-  series: [{
-    type: 'gauge',
-    startAngle: 180,
-    endAngle: 0,
-    min: 0,
-    max: 100,
-    splitNumber: 5,
-    itemStyle: { color: 'var(--color-primary)' },
-    progress: { show: true, width: 18 },
-    pointer: { show: false },
-    axisLine: { lineStyle: { width: 18, color: [[1, 'var(--color-border-light)']] } },
-    axisTick: { show: false },
-    splitLine: { show: false },
-    axisLabel: { show: false },
-    title: { show: false },
-    detail: {
-      valueAnimation: true,
-      offsetCenter: [0, '0%'],
-      fontSize: 36,
-      fontWeight: 'bold',
-      color: 'var(--color-primary)',
-      formatter: '{value}%'
+function getCssVar(name, fallback = '') {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    return v || fallback
+  } catch { return fallback }
+}
+
+// 人员充足率仪表盘
+const gaugeOption = computed(() => {
+  const rate = qc.value.kpi.fillRate
+  return {
+    series: [{
+      type: 'gauge',
+      startAngle: 200,
+      endAngle: -20,
+      min: 0,
+      max: 100,
+      splitNumber: 10,
+      radius: '95%',
+      center: ['50%', '62%'],
+      axisLine: { lineStyle: { width: 12, color: [[1, '#e2e8f0']] } },
+      progress: { show: true, width: 12, roundCap: true },
+      pointer: { show: false },
+      axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: { show: false },
+      anchor: { show: false },
+      title: { show: false },
+      itemStyle: {
+        color: {
+          type: 'linear', x: 0, y: 0, x2: 1, y2: 0,
+          colorStops: [
+            { offset: 0, color: COLOR_DANGER },
+            { offset: 0.5, color: COLOR_WARNING },
+            { offset: 1, color: COLOR_SUCCESS },
+          ]
+        }
+      },
+      detail: {
+        valueAnimation: true,
+        offsetCenter: [0, '0%'],
+        fontSize: 28,
+        fontWeight: 'bold',
+        formatter: '{value}%',
+        color: '#1e293b',
+      },
+      data: [{ value: +rate.toFixed(1) }],
+    }]
+  }
+})
+
+// 各车间人力配置对比：配置人力 / 在职架构 / 实际人力 / 预计缺口
+const barOption = computed(() => {
+  const shops = qc.value.shops
+  const names = shops.map(s => s.name)
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
     },
-    data: [{ value: 76 }]
-  }]
-}))
+    legend: {
+      data: ['配置人力', '在职架构', '实际人力', '预计缺口'],
+      bottom: 0,
+      itemWidth: 10, itemHeight: 10, itemGap: 16,
+      textStyle: { color: COLOR_TEXT, fontSize: 11 },
+    },
+    grid: { left: '2%', right: '3%', bottom: '18%', top: '4%', containLabel: true },
+    xAxis: {
+      type: 'category', data: names,
+      axisLine: { lineStyle: { color: COLOR_GRID } },
+      axisTick: { show: false },
+      axisLabel: { color: COLOR_TEXT, fontSize: 11, fontWeight: 500 },
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { lineStyle: { color: COLOR_GRID, type: 'dashed' } },
+      axisLabel: { color: '#94a3b8', fontSize: 10 },
+    },
+    series: [
+      {
+        name: '配置人力', type: 'bar', barWidth: '18%',
+        itemStyle: { color: '#e2e8f0', borderRadius: [4, 4, 0, 0] },
+        data: shops.map(s => s.config),
+      },
+      {
+        name: '在职架构', type: 'bar', barWidth: '18%',
+        itemStyle: { color: '#93c5fd', borderRadius: [4, 4, 0, 0] },
+        data: shops.map(s => s.onjob),
+      },
+      {
+        name: '实际人力', type: 'bar', barWidth: '18%',
+        itemStyle: {
+          color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
+            { offset: 0, color: COLOR_PRIMARY }, { offset: 1, color: COLOR_SECONDARY }
+          ] },
+          borderRadius: [4, 4, 0, 0],
+        },
+        data: shops.map(s => s.actual),
+      },
+      {
+        name: '预计缺口', type: 'bar', barWidth: '18%',
+        itemStyle: { color: '#f87171', borderRadius: [4, 4, 0, 0] },
+        data: shops.map(s => Math.min(s.gapExpect, 0)), // 柱图只画负缺口
+      },
+    ],
+  }
+})
 
-// ============ 排行列表数据 ============
-const rankList = ref([
-  { name: '华东区销售一部', value: '¥1,286万' },
-  { name: '华南区销售二部', value: '¥1,052万' },
-  { name: '华北区销售一部', value: '¥968万' },
-  { name: '西南区销售中心', value: '¥745万' },
-  { name: '华中区销售三部', value: '¥692万' },
-  { name: '西北区办事处', value: '¥428万' },
-  { name: '东北区办事处', value: '¥356万' }
-])
+// 人力分布饼图
+const pieOption = computed(() => {
+  const shops = qc.value.shops
+  return {
+    tooltip: { trigger: 'item' },
+    series: [{
+      name: '人力分布',
+      type: 'pie',
+      radius: ['42%', '70%'],
+      center: ['50%', '55%'],
+      avoidLabelOverlap: false,
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: {
+        show: true, position: 'outside', fontSize: 11,
+        formatter: '{b}: {c}人',
+      },
+      labelLine: { length: 8, length2: 6 },
+      data: shops.map((s, i) => ({
+        name: s.name,
+        value: s.actual,
+        itemStyle: { color: pieColors[i % pieColors.length] },
+      })),
+    }]
+  }
+})
 
-// ============ 进度条数据 ============
-const progressData = ref([
-  { name: '年度销售目标', value: 76 },
-  { name: '新客户拓展', value: 89 },
-  { name: '项目交付进度', value: 62 },
-  { name: '售后服务满意度', value: 94 }
-])
+// 当前 vs 预计缺口对比
+const compareOption = computed(() => {
+  const shops = qc.value.shops
+  const names = shops.map(s => s.name)
+  return {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: {
+      data: ['当前缺口', '预计缺口'], bottom: 0,
+      itemWidth: 10, itemHeight: 10,
+      textStyle: { color: COLOR_TEXT, fontSize: 10 },
+    },
+    grid: { left: '2%', right: '3%', bottom: '22%', top: '4%', containLabel: true },
+    xAxis: {
+      type: 'category', data: names,
+      axisLine: { lineStyle: { color: COLOR_GRID } },
+      axisTick: { show: false },
+      axisLabel: { color: COLOR_TEXT, fontSize: 10 },
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { lineStyle: { color: COLOR_GRID, type: 'dashed' } },
+      axisLabel: { color: '#94a3b8', fontSize: 9 },
+    },
+    series: [
+      {
+        name: '当前缺口', type: 'bar', barWidth: '32%',
+        itemStyle: { color: '#fbbf24', borderRadius: [4, 4, 0, 0] },
+        data: shops.map(s => Math.min(s.gapNow, 0)),
+      },
+      {
+        name: '预计缺口', type: 'bar', barWidth: '32%',
+        itemStyle: { color: COLOR_DANGER, borderRadius: [4, 4, 0, 0] },
+        data: shops.map(s => Math.min(s.gapExpect, 0)),
+      },
+    ],
+  }
+})
+
+// 预离职环形图
+const leaveOption = computed(() => {
+  const leave = qc.value.leaveDist
+  const total = qc.value.kpi.preLeave
+  return {
+    tooltip: { trigger: 'item' },
+    series: [{
+      name: '预离职分布',
+      type: 'pie',
+      radius: ['40%', '68%'],
+      center: ['50%', '48%'],
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: {
+        show: true, position: 'center',
+        formatter: `{total|${total}人}\n{sub|总预离职}`,
+        rich: {
+          total: { fontSize: 22, fontWeight: 'bold', color: COLOR_DANGER, lineHeight: 28 },
+          sub: { fontSize: 10, color: COLOR_TEXT },
+        },
+      },
+      labelLine: { show: false },
+      data: leave.map((l, i) => ({
+        name: l.name, value: l.value,
+        itemStyle: { color: pieColors[i % pieColors.length] },
+      })),
+    }]
+  }
+})
+
+// ============ 结论条 ============
+const summary = computed(() => {
+  const k = qc.value.kpi
+  const hasGap = k.gapExpect < 0
+  return {
+    type: hasGap ? 'warning' : 'success',
+    icon: hasGap ? 'warning' : 'success',
+    text: hasGap
+      ? `QC 人力整体配置率 ${k.onjobFillRate.toFixed(1)}%，当前缺口 ${Math.abs(k.gapNow)} 人，考虑预离职 ${k.preLeave} 人后预计总缺口 ${Math.abs(k.gapExpect)} 人；A2/M5 车间缺口最大，其他工厂支援 ${k.totalSupport} 人已就位，待外部支援 ${qc.value.externalWait} 人优先补充 A2 车间。`
+      : 'QC 人力配置充足，无缺口。',
+    tags: [
+      ...(qc.value.highRiskCount > 0 ? [{ text: `高风险${qc.value.highRiskCount}个`, type: 'danger' }] : []),
+      ...(qc.value.warnCount > 0 ? [{ text: `预警${qc.value.warnCount}个`, type: 'warning' }] : []),
+      { text: `充足率 ${k.fillRate}%`, type: k.fillRate >= 95 ? 'success' : 'warning' },
+    ],
+  }
+})
 </script>
 
 <style scoped lang="scss">
-.home-screen {
+.qc-screen {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.screen-content {
+.qc-kpi-row {
+  margin-bottom: $spacing-md;
+  flex-shrink: 0;
+}
+
+.qc-main {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1.4fr 1fr;
+  grid-template-columns: 1fr 2fr 1fr;
   gap: $spacing-md;
-  padding: $spacing-md;
-  overflow: hidden;
+  min-height: 0;
+  margin-bottom: $spacing-md;
 }
 
-.left-col,
-.center-col,
-.right-col {
+.qc-col {
   display: flex;
   flex-direction: column;
   gap: $spacing-md;
-  overflow: hidden;
+  min-height: 0;
 }
 
-// ============ 指标卡片 ============
-.metrics-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: $spacing-md;
+// 左列
+.qc-risk {
   flex-shrink: 0;
 }
 
-.metric-card {
-  height: 120px;
-  
-  .metric-value {
-    text-align: center;
-    margin-bottom: $spacing-sm;
-  }
-  
-  .metric-trend {
-    text-align: center;
-    font-size: $font-sm;
-    
-    &.up {
-      color: #52c41a;
-    }
-    
-    &.down {
-      color: #ff4d4f;
-    }
-  }
-}
-
-// ============ 图表卡片高度分配 ============
-.chart-card {
-  height: 320px;
-  flex-shrink: 0;
-}
-
-.list-card {
+.qc-gauge {
   flex: 1;
-  min-height: 200px;
-}
-
-.main-chart-card {
-  flex: 1;
-  min-height: 400px;
-}
-
-.line-chart-card {
-  height: 280px;
-  flex-shrink: 0;
-}
-
-.pie-card {
-  height: 280px;
-  flex-shrink: 0;
-}
-
-.gauge-card {
-  height: 260px;
-  flex-shrink: 0;
-}
-
-.progress-card {
-  flex: 1;
-  min-height: 200px;
-}
-
-.chart-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  font-size: $font-sm;
-}
-
-.main-chart-placeholder {
-  width: 100%;
-  height: 100%;
+  min-height: 280px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  border: 2px dashed var(--color-border);
-  border-radius: $radius-md;
-  
-  .placeholder-text {
-    font-size: $font-lg;
-    margin-bottom: $spacing-sm;
-    color: var(--color-text-secondary);
-  }
-  
-  .placeholder-hint {
-    font-size: $font-sm;
-  }
-}
 
-// ============ 进度条样式 ============
-.progress-list {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  padding: $spacing-sm 0;
-}
-
-.progress-item {
-  display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-  
-  .progress-label {
-    width: 110px;
-    font-size: $font-sm;
-    color: var(--color-text-secondary);
-    flex-shrink: 0;
-  }
-  
-  .progress-bar-bg {
+  :deep(.screen-card-body) {
     flex: 1;
-    height: 8px;
-    background: var(--color-border-light);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-primary-dark), var(--color-primary-light));
-    border-radius: 4px;
-    transition: width 1s ease;
-  }
-  
-  .progress-value {
-    width: 45px;
-    text-align: right;
-    font-size: $font-sm;
-    color: var(--color-primary);
-    font-weight: 600;
-    font-family: 'DIN Alternate', sans-serif;
-    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: $spacing-sm $spacing-md $spacing-md;
   }
 }
+
+.gauge-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.gauge-chart {
+  width: 100%;
+  height: 100%;
+}
+
+.gauge-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-sm;
+  margin-top: $spacing-sm;
+
+  .meta-item {
+    text-align: center;
+    padding: $spacing-xs $spacing-sm;
+    background: var(--color-bg-light, #f8fafc);
+    border-radius: $radius-md;
+
+    .meta-label {
+      display: block;
+      font-size: $font-xs;
+      color: var(--color-text-muted);
+      margin-bottom: 2px;
+    }
+    .meta-value {
+      font-size: $font-md;
+      font-weight: 700;
+      font-family: 'DIN Alternate', sans-serif;
+      &.primary { color: var(--color-primary); }
+      &.danger { color: var(--color-danger); }
+    }
+  }
+}
+
+// 风险预警
+.qc-risk-count {
+  font-size: $font-xs;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--color-danger-light, #fef2f2);
+  color: var(--color-danger);
+  font-weight: 600;
+  &.warn { background: var(--color-warning-light, #fffbeb); color: var(--color-warning); }
+}
+
+.risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+.risk-item {
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-md;
+  border-left: 3px solid transparent;
+
+  &--danger {
+    background: var(--color-danger-light, #fef2f2);
+    border-left-color: var(--color-danger);
+  }
+  &--warning {
+    background: var(--color-warning-light, #fffbeb);
+    border-left-color: var(--color-warning);
+  }
+  &--ok {
+    background: var(--color-success-light, #ecfdf5);
+    border-left-color: var(--color-success);
+  }
+
+  .risk-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+  }
+  .risk-name { font-weight: 600; font-size: $font-sm; color: var(--color-text-primary); }
+  .risk-gap {
+    font-size: $font-xs;
+    padding: 1px 6px;
+    border-radius: 12px;
+    font-weight: 600;
+    background: var(--color-danger);
+    color: #fff;
+  }
+  .risk-msg { margin: 0; font-size: $font-xs; color: var(--color-text-secondary); line-height: 1.4; }
+}
+
+// 中列
+.qc-bar {
+  flex: 1.4;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  :deep(.screen-card-body) { flex: 1; min-height: 0; padding: $spacing-sm $spacing-md; }
+}
+.bar-chart { width: 100%; height: 100%; }
+
+.qc-center-bottom {
+  flex: 1;
+  min-height: 240px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-md;
+}
+.qc-pie, .qc-compare {
+  display: flex;
+  flex-direction: column;
+  :deep(.screen-card-body) { flex: 1; min-height: 0; padding: $spacing-sm $spacing-md; }
+}
+.pie-chart, .compare-chart { width: 100%; height: 100%; }
+
+// 右列
+.qc-support {
+  flex-shrink: 0;
+}
+.qc-leave {
+  flex: 1;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  :deep(.screen-card-body) {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    padding: $spacing-sm $spacing-md $spacing-md;
+  }
+}
+
+.support-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+.support-item {
+  .support-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+  }
+  .support-name { font-size: $font-xs; font-weight: 500; color: var(--color-text-primary); }
+  .support-count {
+    font-size: $font-xs; font-weight: 700; color: var(--color-primary);
+    font-family: 'DIN Alternate', sans-serif;
+    &.warn { color: var(--color-warning); }
+  }
+  .support-bar {
+    height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;
+  }
+  .support-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 1s ease;
+    &--primary { background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light, #0ea5e9)); }
+    &--secondary { background: linear-gradient(90deg, var(--color-primary-light, #0ea5e9), #22d3ee); }
+    &--success { background: linear-gradient(90deg, var(--color-success), #34d399); }
+    &--warning { background: linear-gradient(90deg, var(--color-warning), #fbbf24); }
+  }
+  .support-desc { margin: 4px 0 0; font-size: $font-xs; color: var(--color-text-muted); }
+
+  &--ext {
+    padding-top: $spacing-sm;
+    border-top: 1px solid var(--color-border-light, #f1f5f9);
+  }
+}
+
+.leave-wrap {
+  flex: 1; min-height: 180px; position: relative;
+}
+.leave-chart { width: 100%; height: 100%; }
+.leave-legend {
+  display: flex; flex-direction: column; gap: 4px;
+  .legend-item {
+    display: flex; align-items: center; gap: $spacing-sm;
+    font-size: $font-xs; color: var(--color-text-secondary);
+  }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend-name { flex: 1; }
+  .legend-value { font-weight: 600; font-family: 'DIN Alternate', sans-serif; color: var(--color-text-primary); }
+  .legend-empty { font-size: $font-xs; color: var(--color-text-muted); text-align: center; padding: $spacing-sm 0; }
+}
+
+.qc-summary { flex-shrink: 0; }
 </style>

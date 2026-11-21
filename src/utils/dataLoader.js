@@ -22,6 +22,7 @@ const FILE_MAP = {
   think: '周度思考.json',
   question: '重大质量异常闭环.json',
   cpk: '过程能力达标率.json',
+  qc: 'qc人力.json',
 }
 
 // 整包 JSON 缓存（未 index 的原始结构）
