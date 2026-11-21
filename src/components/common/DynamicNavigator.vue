@@ -67,7 +67,7 @@ const NAV_ROUTES = [
   { path: '/qc',    key: 'Qc',       title: '人力规划',   subtitle: 'QC HR' },
   { path: '/plain', key: 'Plain',    title: '工作计划',   subtitle: 'Plan' },
   { path: '/think', key: 'Think',    title: '周度思考',   subtitle: 'Thinking' },
-  { path: '/LPA',   key: 'LPA',      title: '过程审核',   subtitle: 'LPA' },
+  // { path: '/LPA',   key: 'LPA',      title: '过程审核',   subtitle: 'LPA' },
 ]
 
 function getRoutes() {
@@ -400,7 +400,7 @@ function draw(t) {
     return
   }
   if (animatingCard) {
-    cardAnimT += dt / 380
+    cardAnimT += dt / CARD_ANIM_MS
     if (cardAnimT >= 1) {
       cardAnimT = 1
       animatingCard = false
@@ -609,6 +609,22 @@ function closeNav(commit = false) {
   pendingIdx = null
   arrowHeld = false
   animScale = 0
+  clearTimeout(autoCommitTimer)
+  autoCommitTimer = null
+}
+
+// 延迟提交：等卡片切换动画（500ms）走完并短暂停留再自动跳转+收起，
+// 让用户能看清卡片滑入到目标位、选中高亮脉冲的完整过程。
+let autoCommitTimer = null
+const CARD_ANIM_MS = 720
+const HOLD_AFTER_MS = 360  // 动画结束后短暂停留再收起，给用户看清最终选中态
+const COMMIT_DELAY_MS = CARD_ANIM_MS + HOLD_AFTER_MS
+function scheduleAutoCommit() {
+  clearTimeout(autoCommitTimer)
+  autoCommitTimer = setTimeout(() => {
+    if (visible.value && pendingIdx !== null) closeNav(true)
+    autoCommitTimer = null
+  }, COMMIT_DELAY_MS)
 }
 
 function move(delta) {
@@ -623,6 +639,8 @@ function move(delta) {
   targetAbsIdx = pendingIdx
   animatingCard = true
   cardAnimT = 0
+  // 连续切换时不断重置自动提交计时器，等最后一次动画走完再跳转
+  scheduleAutoCommit()
 }
 
 function onKeyDown(e) {
@@ -664,7 +682,10 @@ function onKeyDown(e) {
   }
   if (e.key === 'Enter') {
     if (e.repeat) return
-    e.preventDefault(); closeNav(true); return
+    e.preventDefault()
+    // Enter 确认：重置自动计时器，等选中高亮脉冲结束再跳转
+    scheduleAutoCommit()
+    return
   }
   if (e.key === 'Escape') {
     if (e.repeat) return
@@ -675,11 +696,15 @@ function onKeyDown(e) {
 function onKeyUp(e) {
   if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
     arrowHeld = false
-    if (visible.value) closeNav(true)
+    // 松开方向键时不立刻跳转——复用 scheduleAutoCommit，
+    // 让最后一次 move 触发的卡片滑动动画完整播完再提交，
+    // 避免"按一下就瞬间跳走"的问题。
+    if (visible.value && pendingIdx !== null) scheduleAutoCommit()
     return
   }
   if (e.key === 'Alt' && visible.value && arrowHeld) {
-    arrowHeld = false; closeNav(true)
+    arrowHeld = false
+    if (pendingIdx !== null) scheduleAutoCommit()
   }
 }
 
@@ -693,8 +718,6 @@ function onWheel(e) {
   e.preventDefault()
   if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && Math.abs(e.deltaY) > 5) {
     move(e.deltaY > 0 ? 1 : -1)
-    clearTimeout(onWheel._t)
-    onWheel._t = setTimeout(() => { if (visible.value) closeNav(true) }, 420)
   }
 }
 
@@ -727,7 +750,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', onResize)
   window.removeEventListener('blur', onBlur)
   document.removeEventListener('click', onClick)
-  clearTimeout(onWheel._t)
+  clearTimeout(autoCommitTimer)
 })
 </script>
 
