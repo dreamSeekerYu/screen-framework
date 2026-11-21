@@ -246,11 +246,34 @@ function draw(t) {
   ctx.scale(sc, sc)
   ctx.translate(-cx, -cy)
 
-  // 整体尺寸：中心亮圆 + 外圈 + 卡片弧
+  // 整体尺寸：中心亮圆 + 外圈
   const innerR = vmin * 0.085
   const midR = innerR * 1.28
   const outerR = innerR * 1.62
-  const cardR = vmin * 0.20       // 卡片弧半径（整体视觉直径 ≈ 2*(cardR+ch/2) ≈ vmin*0.48 ≈ 1/2 视口）
+
+  // ====== 托盘大弧几何（与中心圆不同心） ======
+  // 关键：卡片弧的圆心 arcC 不在屏幕中心 (cx,cy)，而是下移到中心圆下方很远；
+  //       因此弧半径 arcR 可以做得很大，而弧在中心圆下方只"露"出一小段平缓的托弧，
+  //       形成"大半径、小弧度、托举中心圆"的视觉。
+  //
+  //   (cx, cy) ── 中心 CALB 圆圆心
+  //        │
+  //        │ arcOffsetY (向下偏移量，越大弧越平)
+  //        ▼
+  //   (cx, cy + arcOffsetY) = arcC ── 卡片托盘弧的圆心
+  //        ↑
+  //   以 arcC 为圆心、arcR 为半径画圆；在这个大圆上取一小段（±arcHalfSpan 角）
+  //   位于中心圆下方的弧 → 就是"托举"中心圆的浅托盘。
+  //
+  // 要让选中卡（正下方那一张）的位置固定在中心圆下方 (cx, cy + cardYAtCenter)，
+  // 由勾股定理/几何关系：arcR - arcOffsetY = cardYAtCenter（即从 arcC 向上量 arcR 到选中卡外弧顶端），
+  // 我们选择 arcR 很大、arcOffsetY ≈ arcR - cardYAtCenter → 弧在中心圆附近极平缓。
+  const cardYAtCenter = vmin * 0.20   // 选中卡中线在中心圆下方多远（从 cy 往下量）
+  const arcR          = vmin * 1.20   // 托盘弧半径（很大 → 弧度平缓）
+  const arcOffsetY    = arcR - cardYAtCenter  // 弧心下移距离
+  const arcCx         = cx
+  const arcCy         = cy + arcOffsetY       // 弧心位置（屏幕中心正下方很远）
+  const arcHalfSpan   = Math.PI * 0.17        // 托盘弧可见半角（≈30°，弧度很小）
 
   // ---- 三层同心圆 ----
   // 内层亮环
@@ -364,7 +387,7 @@ function draw(t) {
   ctx.shadowBlur = 0
   ctx.restore()
 
-  // ---- 卡片排布（弧面梯形 + 超大圆角 + 文字跟随卡片倾斜） ----
+  // ---- 卡片排布（水平扁宽瓦片形：顶边水平、底边圆弧贴合发光带，文字横排不倾斜） ----
   const routes = getRoutes()
   const n = routes.length
   if (n === 0) {
@@ -386,239 +409,149 @@ function draw(t) {
     displayAbsIdx = targetAbsIdx
   }
 
-  const visibleCount = 5
-  const halfSpan = Math.floor(visibleCount / 2) // 2
-  // 弧角度（极坐标：0=右，π/2=下，π=左）——5 张卡片更宽，需要更大弧度
-  const startAngle = Math.PI * 0.85   // 左下 153°
-  const endAngle = Math.PI * 0.15     // 右下 27°
-  const arcSpan = startAngle - endAngle
-  const step = arcSpan / (visibleCount - 1)
+  // ====== 卡片布局：沿"下移弧心"的大托盘弧分布 ======
+  // 每张卡片是一段同心圆弧扇片（以 arcC 为圆心），左右边沿径向（指向 arcC），
+  // 顶底是大半径同心圆的圆弧；因弧半径很大、跨度角很小，卡片外观接近水平扁宽玻璃瓦片，
+  // 但左右边保持径向垂直于弧切线 → 整体像被一个平缓大弧从下方"托"住中心圆。
+  //
+  // 角度约定（在以 arcC 为原点的极坐标里）：
+  //   正下方（选中卡位置）ang = -π/2（向上指屏幕中心方向）
+  //   向左/向右各 k 张 = ang = -π/2 ± k*stepAng
+  // 可见 5 张在 ±arcHalfSpan 范围内（约 ±30°），之外自然渐隐。
+  const stepAng     = arcHalfSpan * 2 / 7 // 8张均匀铺满比可见区稍大一点的范围（≈15°/步）
+  const cardSpan    = stepAng * 0.70      // 卡片自身跨角（留出间隙 ≈30%）
+  const cardRadialH = vmin * 0.052        // 卡片径向厚度（垂直于大弧方向），半径大→视觉上很扁
+  const rCornerOut  = vmin * 0.010
+  const rCornerIn   = vmin * 0.006
 
-  // 卡片几何参数（弧扇梯形：顶/底为同心圆弧，侧边沿径向，自然贴合发光弧带）
-  const cardR_bot  = vmin * 0.36    // 卡片底边(外弧)所在圆半径——贴合发光环带
-  const cardH_rad  = vmin * 0.072   // 卡片径向高度（外弧-内弧）——更扁，贴近原型比例
-  const cardR_top  = cardR_bot - cardH_rad
-  const cardAngHalf= 0.21           // 单片卡片占半弧角——更宽
-  const cardCorner = cardH_rad * 0.45 // 四角圆角半径
-  // 几何常量（绘制时用，不再每卡重算）
-  const _cosA = Math.cos(cardAngHalf)
-  const _sinA = Math.sin(cardAngHalf)
-
-  // 底部贯穿发光弧带（与卡片底边共圆，完全贴合）
+  // 底部贯穿发光弧带（贴合卡片外弧下方，位于托盘弧外弧之外）
   ctx.save()
-  const bandR = cardR_bot + 3
-  const botG = ctx.createRadialGradient(cx, cy, bandR - 8, cx, cy, bandR + 12)
-  botG.addColorStop(0, 'rgba(100, 200, 255, 0)')
-  botG.addColorStop(0.5, 'rgba(120, 215, 255, 0.95)')
-  botG.addColorStop(1, 'rgba(180, 235, 255, 0)')
-  ctx.strokeStyle = botG
-  ctx.lineWidth = 7
+  const bandR2 = arcR + cardRadialH * 0.5 + 4
+  const bandG2 = ctx.createRadialGradient(arcCx, arcCy, bandR2 - 8, arcCx, arcCy, bandR2 + 12)
+  bandG2.addColorStop(0, 'rgba(100, 200, 255, 0)')
+  bandG2.addColorStop(0.5, 'rgba(120, 215, 255, 0.95)')
+  bandG2.addColorStop(1, 'rgba(180, 235, 255, 0)')
+  ctx.strokeStyle = bandG2
+  ctx.lineWidth = 5
   ctx.shadowColor = 'rgba(100, 200, 255, 0.95)'
-  ctx.shadowBlur = 28
+  ctx.shadowBlur = 24
   ctx.beginPath()
-  ctx.arc(cx, cy, bandR, endAngle - cardAngHalf - 0.04, startAngle + cardAngHalf + 0.04)
+  ctx.arc(arcCx, arcCy, bandR2,
+          -Math.PI/2 - arcHalfSpan * 1.08,
+          -Math.PI/2 + arcHalfSpan * 1.08)
   ctx.stroke()
   ctx.shadowBlur = 0
   ctx.restore()
 
-  for (let i = 0; i < visibleCount; i++) {
-    let realIdx = Math.round(displayAbsIdx) - halfSpan + i
-    let rel = realIdx - displayAbsIdx
-    let modIdx = ((realIdx % n) + n) % n
-    const route = routes[modIdx]
+  // 遍历全部卡片（8 路由沿大托盘弧均匀分布；选中卡固定在正下方）
+  for (let k = -(n - 1); k <= n - 1; k++) {
+    const realIdx = Math.round(displayAbsIdx) + k
+    const modIdx  = ((realIdx % n) + n) % n
+    const route   = routes[modIdx]
+    const dist    = Math.abs(k)
 
-    const dist = Math.abs(rel)
-    let scale, alpha, extraR
-    if (dist <= 0.5)      { scale = 1.10; alpha = 1;    extraR = 6 }
-    else if (dist <= 1.5) { scale = 0.90; alpha = 0.80; extraR = -4 }
-    else                  { scale = 0.70; alpha = 0.50; extraR = -12 }
+    // 选中卡在正下方（相对 arcC 的正上方，即 -π/2），其他按 stepAng 沿大弧向两侧排布
+    const ang = -Math.PI / 2 + k * stepAng
 
-    const ang = startAngle - i * step
+    // 衰减：大弧度下 dist>=3 的卡离弧可见区较远，直接隐藏
+    let alpha, scale, extraR
+    if (dist === 0)      { alpha = 1.00; scale = 1.12; extraR = vmin * 0.015 }
+    else if (dist === 1) { alpha = 0.85; scale = 0.95; extraR = 0 }
+    else if (dist === 2) { alpha = 0.55; scale = 0.82; extraR = -vmin * 0.008 }
+    else                 { alpha = 0;    scale = 0.70; extraR = -vmin * 0.020 }
+    if (alpha <= 0.005) continue
 
-    // 单片卡片实际半径（随选中状态上下浮动，让选中卡略微向外弹出）
-    const rBot  = (cardR_bot + extraR) * scale
-    const rTop  = rBot - cardH_rad * scale
-    const aHalf = cardAngHalf / scale * 0.85   // 缩放时保持卡片"看着大小一致"，aHalf 反变
-    const rCorn = cardCorner * scale
-
-    // 卡片中心位置（用 rBot - cardH_rad/2 作为定位锚点，即卡片径向中点）
-    const centerR = (rBot + rTop) / 2
-    const px = cx + Math.cos(ang) * centerR
-    const py = cy + Math.sin(ang) * centerR
+    // 卡片内外弧半径（以 arcC 为圆心）
+    const midRc = arcR + extraR
+    const hR    = cardRadialH * scale * 0.5
+    const R1    = midRc - hR              // 内弧（靠近 arcC → 远离屏幕方向）
+    const R2    = midRc + hR              // 外弧（靠近屏幕中心圆方向）
+    const spanA = cardSpan * scale
+    const ro    = rCornerOut * scale
+    const ri    = rCornerIn * scale
 
     ctx.save()
     ctx.globalAlpha = alpha * sc
 
-    // 选中卡底部向外发光光束（沿径向向外）
-    if (dist <= 0.5) {
+    // 选中卡底部向外发光（朝屏幕中心方向，即从 arcC 指向 -π/2 方向）
+    if (dist === 0) {
       const bp = 0.5 + 0.35 * Math.sin(t * 0.004)
-      const beamG = ctx.createRadialGradient(0, cardH_rad * scale * 0.5 + 4, 2, 0, cardH_rad * scale * 0.5 + 22, 80)
-      beamG.addColorStop(0, `rgba(140, 225, 255, ${0.8 * bp})`)
+      const bx = arcCx + Math.cos(ang) * (R2 + 22)
+      const by = arcCy + Math.sin(ang) * (R2 + 22)
+      const beamG = ctx.createRadialGradient(bx, by, 2, bx, by, 55)
+      beamG.addColorStop(0, `rgba(140, 225, 255, ${0.80 * bp})`)
       beamG.addColorStop(1, 'rgba(80, 160, 255, 0)')
       ctx.fillStyle = beamG
-      ctx.translate(px, py)
-      ctx.rotate(ang - Math.PI / 2)
       ctx.beginPath()
-      ctx.ellipse(0, cardH_rad * scale * 0.5 + 22, rBot * Math.sin(aHalf) * 0.7, 34, 0, 0, Math.PI * 2)
+      ctx.arc(bx, by, 55, 0, Math.PI * 2)
       ctx.fill()
-      ctx.restore()
-      ctx.save()
-      ctx.globalAlpha = alpha * sc
     }
 
-    // ---- 画卡片主体：同心圆弧梯形 + 四角圆角 ----
-    // 不再使用 translate+rotate 的本地矩形，而是直接在全局坐标以 (cx,cy) 为圆心画弧扇梯形
-    // 四个角点（未圆角前的"梯形"顶点，在以(cx,cy)为原点的极坐标中）：
-    //   底右：(rBot, ang - aHalf)    底左：(rBot, ang + aHalf)
-    //   顶左：(rTop, ang + aHalf)    顶右：(rTop, ang - aHalf)
-    // 画圆圆角思路：在每个角点处，沿两条相邻边向内切长度 = rCorn，用半径 rCorn 的圆弧连接两个切点。
-
-    // 四个角点坐标（全局）
-    const pBR = { x: cx + Math.cos(ang - aHalf) * rBot, y: cy + Math.sin(ang - aHalf) * rBot }
-    const pBL = { x: cx + Math.cos(ang + aHalf) * rBot, y: cy + Math.sin(ang + aHalf) * rBot }
-    const pTL = { x: cx + Math.cos(ang + aHalf) * rTop, y: cy + Math.sin(ang + aHalf) * rTop }
-    const pTR = { x: cx + Math.cos(ang - aHalf) * rTop, y: cy + Math.sin(ang - aHalf) * rTop }
-
-    // 每条边上的两个"圆角切点"：从角点沿边向内退 rCorn 的位置
-    // 切向单位向量（沿弧切线方向，即垂直径向，逆时针为正）
-    // 径向单位向量 u_rad(θ) = (cosθ, sinθ)，切向单位向量 u_tan(θ) = (-sinθ, cosθ)（指向θ增大方向即逆时针）
-    function uRad(theta){ return {x:Math.cos(theta), y:Math.sin(theta)} }
-    function uTan(theta){ return {x:-Math.sin(theta), y:Math.cos(theta)} }
-    function addP(p, u, s){ return {x:p.x+u.x*s, y:p.y+u.y*s} }
-
-    // 外弧（底边）：角点 pBR（θ=ang-aHalf, r=rBot）、pBL（θ=ang+aHalf, r=rBot）
-    //   右下切点（底边上的切向内退 rCorn）：θ = ang - aHalf + rCorn/rBot
-    //   左下切点：θ = ang + aHalf - rCorn/rBot
-    // 内弧（顶边）：角点 pTR（θ=ang-aHalf, r=rTop）、pTL（θ=ang+aHalf, r=rTop）
-    //   右上切点：θ = ang - aHalf + rCorn/rTop
-    //   左上切点：θ = ang + aHalf - rCorn/rTop
-    const tBR_bot = ang - aHalf + rCorn / rBot
-    const tBL_bot = ang + aHalf - rCorn / rBot
-    const tTR_top = ang - aHalf + rCorn / rTop
-    const tTL_top = ang + aHalf - rCorn / rTop
-
-    // 四个切点坐标
-    const T_BR_bot = { x: cx + Math.cos(tBR_bot) * rBot, y: cy + Math.sin(tBR_bot) * rBot }
-    const T_BL_bot = { x: cx + Math.cos(tBL_bot) * rBot, y: cy + Math.sin(tBL_bot) * rBot }
-    const T_TL_top = { x: cx + Math.cos(tTL_top) * rTop, y: cy + Math.sin(tTL_top) * rTop }
-    const T_TR_top = { x: cx + Math.cos(tTR_top) * rTop, y: cy + Math.sin(tTR_top) * rTop }
-
-    // 右侧直边（外弧右下 → 内弧右上，沿径向 rBot→rTop 在 θ=ang-aHalf 射线上）：
-    //   右下直边切点：pBR 沿径向向内退 rCorn，即 r = rBot - rCorn
-    //   右上直边切点：pTR 沿径向向外退 rCorn，即 r = rTop + rCorn
-    const T_BR_side = { x: cx + Math.cos(ang - aHalf) * (rBot - rCorn), y: cy + Math.sin(ang - aHalf) * (rBot - rCorn) }
-    const T_TR_side = { x: cx + Math.cos(ang - aHalf) * (rTop + rCorn), y: cy + Math.sin(ang - aHalf) * (rTop + rCorn) }
-
-    // 左侧直边（内弧左上 → 外弧左下，沿径向 rTop→rBot 在 θ=ang+aHalf 射线上）：
-    //   左上直边切点：pTL 沿径向向外退 rCorn，r = rTop + rCorn
-    //   左下直边切点：pBL 沿径向向内退 rCorn，r = rBot - rCorn
-    const T_TL_side = { x: cx + Math.cos(ang + aHalf) * (rTop + rCorn), y: cy + Math.sin(ang + aHalf) * (rTop + rCorn) }
-    const T_BL_side = { x: cx + Math.cos(ang + aHalf) * (rBot - rCorn), y: cy + Math.sin(ang + aHalf) * (rBot - rCorn) }
-
-    // 路径：右下底切 → 外(底)弧 → 左下底切 → 左下圆角 → 左下侧切 → 左直边 → 左上侧切 → 左上圆角 → 左上顶切 → 内(顶)弧(反向) → 右上顶切 → 右上圆角 → 右上侧切 → 右直边 → 右下侧切 → 右下圆角 → 回到起点
-    ctx.beginPath()
-    // 起点：右下底切（外弧右端）
-    ctx.moveTo(T_BR_bot.x, T_BR_bot.y)
-    // 1. 外弧（底边）：从右下底切 → 左下底切，逆时针方向画（θ从tBR_bot到tBL_bot）
-    ctx.arc(cx, cy, rBot, tBR_bot, tBL_bot, false)
-    // 2. 左下角圆角：在 T_BL_bot → T_BL_side 之间，半径 rCorn
-    //    圆角圆心 = pBL 沿角平分线向内退 rCorn/ cos(φ/2)。更简单用 arcTo：先 lineTo 到角点，再 arcTo 到下一边切点。
-    ctx.lineTo(pBL.x, pBL.y)
-    ctx.arcTo(pBL.x, pBL.y, T_TL_side.x, T_TL_side.y, rCorn)
-    // 3. 左直边：左下侧切 → 左上侧切（沿径向向内）
-    ctx.lineTo(T_TL_side.x, T_TL_side.y)
-    // 4. 左上角圆角
-    ctx.lineTo(pTL.x, pTL.y)
-    ctx.arcTo(pTL.x, pTL.y, T_TL_top.x, T_TL_top.y, rCorn)
-    // 5. 内弧（顶边）：从左上顶切 → 右上顶切，顺时针方向（θ从tTL_top到tTR_top）
-    ctx.arc(cx, cy, rTop, tTL_top, tTR_top, true)
-    // 6. 右上角圆角
-    ctx.lineTo(pTR.x, pTR.y)
-    ctx.arcTo(pTR.x, pTR.y, T_TR_side.x, T_TR_side.y, rCorn)
-    // 7. 右直边：右上侧切 → 右下侧切（沿径向向外）
-    ctx.lineTo(T_BR_side.x, T_BR_side.y)
-    // 8. 右下角圆角
-    ctx.lineTo(pBR.x, pBR.y)
-    ctx.arcTo(pBR.x, pBR.y, T_BR_bot.x, T_BR_bot.y, rCorn)
-    ctx.closePath()
-
-    // 填充（径向渐变：从圆心向外，模拟玻璃弧面的明暗——内弧较亮、外弧较深）
-    if (dist <= 0.5) {
-      const grad = ctx.createRadialGradient(cx, cy, rTop - 4, cx, cy, rBot + 4)
-      grad.addColorStop(0, 'rgba(110, 200, 255, 0.92)')
-      grad.addColorStop(0.45, 'rgba(50, 140, 252, 0.95)')
-      grad.addColorStop(1, 'rgba(15, 70, 180, 0.92)')
-      ctx.fillStyle = grad
-      ctx.shadowColor = 'rgba(80, 180, 255, 1)'
-      ctx.shadowBlur = 28
+    // ---- 卡片填充（以 arcC 为圆心的弧面扇段） ----
+    drawArcTrapezoid(arcCx, arcCy, R1, R2, ang, spanA, ro, ri)
+    const fillGrad = ctx.createRadialGradient(arcCx, arcCy, R1, arcCx, arcCy, R2)
+    if (dist === 0) {
+      fillGrad.addColorStop(0, 'rgba(20, 80, 180, 0.85)')
+      fillGrad.addColorStop(0.55, 'rgba(55, 155, 255, 0.90)')
+      fillGrad.addColorStop(1, 'rgba(40, 120, 230, 0.88)')
     } else {
-      const grad = ctx.createRadialGradient(cx, cy, rTop - 4, cx, cy, rBot + 4)
-      grad.addColorStop(0, 'rgba(65, 120, 205, 0.72)')
-      grad.addColorStop(1, 'rgba(22, 45, 110, 0.78)')
-      ctx.fillStyle = grad
-      ctx.shadowColor = 'rgba(40, 100, 200, 0.4)'
-      ctx.shadowBlur = 12
+      fillGrad.addColorStop(0, 'rgba(10, 35, 80, 0.50)')
+      fillGrad.addColorStop(0.5, 'rgba(20, 55, 110, 0.42)')
+      fillGrad.addColorStop(1, 'rgba(30, 75, 145, 0.48)')
     }
+    ctx.fillStyle = fillGrad
     ctx.fill()
-    ctx.shadowBlur = 0
 
-    // 玻璃高光：顶部（内弧）一道亮白反光
+    // ---- 内高光（靠近屏幕一侧的内弧边白色反光带） ----
     ctx.save()
-    ctx.clip()
-    // 在内弧附近画一个环形亮带，宽度约为卡片径向高度的 40%
-    const hi = ctx.createRadialGradient(cx, cy, rTop, cx, cy, rTop + cardH_rad * scale * 0.5)
-    hi.addColorStop(0, 'rgba(255,255,255,0.45)')
-    hi.addColorStop(1, 'rgba(255,255,255,0)')
-    ctx.fillStyle = hi
+    ctx.globalAlpha = dist === 0 ? 0.28 : 0.15
     ctx.beginPath()
-    ctx.arc(cx, cy, rTop + cardH_rad * scale * 0.5, ang - aHalf - 0.02, ang + aHalf + 0.02)
-    ctx.arc(cx, cy, rTop - 2, ang + aHalf + 0.02, ang - aHalf - 0.02, true)
-    ctx.closePath()
+    const hlR1 = R2 - (R2 - R1) * 0.22
+    const hlR2 = R2 - 2
+    drawArcTrapezoid(arcCx, arcCy, hlR1, hlR2, ang, spanA * 0.96, ri * 0.5, ri * 0.3)
+    const hlG = ctx.createRadialGradient(arcCx, arcCy, hlR1, arcCx, arcCy, hlR2)
+    hlG.addColorStop(0, 'rgba(220, 240, 255, 0)')
+    hlG.addColorStop(1, 'rgba(220, 240, 255, 0.85)')
+    ctx.fillStyle = hlG
     ctx.fill()
     ctx.restore()
 
-    // 外层发光描边
-    ctx.lineWidth = dist <= 0.5 ? 2.2 : 1.4
-    ctx.strokeStyle = dist <= 0.5 ? 'rgba(215, 240, 255, 0.95)' : 'rgba(140, 200, 255, 0.55)'
-    ctx.shadowColor = dist <= 0.5 ? 'rgba(150, 225, 255, 0.9)' : 'rgba(80, 160, 220, 0.3)'
-    ctx.shadowBlur = dist <= 0.5 ? 10 : 6
+    // ---- 双层描边 ----
+    drawArcTrapezoid(arcCx, arcCy, R1, R2, ang, spanA, ro, ri)
+    ctx.strokeStyle = dist === 0
+      ? 'rgba(140, 220, 255, 0.95)'
+      : 'rgba(100, 170, 230, 0.55)'
+    ctx.lineWidth = dist === 0 ? 2.2 : 1.3
+    ctx.shadowColor = dist === 0 ? 'rgba(100, 200, 255, 0.9)' : 'rgba(60, 140, 220, 0.35)'
+    ctx.shadowBlur = dist === 0 ? 16 : 5
     ctx.stroke()
     ctx.shadowBlur = 0
-    // 内层亮白细边（玻璃高光边框）：沿原路径向内缩 2px 再描一次
+
     ctx.save()
-    ctx.clip()
+    ctx.globalAlpha = dist === 0 ? 0.50 : 0.22
+    ctx.beginPath()
+    drawArcTrapezoid(arcCx, arcCy, R1 + 2, R2 - 3, ang, spanA * 0.94, Math.max(2, ro - 3), Math.max(2, ri - 3))
+    ctx.strokeStyle = 'rgba(220, 245, 255, 1)'
     ctx.lineWidth = 0.8
-    ctx.strokeStyle = 'rgba(230, 245, 255, 0.55)'
-    // 简化处理：原路径再描一遍细白线（依靠 clip 限制在卡内，视觉上形成内亮边）
-    ctx.beginPath()
-    ctx.moveTo(T_BR_bot.x, T_BR_bot.y)
-    ctx.arc(cx, cy, rBot, tBR_bot, tBL_bot, false)
-    ctx.lineTo(pBL.x, pBL.y)
-    ctx.arcTo(pBL.x, pBL.y, T_TL_side.x, T_TL_side.y, Math.max(1, rCorn - 2))
-    ctx.lineTo(T_TL_side.x, T_TL_side.y)
-    ctx.lineTo(pTL.x, pTL.y)
-    ctx.arcTo(pTL.x, pTL.y, T_TL_top.x, T_TL_top.y, Math.max(1, rCorn - 2))
-    ctx.arc(cx, cy, rTop, tTL_top, tTR_top, true)
-    ctx.lineTo(pTR.x, pTR.y)
-    ctx.arcTo(pTR.x, pTR.y, T_TR_side.x, T_TR_side.y, Math.max(1, rCorn - 2))
-    ctx.lineTo(T_BR_side.x, T_BR_side.y)
-    ctx.lineTo(pBR.x, pBR.y)
-    ctx.arcTo(pBR.x, pBR.y, T_BR_bot.x, T_BR_bot.y, Math.max(1, rCorn - 2))
-    ctx.closePath()
     ctx.stroke()
     ctx.restore()
 
-    // 卡片文字：translate 到卡片径向中点 + rotate 到切线方向（文字自然随卡片倾斜）
+    // ---- 卡片文字：位于扇段几何中心，沿大弧切线方向旋转 ----
+    // 切线方向 = 垂直于 arcC→卡片 径向；即 ang + π/2（沿弧顺时针方向）
+    const name = route.name
+    const fs = dist === 0 ? 20 : (dist === 1 ? 16 : 14)
+    const tx = arcCx + Math.cos(ang) * midRc
+    const ty = arcCy + Math.sin(ang) * midRc
     ctx.save()
-    ctx.translate(px, py)
-    ctx.rotate(ang - Math.PI / 2)
+    ctx.translate(tx, ty)
+    ctx.rotate(ang + Math.PI / 2)   // 文字基线沿大弧切线方向（大半径→接近水平）
+    ctx.font = `bold ${fs}px "Microsoft YaHei", "PingFang SC", sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = '#ffffff'
-    ctx.font = `bold ${Math.round(18 * Math.min(scale, 1.08))}px "Microsoft YaHei", "PingFang SC", sans-serif`
-    ctx.shadowColor = 'rgba(0,0,0,0.55)'
-    ctx.shadowBlur = 4
-    ctx.fillText(route.name, 0, 0)
+    ctx.fillStyle = dist === 0 ? '#ffffff' : 'rgba(220, 235, 255, 0.92)'
+    ctx.shadowColor = 'rgba(80, 160, 255, 0.75)'
+    ctx.shadowBlur = dist === 0 ? 10 : 4
+    ctx.fillText(name, 0, 0)
     ctx.shadowBlur = 0
     ctx.restore()
 
