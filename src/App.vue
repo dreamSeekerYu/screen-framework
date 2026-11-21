@@ -17,6 +17,8 @@
       <component :is="Component" />
     </router-view>
   </div>
+  <!-- 全局动态导航器：Ctrl+K 唤起 -->
+  <DynamicNavigator />
 </template>
 
 
@@ -24,6 +26,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import ScreenContainer from '@/components/layout/ScreenContainer.vue'
+import DynamicNavigator from '@/components/common/DynamicNavigator.vue'
 import router from '@/router'
 import { RouterLink } from "vue-router";
 import { loadData, loadSheet, preloadAll } from '@/utils/dataLoader.js'
