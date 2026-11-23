@@ -21,7 +21,7 @@
 
       <div class="pack-content">
         <!-- ========== 总览仪表盘 ========== -->
-        <div v-show="mainTab === 'overview'" class="pack-tab-panel">
+        <div v-show="mainTab === 'overview'" class="pack-tab-panel pack-tab-panel--overview">
           <!-- KPI 行 -->
           <div class="pack-kpi-row">
             <div v-for="k in overviewKpis" :key="k.key" class="pack-kpi-card" :class="k.modifier">
@@ -855,6 +855,8 @@ watch(activeClient, async () => {
   background: transparent;
   overflow-y: auto;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ============ 主Tab ============ */
@@ -882,8 +884,31 @@ watch(activeClient, async () => {
     border-color: transparent;
   }
 }
-.pack-content { min-height: 0; }
-.pack-tab-panel { animation: fadeIn .4s ease; }
+.pack-content { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+.pack-tab-panel { animation: fadeIn .4s ease; flex-shrink: 0; }
+/* 总览面板：纵向填满剩余高度，图表区自适应拉伸，避免底部大片留白 */
+.pack-tab-panel--overview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  .pack-kpi-row,
+  .pack-client-grid { flex-shrink: 0; }
+  .pack-chart-grid {
+    flex: 1;
+    min-height: 320px;
+  }
+  .pack-chart-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .chart-box-h300 {
+    height: auto;
+    flex: 1;
+    min-height: 260px;
+  }
+}
 @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform: translateY(0);} }
 .p-loading { padding: 40px; text-align: center; color: var(--text-sec); }
 

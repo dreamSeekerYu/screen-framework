@@ -28,7 +28,7 @@
           <div class="clock">{{ clockTime }}</div>
         </div>
         <div class="title-wrap">
-          <h1>集成工厂 · 数据中心</h1>
+          <h1>集成工厂 · 质量周报</h1>
         </div>
         <div class="hd-side right">
           <div class="date">{{ clockDate }}</div>
@@ -76,7 +76,7 @@
           <!-- 中心 LOGO -->
           <div class="center-logo">
             <div class="logo-calb">CALB</div>
-            <div class="logo-sub">集成工厂质量周报</div>
+            <!-- <div class="logo-sub">集成工厂质量周报</div> -->
             <div class="logo-ring r1"></div>
             <div class="logo-ring r2"></div>
             <div class="logo-ring r3"></div>
@@ -98,6 +98,7 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { getCssVar } from '@/utils/color.js'
 
 const router = useRouter()
 
@@ -120,7 +121,15 @@ const ICONS = {
   think: '<path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.8V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3.2c1.8-1.3 3-3.4 3-5.8a7 7 0 0 0-7-7z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/>',
   default: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18"/>'
 }
-const COLORS = ['#00e5ff', '#3a7bff', '#8b5cf6', '#ff3d8b', '#ffc94d', '#00ffa3', '#ff6b3d']
+// 卡片主题色：引用全局主题变量，随主题切换自动换色
+const COLORS = [
+  'var(--color-accent)',
+  'var(--color-primary)',
+  'var(--color-primary-light)',
+  'var(--color-danger)',
+  'var(--color-warning)',
+  'var(--color-success)'
+]
 const BADGE_MAP = {
   Pack: 'PACK · 客户',
   Question: '异常 · 闭环',
@@ -308,17 +317,37 @@ function layoutRing() {
   tilt.style.setProperty('--R', Rpx + 'px')
 }
 
-/* ============ 粒子 ============ */
+/* ============ 粒子（颜色随主题切换） ============ */
 let cvCtx = null, W = 0, H = 0, parts = [], SPRITES = {}, rafParts = true
+// 粒子色板（"r,g,b" 三元组）与连线色，均在 buildSprites 时按当前主题解析
+let SPRITE_COLORS = []
+let LINK_RGB = '90,160,255'
+
+function hexToRgbTriplet(hex) {
+  const h = hex.replace('#', '')
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h
+  const n = parseInt(full, 16)
+  return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`
+}
 
 function resizeCanvas() {
   const cv = partsCanvas.value
   if (!cv) return
-  W = cv.width = innerWidth
-  H = cv.height = innerHeight
+  // 以画布元素实际渲染尺寸为准（缩放容器内 innerWidth 不等于容器设计尺寸）
+  W = cv.width = cv.clientWidth || innerWidth
+  H = cv.height = cv.clientHeight || innerHeight
 }
 function buildSprites() {
-  ;['0,229,255', '58,123,255', '139,92,246', '255,61,139'].forEach(c => {
+  // 从当前主题读取四个强调色作为粒子色板
+  const palette = [
+    getCssVar('--color-accent', '#00e5ff'),
+    getCssVar('--color-primary', '#3a7bff'),
+    getCssVar('--color-primary-light', '#8b5cf6'),
+    getCssVar('--color-danger', '#ff3d8b')
+  ].map(hexToRgbTriplet)
+  LINK_RGB = hexToRgbTriplet(getCssVar('--color-primary', '#3a7bff'))
+  SPRITE_COLORS = palette
+  palette.forEach(c => {
     const s = document.createElement('canvas')
     s.width = s.height = 16
     const g = s.getContext('2d')
@@ -339,8 +368,9 @@ class P {
     this.r = Math.random() * 1.6 + 0.4
     this.vy = Math.random() * 0.5 + 0.15
     this.vx = (Math.random() - 0.5) * 0.25
-    const cols = ['0,229,255', '58,123,255', '139,92,246', '255,61,139']
-    this.col = cols[Math.floor(Math.random() * cols.length)]
+    this.col = SPRITE_COLORS.length
+      ? SPRITE_COLORS[Math.floor(Math.random() * SPRITE_COLORS.length)]
+      : '58,123,255'
     this.a = Math.random() * 0.6 + 0.2
   }
   step() {
@@ -365,7 +395,7 @@ function loopParts() {
       const dy = parts[i].y - parts[j].y
       const d2 = dx * dx + dy * dy
       if (d2 < 12000) {
-        cvCtx.strokeStyle = `rgba(90,160,255,${0.12 * (1 - d2 / 12000)})`
+        cvCtx.strokeStyle = `rgba(${LINK_RGB},${0.12 * (1 - d2 / 12000)})`
         cvCtx.lineWidth = 1
         cvCtx.beginPath()
         cvCtx.moveTo(parts[i].x, parts[i].y)
@@ -444,6 +474,12 @@ function onMouseMove(e) {
   myT = e.clientY / innerHeight - 0.5
 }
 
+function onThemeChange() {
+  buildSprites()
+  // 已有粒子迁移到新色板，避免引用失效的精灵
+  parts.forEach(p => { p.col = SPRITE_COLORS[Math.floor(Math.random() * SPRITE_COLORS.length)] })
+}
+
 onMounted(() => {
   tickClock()
   clockTimer = setInterval(tickClock, 1000)
@@ -456,6 +492,7 @@ onMounted(() => {
   addEventListener('resize', onResize)
   addEventListener('keydown', onKey)
   addEventListener('mousemove', onMouseMove)
+  window.addEventListener('themechange', onThemeChange)
   // 开场
   setTimeout(() => {
     introHidden.value = true
@@ -472,35 +509,45 @@ onBeforeUnmount(() => {
   removeEventListener('resize', onResize)
   removeEventListener('keydown', onKey)
   removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('themechange', onThemeChange)
   clearTimeout(wheelTimer)
 })
 </script>
 
 <style scoped lang="scss">
+/* 页面被 App 的 ScreenContainer 缩放包裹：使用 absolute + 100% 而非 fixed/vw，
+   否则 100vw 以真实视口计算，在非 1920 窗口下与缩放容器错位（表现为页面区域偏移/色差） */
 .home-stage {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  background: #04060d;
+  background: var(--color-bg-page);
+  background: var(--bg-page-gradient);
   font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
-  color: #e8f1ff;
-  --cyan: #00e5ff;
-  --blue: #3a7bff;
-  --violet: #8b5cf6;
-  --pink: #ff3d8b;
-  --gold: #ffc94d;
-  --green: #00ffa3;
-  --text: #e8f1ff;
-  --dim: #7d8db3;
-  --card-glass: rgba(13, 20, 40, 0.55);
-  --line: rgba(120, 180, 255, 0.16);
+  color: var(--color-text-primary);
+  /* 霓虹语义色 → 全部派生自全局主题变量，随主题切换 */
+  --cyan: var(--color-accent);
+  --blue: var(--color-primary);
+  --violet: var(--color-primary-light);
+  --pink: var(--color-danger);
+  --gold: var(--color-warning);
+  --green: var(--color-success);
+  --text: var(--color-text-primary);
+  --dim: var(--color-text-muted);
+  --card-glass: color-mix(in srgb, var(--color-bg-card) 82%, transparent);
+  --line: var(--color-border-light);
+  /* 暗角：深色主题下压边，浅色主题下减弱避免灰蒙蒙 */
+  --vignette-c: rgba(0, 0, 0, 0.5);
 }
+
+:global(html[data-theme='light-business']) .home-stage { --vignette-c: rgba(31, 41, 72, 0.16); }
+:global(html[data-theme='light-cyan']) .home-stage { --vignette-c: rgba(16, 58, 58, 0.16); }
 
 /* ============ 背景层 ============ */
 .bg {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
@@ -509,9 +556,9 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: -20%;
   background:
-    radial-gradient(60% 50% at 15% 20%, rgba(0,120,255,.16), transparent 60%),
-    radial-gradient(50% 45% at 85% 15%, rgba(139,92,246,.14), transparent 60%),
-    radial-gradient(55% 50% at 60% 90%, rgba(255,61,139,.10), transparent 60%);
+    radial-gradient(60% 50% at 15% 20%, color-mix(in srgb, var(--blue) 16%, transparent), transparent 60%),
+    radial-gradient(50% 45% at 85% 15%, color-mix(in srgb, var(--violet) 14%, transparent), transparent 60%),
+    radial-gradient(55% 50% at 60% 90%, color-mix(in srgb, var(--pink) 10%, transparent), transparent 60%);
   filter: blur(30px);
   animation: auroraDrift 22s ease-in-out infinite alternate;
 }
@@ -524,8 +571,8 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: -64px;
   background-image:
-    linear-gradient(rgba(90,150,255,.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(90,150,255,.05) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--blue) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--blue) 6%, transparent) 1px, transparent 1px);
   background-size: 64px 64px;
   mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 40%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 40%, transparent 100%);
@@ -536,13 +583,13 @@ onBeforeUnmount(() => {
 .bg-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 90% 80% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%);
+  background: radial-gradient(ellipse 90% 80% at 50% 45%, transparent 55%, var(--vignette-c) 100%);
 }
 .bg-scan {
   position: absolute;
   inset: 0;
   opacity: .35;
-  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.014) 3px 4px);
+  background: repeating-linear-gradient(0deg, transparent 0 3px, color-mix(in srgb, var(--text) 2%, transparent) 3px 4px);
 }
 .beam {
   position: absolute;
@@ -550,14 +597,14 @@ onBeforeUnmount(() => {
   width: 1px;
   height: 160%;
   pointer-events: none;
-  background: linear-gradient(180deg, transparent, rgba(0,229,255,.28), transparent);
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--cyan) 28%, transparent), transparent);
   animation: beamMove 9s linear infinite;
   opacity: 0;
 }
 .beam.b1 { left: 12%; }
-.beam.b2 { left: 38%; animation-delay: 3s; background: linear-gradient(180deg, transparent, rgba(255,61,139,.22), transparent); }
+.beam.b2 { left: 38%; animation-delay: 3s; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--pink) 22%, transparent), transparent); }
 .beam.b3 { left: 63%; animation-delay: 5s; }
-.beam.b4 { left: 86%; animation-delay: 7s; background: linear-gradient(180deg, transparent, rgba(139,92,246,.22), transparent); }
+.beam.b4 { left: 86%; animation-delay: 7s; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--violet) 22%, transparent), transparent); }
 @keyframes beamMove {
   0%   { opacity: 0; transform: translateY(-10%); }
   8%   { opacity: 1; }
@@ -565,7 +612,7 @@ onBeforeUnmount(() => {
   100% { opacity: 0; transform: translateY(10%); }
 }
 .film-grain {
-  position: fixed;
+  position: absolute;
   inset: -100px;
   z-index: 50;
   pointer-events: none;
@@ -583,10 +630,10 @@ onBeforeUnmount(() => {
 
 /* ============ 开场 ============ */
 .intro {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 100;
-  background: #000;
+  background: var(--color-bg-page);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -599,11 +646,11 @@ onBeforeUnmount(() => {
   font-size: 42px;
   font-weight: 800;
   letter-spacing: 24px;
-  background: linear-gradient(180deg,#fff,#7fd8ff 60%,#3a7bff);
+  background: linear-gradient(180deg, var(--text), color-mix(in srgb, var(--blue) 45%, #ffffff) 60%, var(--blue));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 40px rgba(0,180,255,.5));
+  filter: drop-shadow(0 0 40px color-mix(in srgb, var(--blue) 50%, transparent));
   animation: logoIn 1.6s ease both;
 }
 @keyframes logoIn {
@@ -613,7 +660,7 @@ onBeforeUnmount(() => {
 .intro-sub {
   font-size: 12px;
   letter-spacing: 10px;
-  color: rgba(200,225,255,.6);
+  color: var(--dim);
   animation: subIn 1.2s ease .5s both;
 }
 @keyframes subIn { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform:none; } }
@@ -627,7 +674,7 @@ onBeforeUnmount(() => {
 
 /* ============ 舞台 ============ */
 .stage {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 2;
   display: flex;
@@ -655,11 +702,11 @@ h1 {
   font-size: 30px;
   font-weight: 800;
   letter-spacing: 12px;
-  background: linear-gradient(180deg,#fff 20%,#7fc4ff 60%,#3a7bff 100%);
+  background: linear-gradient(180deg, var(--text) 20%, color-mix(in srgb, var(--blue) 45%, #ffffff) 60%, var(--blue) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 24px rgba(60,150,255,.45));
+  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--blue) 45%, transparent));
 }
 .hd-side {
   display: flex;
@@ -671,8 +718,8 @@ h1 {
 .clock {
   font-family: "Consolas", monospace;
   font-size: 20px;
-  color: #bfe3ff;
-  text-shadow: 0 0 12px rgba(0,180,255,.6);
+  color: color-mix(in srgb, var(--blue) 30%, var(--text));
+  text-shadow: 0 0 12px color-mix(in srgb, var(--blue) 60%, transparent);
 }
 .date { font-size: 11px; color: var(--dim); letter-spacing: 2px; text-align: right; }
 .hd-line {
@@ -717,13 +764,13 @@ h1 {
   width: calc(var(--R) * 2.7);
   height: calc(var(--R) * 2.7 * var(--tf,.24));
   transform: translate(-50%,-50%);
-  border: 1px solid rgba(0,190,255,.20);
-  box-shadow: 0 0 30px rgba(0,180,255,.10), inset 0 0 30px rgba(0,180,255,.08);
+  border: 1px solid color-mix(in srgb, var(--cyan) 20%, transparent);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--blue) 10%, transparent), inset 0 0 30px color-mix(in srgb, var(--blue) 8%, transparent);
 }
 .orbit-line.l2 {
   width: calc(var(--R) * 3.4);
   height: calc(var(--R) * 3.4 * var(--tf,.24));
-  border-color: rgba(139,92,246,.14);
+  border-color: color-mix(in srgb, var(--violet) 14%, transparent);
 }
 .orbit-halo {
   position: absolute;
@@ -734,7 +781,7 @@ h1 {
   transform: translate(-50%,-50%);
   border-radius: 50%;
   pointer-events: none;
-  background: radial-gradient(circle, rgba(0,180,255,.16) 0%, rgba(0,180,255,.05) 45%, transparent 72%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--blue) 16%, transparent) 0%, color-mix(in srgb, var(--blue) 5%, transparent) 45%, transparent 72%);
   animation: haloPulse 4s ease-in-out infinite;
 }
 @keyframes haloPulse {
@@ -755,40 +802,40 @@ h1 {
   font-size: 84px;
   font-weight: 900;
   letter-spacing: 14px;
-  background: linear-gradient(180deg,#fff 20%,#9fd8ff 55%,#3a7bff 100%);
+  background: linear-gradient(180deg, var(--text) 20%, color-mix(in srgb, var(--blue) 45%, #ffffff) 55%, var(--blue) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 28px rgba(0,180,255,.55));
+  filter: drop-shadow(0 0 28px color-mix(in srgb, var(--blue) 55%, transparent));
 }
 .logo-sub {
   margin-top: 14px;
   font-size: 26px;
   font-weight: 700;
   letter-spacing: 10px;
-  color: #cfe4ff;
-  text-shadow: 0 0 16px rgba(0,160,255,.5);
+  color: color-mix(in srgb, var(--blue) 25%, var(--text));
+  text-shadow: 0 0 16px color-mix(in srgb, var(--blue) 50%, transparent);
 }
 .logo-ring {
   position: absolute;
   left: 50%;
   top: 50%;
   border-radius: 50%;
-  border: 1px solid rgba(0,200,255,.35);
+  border: 1px solid color-mix(in srgb, var(--cyan) 35%, transparent);
   transform: translate(-50%,-50%);
   pointer-events: none;
 }
-.logo-ring.r1 { width: 380px; height: 380px; box-shadow: 0 0 30px rgba(0,180,255,.15); }
+.logo-ring.r1 { width: 380px; height: 380px; box-shadow: 0 0 30px color-mix(in srgb, var(--blue) 15%, transparent); }
 .logo-ring.r2 {
   width: 470px; height: 470px;
   border-style: dashed;
-  border-color: rgba(139,92,246,.25);
+  border-color: color-mix(in srgb, var(--violet) 25%, transparent);
   animation: spin 40s linear infinite;
 }
 .logo-ring.r3 {
   width: 560px; height: 560px;
-  border-color: rgba(0,200,255,.18);
-  box-shadow: 0 0 40px rgba(0,180,255,.1);
+  border-color: color-mix(in srgb, var(--cyan) 18%, transparent);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--blue) 10%, transparent);
 }
 @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
 
@@ -812,7 +859,7 @@ h1 {
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--ac,#00e5ff), transparent);
+  background: linear-gradient(90deg, transparent, var(--ac, var(--cyan)), transparent);
   opacity: .8;
 }
 .card::after {
@@ -821,7 +868,7 @@ h1 {
   inset: 0;
   pointer-events: none;
   background: radial-gradient(300px 200px at var(--mx,50%) var(--my,50%),
-              color-mix(in srgb, var(--ac,#00e5ff) 13%, transparent), transparent 70%);
+              color-mix(in srgb, var(--ac, var(--cyan)) 13%, transparent), transparent 70%);
   opacity: 0;
   transition: opacity .4s;
 }
@@ -830,7 +877,7 @@ h1 {
   position: absolute;
   width: 14px;
   height: 14px;
-  border-color: var(--ac,#00e5ff);
+  border-color: var(--ac, var(--cyan));
   opacity: .85;
 }
 .corner.tl { top:7px; left:7px; border-top:2px solid; border-left:2px solid; }
@@ -845,10 +892,10 @@ h1 {
 }
 .card-name {
   font-size: 22px;
-  color: #fff;
+  color: var(--text);
   letter-spacing: 3px;
   font-weight: 700;
-  text-shadow: 0 0 14px color-mix(in srgb, var(--ac,#00e5ff) 40%, transparent);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--ac, var(--cyan)) 40%, transparent);
 }
 .card-badge {
   display: inline-block;
@@ -869,23 +916,23 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--ac,#00e5ff) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ac,#00e5ff) 35%, transparent);
+  background: color-mix(in srgb, var(--ac, var(--cyan)) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ac, var(--cyan)) 35%, transparent);
 }
 .card-icon :deep(svg) {
   width: 24px; height: 24px;
-  stroke: var(--ac,#00e5ff);
+  stroke: var(--ac, var(--cyan));
   fill: none;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 6px var(--ac,#00e5ff));
+  filter: drop-shadow(0 0 6px var(--ac, var(--cyan)));
 }
 .card-desc {
   margin-top: 18px;
   font-size: 13px;
   line-height: 1.6;
-  color: #aec2e6;
+  color: color-mix(in srgb, var(--blue) 30%, var(--color-text-secondary));
   letter-spacing: 1px;
 }
 .card.spot {
@@ -911,7 +958,7 @@ h1 {
   gap: 16px;
   font-size: 11px;
   letter-spacing: 4px;
-  color: rgba(125,141,179,.6);
+  color: color-mix(in srgb, var(--dim) 70%, transparent);
 }
-.home-footer .sep { color: rgba(125,141,179,.3); }
+.home-footer .sep { color: color-mix(in srgb, var(--dim) 40%, transparent); }
 </style>

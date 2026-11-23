@@ -1,12 +1,14 @@
 <template>
   <div class="home-screen">
     <!-- 顶部标题栏 -->
-    <ScreenHeader title="LPA" />
-    <div v-if="loading" class="data-loading">数据加载中...</div>
+    <ScreenHeader title="LPA 过程审核" />
+    <div v-if="loading" class="data-loading">
+      <div class="loading-spinner" />
+      数据加载中...
+    </div>
     <template v-else>
-      LPA
-      <div
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px;">
+      <!-- KPI 行 -->
+      <div class="lpa-kpi-row">
         <StatCard theme="kpi-side" status="success" title="本周CPK达标率" sub-title="CW44周度" value="98.7" unit="%"
           trend="1.3pp" trend-type="down" trend-label="较上周" badge="达标">
           <template #icon>
@@ -29,19 +31,59 @@
             </svg>
           </template>
         </StatCard>
-        <img v-if="img_src" :src="img_src" style="max-width:300px">
+        <StatCard theme="kpi-side" status="warning" title="现场问题项" sub-title="最新一次审核" value="2" unit="项"
+          trend="待闭环" trend-type="down" trend-label="闭环状态" badge="跟踪中">
+          <template #icon>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
+              <path d="M12 9v4M12 17h.01"></path>
+            </svg>
+          </template>
+        </StatCard>
+      </div>
 
+      <!-- 主体内容区 -->
+      <div class="lpa-main">
+        <!-- 左：现场问题图片 -->
+        <ScreenCard title="现场问题图片" sub-title="审核发现 · 焊接点位" class="lpa-img-card">
+          <div class="lpa-img-frame">
+            <img v-if="img_src" :src="img_src" class="lpa-img" alt="现场问题图片">
+            <div v-else class="lpa-img-empty">
+              <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="M21 15l-5-5L5 21" />
+              </svg>
+              <span>暂无现场图片</span>
+            </div>
+          </div>
+        </ScreenCard>
 
+        <!-- 右：待建设模块占位 -->
+        <ScreenCard title="分析模块" sub-title="规划建设中" class="lpa-plan-card">
+          <div class="lpa-placeholder-grid">
+            <div v-for="i in 4" :key="i" class="main-chart-placeholder">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path v-if="i % 2 === 1" d="M3 3v18h18" />
+                <rect v-else x="3" y="3" width="18" height="18" rx="2" />
+              </svg>
+              <span class="placeholder-text">{{ ['分层审核趋势', '问题类型分布', '车间达标率', '整改闭环跟踪'][i - 1] }}</span>
+              <span class="placeholder-hint">模块开发中，敬请期待</span>
+            </div>
+          </div>
+        </ScreenCard>
       </div>
     </template>
-    <!-- 主体内容区 -->
-
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
+import ScreenCard from '@/components/common/ScreenCard.vue'
 import { useLazyLoad } from '@/composables/useLazyLoad'
 import StatCard from '@/components/common/NewStatCard.vue'
 
@@ -97,178 +139,121 @@ let LPAData = null
   height: 100%;
   display: flex;
   flex-direction: column;
-
+  padding: 0 $spacing-md $spacing-md;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .data-loading {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 14px;
   color: var(--color-text-muted);
   font-size: $font-md;
-  padding: 80px 0;
 }
 
-.screen-content {
-  flex: 1;
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid var(--color-border-light);
+  border-top-color: var(--color-primary);
+  animation: lpa-spin .8s linear infinite;
+}
+
+@keyframes lpa-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* KPI 行 */
+.lpa-kpi-row {
+  flex-shrink: 0;
   display: grid;
-  grid-template-columns: 1fr 1.4fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: $spacing-md;
-  padding: $spacing-md;
-  overflow: hidden;
+  margin-bottom: $spacing-md;
 }
 
-.left-col,
-.center-col,
-.right-col {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  overflow: hidden;
-}
-
-// ============ 指标卡片 ============
-.metrics-row {
+/* 主体：左图片 + 右占位，纵向撑满剩余高度 */
+.lpa-main {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1.2fr 1fr;
   gap: $spacing-md;
-  flex-shrink: 0;
 }
 
-.metric-card {
-  height: 120px;
-
-  .metric-value {
-    text-align: center;
-    margin-bottom: $spacing-sm;
-  }
-
-  .metric-trend {
-    text-align: center;
-    font-size: $font-sm;
-
-    &.up {
-      color: var(--color-success);
-    }
-
-    &.down {
-      color: var(--color-danger);
-    }
-  }
+.lpa-img-card,
+.lpa-plan-card {
+  min-height: 0;
 }
 
-// ============ 图表卡片高度分配 ============
-.chart-card {
-  height: 320px;
-  flex-shrink: 0;
-}
-
-.list-card {
+.lpa-img-frame {
   flex: 1;
-  min-height: 200px;
-}
-
-.main-chart-card {
-  flex: 1;
-  min-height: 400px;
-}
-
-.line-chart-card {
-  height: 280px;
-  flex-shrink: 0;
-}
-
-.pie-card {
-  height: 280px;
-  flex-shrink: 0;
-}
-
-.gauge-card {
-  height: 260px;
-  flex-shrink: 0;
-}
-
-.progress-card {
-  flex: 1;
-  min-height: 200px;
-}
-
-.chart-placeholder {
-  width: 100%;
-  height: 100%;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-border-light);
+  border-radius: $radius-md;
+  overflow: hidden;
+  padding: $spacing-sm;
+}
+
+.lpa-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: $radius-sm;
+}
+
+.lpa-img-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   color: var(--color-text-muted);
   font-size: $font-sm;
 }
 
+.lpa-placeholder-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: $spacing-md;
+}
+
 .main-chart-placeholder {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   color: var(--color-text-muted);
   border: 2px dashed var(--color-border);
   border-radius: $radius-md;
+  transition: all .25s ease;
+
+  &:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-bg-hover);
+  }
 
   .placeholder-text {
-    font-size: $font-lg;
-    margin-bottom: $spacing-sm;
+    font-size: $font-md;
     color: var(--color-text-secondary);
+    font-weight: 600;
   }
 
   .placeholder-hint {
-    font-size: $font-sm;
-  }
-}
-
-// ============ 进度条样式 ============
-.progress-list {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  padding: $spacing-sm 0;
-}
-
-.progress-item {
-  display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-
-  .progress-label {
-    width: 110px;
-    font-size: $font-sm;
-    color: var(--color-text-secondary);
-    flex-shrink: 0;
-  }
-
-  .progress-bar-bg {
-    flex: 1;
-    height: 8px;
-    background: var(--color-border-light);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-primary-dark), var(--color-primary-light));
-    border-radius: 4px;
-    transition: width 1s ease;
-  }
-
-  .progress-value {
-    width: 45px;
-    text-align: right;
-    font-size: $font-sm;
-    color: var(--color-primary);
-    font-weight: 600;
-    font-family: 'DIN Alternate', sans-serif;
-    flex-shrink: 0;
+    font-size: $font-xs;
   }
 }
 </style>

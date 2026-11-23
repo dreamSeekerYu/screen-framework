@@ -1,5 +1,5 @@
 <template>
-  <ScreenContainer>
+  <div class="qc-page">
     <!-- 顶部标题栏：右侧放入「查看明细」按钮 -->
     <ScreenHeader title="集成工厂QC人力规划" subtitle="制程质量部门 · 车间人力配置与缺口监控">
       <template #right>
@@ -187,13 +187,12 @@
         </p>
       </div>
     </Dialog>
-  </ScreenContainer>
+  </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import ScreenContainer from '@/components/layout/ScreenContainer.vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
@@ -409,6 +408,9 @@ onMounted(async () => {
   try {
     const data = await parseQcData()
     Object.assign(qc, data)
+    // 等布局稳定后触发一次 resize，确保 flex/grid 高度变化后图表尺寸正确
+    await nextTick()
+    window.dispatchEvent(new Event('resize'))
   } catch (e) {
     console.error('QC 数据加载失败:', e)
   }
@@ -416,8 +418,15 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-.qc-body {
+.qc-page {
+  width: 100%;
   height: 100%;
+  overflow: hidden;
+}
+
+.qc-body {
+  /* 页面在 ScreenHeader（80px）之下，扣除头部高度避免整体溢出裁切 */
+  height: calc(100% - $header-height);
   display: flex;
   flex-direction: column;
   gap: $spacing-sm;
@@ -473,14 +482,17 @@ onMounted(async () => {
   min-height: 0;
   display: grid;
   grid-template-columns: 3fr 6fr 3fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: $spacing-sm;
 }
 .qc-col { display: flex; flex-direction: column; gap: $spacing-sm; min-height: 0; }
-.qc-chart-full { flex: 1; min-height: 0; width: 100%; }
+/* 列内卡片高度交由 flex 分配，避免 height:100% 叠加导致溢出裁切 */
+.qc-col > .screen-card { height: auto; min-height: 0; }
+.qc-chart-full { flex: 1; min-height: 120px; width: 100%; }
 
 /* 左列 */
-// .qc-risk { flex-shrink: 0; }
-.qc-gauge { flex: 1; display: flex; flex-direction: column; min-height: 500px; }
+.qc-risk { flex-shrink: 0; }
+.qc-gauge { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .qc-gauge__chart { flex: 1; min-height: 160px; }
 .gauge-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: $spacing-xs; margin-top: $spacing-xs; }
 .gauge-cell {
@@ -509,8 +521,7 @@ onMounted(async () => {
 .qc-pie, .qc-compare { display: flex; flex-direction: column; min-height: 0; }
 
 /* 右列 */
-// .qc-support { flex-shrink: 0; }
-.qc-leave { flex: 1; display: flex; flex-direction: column; min-height: 500px; }
+.qc-leave { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .qc-leave__chart { flex: 1; min-height: 140px; }
 
 .support-list { display: flex; flex-direction: column; gap: $spacing-sm; }

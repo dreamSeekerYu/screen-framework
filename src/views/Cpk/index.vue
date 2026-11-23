@@ -366,7 +366,8 @@ const trendOption = computed(() => {
         },
         label: {
           show: true, position: 'top', color: 'var(--color-success)', fontSize: 10, fontWeight: 'bold',
-          formatter: p => p.value != null ? p.value.toFixed(1) + '%' : '',
+          // 100% 满值标签隐藏，避免与目标线/相邻标签重叠拥挤
+          formatter: p => (p.value != null && p.value < 100) ? p.value.toFixed(1) + '%' : '',
         },
         markLine: {
           silent: true,
@@ -496,7 +497,8 @@ const processBarOption = computed(() => {
         connectNulls: false,
         label: {
           show:true, position:'top', color:'var(--color-primary-dark)', fontSize:10, fontWeight:'bold',
-          formatter: p => p.value !== null && p.value !== undefined ? p.value + '%' : '',
+          // 100% 满值标签隐藏，避免顶部拥挤重叠
+          formatter: p => (p.value !== null && p.value !== undefined && p.value < 100) ? p.value + '%' : '',
         },
       },
     ],
