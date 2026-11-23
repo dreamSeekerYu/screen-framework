@@ -4,7 +4,7 @@
 
   <div v-else class="question-screen">
     <!-- 顶部标题 -->
-    <div class="q-header">
+    <!-- <div class="q-header">
       <div class="q-header-left">
         <div class="q-title-deco"></div>
         <div class="q-title-group">
@@ -37,13 +37,23 @@
         </div>
       </div>
       <div class="q-title-divider"></div>
-    </div>
-
+    </div> -->
+    <ScreenHeader title="重大质量异常闭环率">
+      <template #right>
+        <button class="detail-btn" @click="detailVisible = true">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          查看异常明细
+        </button>
+      </template>
+    </ScreenHeader>
     <!-- KPI 行：由 StatCardRow 统一做"内容自然宽度 + min/max 约束 + 剩余空间均分"的自适应布局 -->
     <StatCardRow class="q-kpi-row" :gap="16" :min-card-width="200" :max-card-width="460">
       <NewStatCard v-for="(k, i) in kpiCards" :key="k.title" class="q-kpi" theme="kpi-top" :status="k.status"
-        :title="k.title" :sub-title="k.sub" :value="k.value" :unit="k.unit" :count-up="k.countUp"
-        :fit-value="false" animated :animation-delay="i * 80" />
+        :title="k.title" :sub-title="k.sub" :value="k.value" :unit="k.unit" :count-up="k.countUp" :fit-value="false"
+        animated :animation-delay="i * 80" />
     </StatCardRow>
 
     <!-- 摘要横幅：复用 SummaryBar（图标 + 富文本 + StatusTag 标签组） -->
@@ -64,8 +74,7 @@
           </div>
         </template>
         <template #extra>
-          <StatusTag type="success" effect="light" size="small"
-            :text="`连续${closeData.kpi.consecutiveWeeks}周100%`" />
+          <StatusTag type="success" effect="light" size="small" :text="`连续${closeData.kpi.consecutiveWeeks}周100%`" />
         </template>
         <div class="q-chart">
           <BaseChart :option="trendChartOption" />
@@ -146,6 +155,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
 import NewStatCard from '@/components/common/NewStatCard.vue'
 import StatCardRow from '@/components/common/StatCardRow.vue'
@@ -545,6 +555,23 @@ function openIssueDetail(it) {
     position: relative;
     z-index: 1;
   }
+}
+.detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin-right: 12px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  color: #fff;
+  border: none;
+  border-radius: $radius-md;
+  font-size: $font-sm;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 25%, transparent);
+  transition: all .2s;
+  &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 35%, transparent); }
 }
 
 .question-loading,

@@ -3,8 +3,12 @@
     <!-- 顶部标题 -->
     <ScreenHeader :title="headerTitle">
       <template #right>
-        <button class="header-btn" @click="showDetail = true">
-          <span class="btn-icon">📋</span>查看完整计划台账
+        <button class="detail-btn" @click="showDetail = true">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          查看完整计划台账
         </button>
       </template>
     </ScreenHeader>
@@ -304,14 +308,22 @@ onMounted(load)
   flex-direction: column;
   overflow: hidden;
 }
-.header-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 14px; border-radius: 4px; cursor: pointer;
-  background: var(--color-primary, #2563eb);
-  color: #fff; border: 1px solid var(--color-primary, #2563eb);
-  font-size: 13px; transition: all .2s;
-  &:hover { background: var(--color-primary-dark, #1d4ed8); border-color: var(--color-primary-dark, #1d4ed8); }
-  .btn-icon { font-size: 14px; }
+.detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin-right: 12px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  color: #fff;
+  border: none;
+  border-radius: $radius-md;
+  font-size: $font-sm;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 25%, transparent);
+  transition: all .2s;
+  &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 35%, transparent); }
 }
 
 .loading-mask, .error-mask {

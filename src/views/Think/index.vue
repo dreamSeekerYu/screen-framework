@@ -1,13 +1,11 @@
 <template>
   <div class="think-screen">
     <!-- 顶部标题栏 -->
-    <div class="think-header">
-      <ScreenHeader :title="`${activeWeekLabel} 周度思考`" />
-      <div class="header-actions">
-        <StatusTag type="default" text="重置筛选" @click="resetFilter" />
-        <StatusTag type="info" text="全屏展示" @click="toggleFullscreen" />
-      </div>
-    </div>
+      <ScreenHeader :title="`${activeWeekLabel} 周度思考`" >
+        <template #right>
+          <button class="detail-btn" @click="resetFilter">重置筛选</button>
+        </template>
+    </ScreenHeader>
 
     <!-- 加载态 -->
     <div v-if="loading" class="state-box">
@@ -459,6 +457,24 @@ function onPlanToggle() {
     font-size: $font-md;
   }
 }
+.detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin-right: 12px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  color: #fff;
+  border: none;
+  border-radius: $radius-md;
+  font-size: $font-sm;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 25%, transparent);
+  transition: all .2s;
+  &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 35%, transparent); }
+}
+
 
 // ======== 周切换 ========
 .week-bar {
