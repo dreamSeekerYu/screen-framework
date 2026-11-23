@@ -25,13 +25,15 @@
     <div class="stage">
       <header class="home-header">
         <div class="hd-side left">
-          <div class="clock">{{ clockTime }}</div>
+          <!-- <div class="clock">{{ clockTime }}</div> -->
         </div>
         <div class="title-wrap">
           <h1>集成工厂 · 质量周报</h1>
         </div>
         <div class="hd-side right">
           <div class="date">{{ clockDate }}</div>
+          <div class="clock">{{ clockTime }}</div>
+          <ThemeSwitch />
         </div>
         <div class="hd-line"></div>
       </header>
@@ -99,6 +101,7 @@
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCssVar } from '@/utils/color.js'
+import ThemeSwitch from '@/components/common/ThemeSwitch.vue'
 
 const router = useRouter()
 
