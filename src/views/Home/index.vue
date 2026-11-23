@@ -184,7 +184,7 @@ let rot = 0, fromRot = 0, targetRot = 0
 let frontIdx = 0
 let state = 'hold', holdStart = 0, transStart = 0
 let started = false, transMs = TRANS
-let Rpx = 594, tfCur = 0.24, cxo = 0, mxT = 0, myT = 0
+let Rpx = 594, tfCur = 0.4, cxo = 0, mxT = 0, myT = 0
 let rafId = null
 
 const introHidden = ref(false)
@@ -431,12 +431,12 @@ function frame() {
     }
   }
   // 鼠标视差
-  tfCur += ((0.24 - myT * 0.10) - tfCur) * 0.05
+  tfCur += ((0.4 - myT * 0.10) - tfCur) * 0.05
   cxo += ((mxT * 36) - cxo) * 0.05
   const wrap = ringWrapRef.value
   const tilt = ringTiltRef.value
   const h = wrap ? wrap.clientHeight : 600
-  const cyo = Math.round(h * 0.38 - h * 0.5)
+  const cyo = Math.round(h * 0.44 - h * 0.5)
   if (tilt) {
     tilt.style.setProperty('--tf', tfCur.toFixed(3))
     tilt.style.setProperty('--cyo', cyo + 'px')
@@ -762,14 +762,14 @@ h1 {
   pointer-events: none;
   border-radius: 50%;
   width: calc(var(--R) * 2.7);
-  height: calc(var(--R) * 2.7 * var(--tf,.24));
+  height: calc(var(--R) * 2.7 * var(--tf,.4));
   transform: translate(-50%,-50%);
   border: 1px solid color-mix(in srgb, var(--cyan) 20%, transparent);
   box-shadow: 0 0 30px color-mix(in srgb, var(--blue) 10%, transparent), inset 0 0 30px color-mix(in srgb, var(--blue) 8%, transparent);
 }
 .orbit-line.l2 {
   width: calc(var(--R) * 3.4);
-  height: calc(var(--R) * 3.4 * var(--tf,.24));
+  height: calc(var(--R) * 3.4 * var(--tf,.4));
   border-color: color-mix(in srgb, var(--violet) 14%, transparent);
 }
 .orbit-halo {
@@ -777,7 +777,7 @@ h1 {
   left: 50%;
   top: calc(50% + var(--cyo, 0px));
   width: calc(var(--R) * 2.4);
-  height: calc(var(--R) * 2.4 * var(--tf,.24));
+  height: calc(var(--R) * 2.4 * var(--tf,.4));
   transform: translate(-50%,-50%);
   border-radius: 50%;
   pointer-events: none;
@@ -792,7 +792,9 @@ h1 {
 .center-logo {
   position: absolute;
   left: 50%;
-  top: 42%;
+  /* 与轨道环共用 --cyo 锚点保持同心；轨道整体上移后 LOGO 随之上移，
+     前置卡片从更低处经过，不再遮挡 CALB 图标 */
+  top: calc(50% + var(--cyo, 0px));
   transform: translate(-50%, -50%);
   text-align: center;
   pointer-events: none;
