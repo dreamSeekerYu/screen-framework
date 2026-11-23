@@ -90,9 +90,9 @@
         </ScreenCard>
       </div>
 
-      <div class="footer-tip">
+      <!-- <div class="footer-tip">
         提示：点击右上角「查看完整计划台账」查看明细，支持周切换 / 车间筛选 / 状态筛选 / 负责人搜索；Esc 返回。
-      </div>
+      </div> -->
     </template>
 
     <!-- 明细弹窗 -->

@@ -130,9 +130,9 @@
       </div>
 
       <!-- 页脚提示 -->
-      <div class="qc-footer">
+      <!-- <div class="qc-footer">
         制程质量部门 · 数据更新时间：{{ qc.updatedAt || '2026年11月21日' }}
-      </div>
+      </div> -->
     </div>
 
     <!-- 查看明细弹窗（复用项目 Dialog 组件） -->

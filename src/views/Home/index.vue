@@ -85,11 +85,11 @@
       </div>
 
       <footer class="home-footer">
-        <span>ORBIT RING HOME</span>
-        <span class="sep">|</span>
-        <span>拖拽 / 滚轮旋转 · 点击 / 空格进入</span>
+        <span>Alt+{ 上一页</span>
         <span class="sep">|</span>
         <span>Alt+K 唤起导航器</span>
+        <span class="sep">|</span>
+        <span>Alt+} 下一页</span>
       </footer>
     </div>
   </div>
@@ -163,7 +163,7 @@ const N = Math.max(5, Math.min(8, RING_ROUTES.length))
 // 如果实际子页面超过 N，只取前 N 个（按路由表顺序）
 const ACTIVE_ROUTES = RING_ROUTES.slice(0, N)
 const STEP = 360 / N
-const HOLD = 5200
+const HOLD = 2500
 const TRANS = 1350
 const mod = (x, n) => ((x % n) + n) % n
 

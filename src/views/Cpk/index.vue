@@ -44,9 +44,9 @@
     </div>
 
     <!-- 工序统计 -->
-    <div class="action-row">
+    <!-- <div class="action-row">
       <span class="action-hint">共 {{ processList.length }} 条工序记录 · 达标 {{ passCount }} 条 · 未达标 {{ failCount }} 条 · 未开线 {{ noDataCount }} 条</span>
-    </div>
+    </div> -->
   </div>
 </template>
 
