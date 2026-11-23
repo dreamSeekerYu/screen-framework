@@ -1,459 +1,917 @@
 <template>
-  <div class="home-screen">
-    <!-- 顶部标题栏 -->
-    <ScreenHeader title="数据可视化大屏演示系统" />
-    
-    <!-- 主体内容区 -->
-    <div class="screen-content">
-      <!-- 左侧区域 -->
-      <div class="left-col">
-        <!-- 指标卡片区 -->
-        <div class="metrics-row">
-          <div class="metric-card" v-for="(metric, i) in metricsData" :key="i">
-            <ScreenCard :title="metric.label">
-              <div class="metric-value">
-                <NumberCounter :value="metric.value" :suffix="metric.suffix" />
+  <div class="home-stage">
+    <!-- 开场 -->
+    <div class="intro" :class="{ hide: introHidden }">
+      <div class="intro-logo">武汉基地</div>
+      <div class="intro-line"></div>
+      <div class="intro-sub">质量保障 · 集成工厂周报</div>
+    </div>
+    <div class="film-grain"></div>
+
+    <!-- 背景层 -->
+    <div class="bg" aria-hidden="true">
+      <div class="bg-aurora"></div>
+      <div class="bg-grid"></div>
+      <canvas ref="partsCanvas" class="parts-canvas"></canvas>
+      <div class="beam b1"></div>
+      <div class="beam b2"></div>
+      <div class="beam b3"></div>
+      <div class="beam b4"></div>
+      <div class="bg-vignette"></div>
+      <div class="bg-scan"></div>
+    </div>
+
+    <!-- 舞台主体 -->
+    <div class="stage">
+      <header class="home-header">
+        <div class="hd-side left">
+          <div class="clock">{{ clockTime }}</div>
+        </div>
+        <div class="title-wrap">
+          <h1>集成工厂 · 数据中心</h1>
+        </div>
+        <div class="hd-side right">
+          <div class="date">{{ clockDate }}</div>
+        </div>
+        <div class="hd-line"></div>
+      </header>
+
+      <div class="ring-wrap" ref="ringWrapRef"
+           :class="{ grabbing }"
+           @pointerdown="onPointerDown"
+           @pointermove="onPointerMove"
+           @pointerup="onPointerUp"
+           @pointercancel="onPointerUp"
+           @wheel="onWheel"
+           @click="onClick">
+        <div class="ring-tilt" ref="ringTiltRef">
+          <div class="orbit-line"></div>
+          <div class="orbit-line l2"></div>
+          <div class="orbit-halo"></div>
+          <div class="ring" ref="ringRef">
+            <div v-for="(slot, i) in slots" :key="slot.key"
+                 class="slot"
+                 ref="slotEls"
+                 :data-route="slot.route.path"
+                 @click.stop="jumpTo(slot.route)">
+              <div class="card" :class="{ spot: i === frontIdx }"
+                   :style="{ '--ac': slot.card.color }"
+                   @mousemove="onCardMouseMove($event, i)">
+                <span class="corner tl"></span>
+                <span class="corner tr"></span>
+                <span class="corner bl"></span>
+                <span class="corner br"></span>
+                <div class="card-top">
+                  <div>
+                    <div class="card-name">{{ slot.card.name }}</div>
+                    <span class="card-badge">{{ slot.card.badge }}</span>
+                  </div>
+                  <span class="card-icon" v-html="slot.card.icon"></span>
+                </div>
+                <div class="card-desc">{{ slot.card.desc }}</div>
               </div>
-              <div class="metric-trend" :class="metric.trend > 0 ? 'up' : 'down'">
-                较上期 {{ metric.trend > 0 ? '↑' : '↓' }} {{ Math.abs(metric.trend) }}%
-              </div>
-            </ScreenCard>
+            </div>
+          </div>
+
+          <!-- 中心 LOGO -->
+          <div class="center-logo">
+            <div class="logo-calb">CALB</div>
+            <div class="logo-sub">集成工厂质量周报</div>
+            <div class="logo-ring r1"></div>
+            <div class="logo-ring r2"></div>
+            <div class="logo-ring r3"></div>
           </div>
         </div>
-        
-        <!-- 柱状图卡片 - 懒加载 -->
-        <div class="chart-card" ref="barRef">
-          <ScreenCard title="各区域业务数据统计">
-            <BaseChart :option="barChartOption" v-if="barChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-        
-        <!-- 滚动列表卡片 -->
-        <div class="list-card">
-          <ScreenCard title="实时数据排行">
-            <MarqueeList :data="rankList" />
-          </ScreenCard>
-        </div>
       </div>
-      
-      <!-- 中间区域 -->
-      <div class="center-col">
-        <!-- 地图/大屏主视觉区域 -->
-        <div class="main-chart-card">
-          <ScreenCard title="全国业务分布概览">
-            <div class="main-chart-placeholder">
-              <div class="placeholder-text">中间地图/核心图表区域</div>
-              <div class="placeholder-hint">可在此接入地图、3D可视化或核心业务图表</div>
-            </div>
-          </ScreenCard>
-        </div>
-        
-        <!-- 下方折线图 - 懒加载 -->
-        <div class="line-chart-card" ref="lineRef">
-          <ScreenCard title="近7天趋势变化">
-            <BaseChart :option="lineChartOption" v-if="lineChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-      </div>
-      
-      <!-- 右侧区域 -->
-      <div class="right-col">
-        <!-- 饼图卡片 - 懒加载 -->
-        <div class="pie-card" ref="pieRef">
-          <ScreenCard title="业务类型占比">
-            <BaseChart :option="pieChartOption" v-if="pieChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-        
-        <!-- 仪表盘卡片 - 懒加载 -->
-        <div class="gauge-card" ref="gaugeRef">
-          <ScreenCard title="目标完成率">
-            <BaseChart :option="gaugeChartOption" v-if="gaugeChartVisible" />
-            <div v-else class="chart-placeholder">图表加载中...</div>
-          </ScreenCard>
-        </div>
-        
-        <!-- 进度条卡片 -->
-        <div class="progress-card">
-          <ScreenCard title="各模块完成进度">
-            <div class="progress-list">
-              <div v-for="(item, i) in progressData" :key="i" class="progress-item">
-                <div class="progress-label">{{ item.name }}</div>
-                <div class="progress-bar-bg">
-                  <div class="progress-bar-fill" :style="{ width: item.value + '%' }"></div>
-                </div>
-                <div class="progress-value">{{ item.value }}%</div>
-              </div>
-            </div>
-          </ScreenCard>
-        </div>
-      </div>
+
+      <footer class="home-footer">
+        <span>ORBIT RING HOME</span>
+        <span class="sep">|</span>
+        <span>拖拽 / 滚轮旋转 · 点击 / 空格进入</span>
+        <span class="sep">|</span>
+        <span>Alt+K 唤起导航器</span>
+      </footer>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import ScreenHeader from '@/components/layout/ScreenHeader.vue'
-import ScreenCard from '@/components/common/ScreenCard.vue'
-import BaseChart from '@/components/chart/BaseChart.vue'
-import NumberCounter from '@/components/data/NumberCounter.vue'
-import MarqueeList from '@/components/data/MarqueeList.vue'
-import { useLazyLoad } from '@/composables/useLazyLoad'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 
-// ============ 指标数据 ============
-const metricsData = ref([
-  { label: '累计访问量', value: 128569, suffix: '', trend: 12.5 },
-  { label: '今日订单', value: 3862, suffix: '单', trend: 8.2 },
-  { label: '总交易额', value: 8965.3, suffix: '万', trend: 15.6 },
-  { label: '活跃用户', value: 28956, suffix: '人', trend: -2.3 }
-])
+const router = useRouter()
 
-// ============ 懒加载控制 ============
-const { targetRef: barRef, isVisible: barChartVisible } = useLazyLoad()
-const { targetRef: lineRef, isVisible: lineChartVisible } = useLazyLoad()
-const { targetRef: pieRef, isVisible: pieChartVisible } = useLazyLoad()
-const { targetRef: gaugeRef, isVisible: gaugeChartVisible } = useLazyLoad()
+/* ============ 大屏路由：过滤出大屏首页效果展示的页面（与导航器白名单一致） ============ */
+const ALL_ROUTES = router.options.routes.filter(r => {
+  if (r.meta?.noScale) return false
+  // LPA 暂未完成，也不进首页环
+  if (r.path === '/LPA') return false
+  return true
+})
+// 首页作为中心 logo，卡片为其他大屏路由
+const RING_ROUTES = ALL_ROUTES.filter(r => r.path !== '/')
 
-// ============ 示例图表配置 ============
-// 柱状图配置
-const barChartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-  xAxis: {
-    type: 'category',
-    data: ['华北', '华东', '华南', '华中', '西南', '西北', '东北'],
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' }
-  },
-  yAxis: {
-    type: 'value',
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' },
-    splitLine: { lineStyle: { color: 'var(--color-border-light)' } }
-  },
-  series: [{
-    data: [320, 482, 591, 354, 290, 210, 185],
-    type: 'bar',
-    barWidth: '40%',
-    itemStyle: {
-      color: {
-        type: 'linear',
-        x: 0, y: 0, x2: 0, y2: 1,
-        colorStops: [
-          { offset: 0, color: 'var(--color-primary-light)' },
-          { offset: 1, color: 'var(--color-primary-dark)' }
-        ]
-      },
-      borderRadius: [4, 4, 0, 0]
-    }
-  }]
-}))
+const ICONS = {
+  pack: '<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19M8 5v14M16 5v14"/>',
+  question: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.9.5-1 1-1 1.7M12 17h.01"/>',
+  cpk: '<path d="M3 20V8M9 20V4M15 20v-9M21 20v-5"/>',
+  qc: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 5a3.5 3.5 0 0 1 0 7"/>',
+  plain: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/>',
+  think: '<path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.8V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3.2c1.8-1.3 3-3.4 3-5.8a7 7 0 0 0-7-7z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/>',
+  default: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18"/>'
+}
+const COLORS = ['#00e5ff', '#3a7bff', '#8b5cf6', '#ff3d8b', '#ffc94d', '#00ffa3', '#ff6b3d']
+const BADGE_MAP = {
+  Pack: 'PACK · 客户',
+  Question: '异常 · 闭环',
+  Cpk: '过程 · 能力',
+  Qc: '人力 · 规划',
+  Plain: '工作 · 计划',
+  Think: '周度 · 思考'
+}
+const DESC_MAP = {
+  Pack: '5 大客户交付质量表现，月度/周度趋势分析',
+  Question: '重大质量异常闭环率、根因对策、进度追踪',
+  Cpk: '关键工序过程能力指数 Cpk 达标率与趋势',
+  Qc: 'QC 人力配置、缺口分析、离职率与支援来源',
+  Plain: '本周重点工作计划与节点跟进',
+  Think: '周度思考沉淀与改进方向'
+}
 
-// 折线图配置
-const lineChartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['访问量', '订单量'], textStyle: { color: 'var(--color-text-secondary)' } },
-  grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-  xAxis: {
-    type: 'category',
-    boundaryGap: false,
-    data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' }
-  },
-  yAxis: {
-    type: 'value',
-    axisLine: { lineStyle: { color: 'var(--color-border)' } },
-    axisLabel: { color: 'var(--color-text-secondary)' },
-    splitLine: { lineStyle: { color: 'var(--color-border-light)' } }
-  },
-  series: [
-    {
-      name: '访问量',
-      type: 'line',
-      smooth: true,
-      data: [1200, 1900, 1500, 2200, 2800, 3600, 3200],
-      lineStyle: { color: 'var(--color-primary)', width: 2 },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(30, 111, 255, 0.3)' },
-            { offset: 1, color: 'rgba(30, 111, 255, 0)' }
-          ]
-        }
+function buildCardForRoute(route, idx) {
+  const key = route.name?.toLowerCase() || 'default'
+  return {
+    name: route.meta?.title || route.name,
+    badge: BADGE_MAP[route.name] || route.name?.toUpperCase() || 'PAGE',
+    desc: DESC_MAP[route.name] || '点击进入该页面',
+    icon: ICONS[key] || ICONS.default,
+    color: COLORS[idx % COLORS.length]
+  }
+}
+
+/* ============ 环形轨道状态机（N = 大屏子页面数量，默认 6 个，最多 8） ============ */
+const N = Math.max(5, Math.min(8, RING_ROUTES.length))
+// 如果实际子页面超过 N，只取前 N 个（按路由表顺序）
+const ACTIVE_ROUTES = RING_ROUTES.slice(0, N)
+const STEP = 360 / N
+const HOLD = 5200
+const TRANS = 1350
+const mod = (x, n) => ((x % n) + n) % n
+
+// slots 固定顺序（按路由顺序排列）
+const slots = reactive(ACTIVE_ROUTES.map((r, i) => ({
+  key: r.name + '-' + i,
+  route: r,
+  card: buildCardForRoute(r, i)
+})))
+
+const ringWrapRef = ref(null)
+const ringTiltRef = ref(null)
+const ringRef = ref(null)
+const slotEls = ref([])
+const partsCanvas = ref(null)
+
+let rot = 0, fromRot = 0, targetRot = 0
+let frontIdx = 0
+let state = 'hold', holdStart = 0, transStart = 0
+let started = false, transMs = TRANS
+let Rpx = 594, tfCur = 0.24, cxo = 0, mxT = 0, myT = 0
+let rafId = null
+
+const introHidden = ref(false)
+const clockTime = ref('--:--:--')
+const clockDate = ref('')
+const grabbing = ref(false)
+
+/* ============ 拖拽 / 滚轮 ============ */
+let dragging = false, dragMoved = 0, lastPX = 0, lastPT = 0, vel = 0, wheelTimer = null
+
+function enterManual() {
+  if (state === 'hold' || state === 'trans') state = 'manual'
+}
+function manualSnap(extra = 0) {
+  fromRot = rot
+  const k = Math.round(-rot / STEP) + extra
+  targetRot = -k * STEP
+  frontIdx = mod(k, N)
+  state = 'trans'
+  transStart = performance.now()
+  transMs = Math.max(420, Math.abs(targetRot - rot) * 2.6 + 220)
+}
+function onPointerDown(e) {
+  if (!started || e.button) return
+  dragging = true
+  dragMoved = 0
+  vel = 0
+  lastPX = e.clientX
+  lastPT = performance.now()
+  try { ringWrapRef.value?.setPointerCapture(e.pointerId) } catch (_) {}
+  grabbing.value = true
+  enterManual()
+}
+function onPointerMove(e) {
+  if (!dragging) return
+  const now = performance.now()
+  const dx = e.clientX - lastPX
+  lastPX = e.clientX
+  vel = dx / Math.max(now - lastPT, 1)
+  lastPT = now
+  dragMoved += Math.abs(dx)
+  rot += dx * 0.25
+  mxT = e.clientX / innerWidth - 0.5
+  myT = e.clientY / innerHeight - 0.5
+}
+function endDrag() {
+  if (!dragging) return
+  dragging = false
+  grabbing.value = false
+  manualSnap(vel > 0.55 ? -1 : vel < -0.55 ? 1 : 0)
+}
+function onPointerUp() { endDrag() }
+function onWheel(e) {
+  if (!started) return
+  e.preventDefault()
+  const d = Math.max(-240, Math.min(240, e.deltaY || e.deltaX || 0))
+  enterManual()
+  rot -= d * 0.18
+  clearTimeout(wheelTimer)
+  wheelTimer = setTimeout(() => { if (state === 'manual') manualSnap(0) }, 170)
+}
+function onClick(e) {
+  // 点到卡片上由卡片自己处理；点到空白区步进一格
+  if (dragMoved < 8) step()
+}
+function step() {
+  if (state !== 'hold' || !started) return
+  state = 'trans'
+  transStart = performance.now()
+  fromRot = rot
+  targetRot = rot - STEP
+  transMs = TRANS
+}
+function jumpTo(route) {
+  if (!route) return
+  if (dragMoved > 8) return // 拖拽后的松开误触
+  // 若当前 frontIdx 就是它，直接跳；否则先切到它再跳
+  const idx = slots.findIndex(s => s.route.path === route.path)
+  if (idx === -1) return
+  if (idx === frontIdx) {
+    if (route.path !== '/') router.push(route.path)
+    return
+  }
+  // 切到该卡片
+  fromRot = rot
+  const k = idx - frontIdx
+  // 选最短路径
+  let delta = k
+  if (delta > N / 2) delta -= N
+  if (delta < -N / 2) delta += N
+  targetRot = rot - delta * STEP
+  frontIdx = idx
+  state = 'trans'
+  transStart = performance.now()
+  transMs = Math.max(500, Math.abs(targetRot - rot) * 2.6 + 220)
+  // 等动画完成后跳转
+  setTimeout(() => {
+    if (route.path !== '/') router.push(route.path)
+  }, transMs + 100)
+}
+
+function onCardMouseMove(e, i) {
+  const el = slotEls.value[i]
+  if (!el) return
+  const card = el.querySelector('.card')
+  if (!card) return
+  const r = card.getBoundingClientRect()
+  card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%')
+  card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%')
+}
+
+/* ============ 时钟 ============ */
+let clockTimer = null
+function tickClock() {
+  const d = new Date()
+  const p = v => String(v).padStart(2, '0')
+  clockTime.value = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  clockDate.value = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 · 星期${'日一二三四五六'[d.getDay()]}`
+}
+
+/* ============ 布局 ============ */
+function layoutRing() {
+  const wrap = ringWrapRef.value
+  const tilt = ringTiltRef.value
+  if (!wrap || !tilt) return
+  const w = wrap.clientWidth
+  const cw = Math.max(260, Math.min(420, w * 0.24))
+  Rpx = Math.round(cw * 1.32)
+  tilt.style.setProperty('--cw', cw + 'px')
+  tilt.style.setProperty('--R', Rpx + 'px')
+}
+
+/* ============ 粒子 ============ */
+let cvCtx = null, W = 0, H = 0, parts = [], SPRITES = {}, rafParts = true
+
+function resizeCanvas() {
+  const cv = partsCanvas.value
+  if (!cv) return
+  W = cv.width = innerWidth
+  H = cv.height = innerHeight
+}
+function buildSprites() {
+  ;['0,229,255', '58,123,255', '139,92,246', '255,61,139'].forEach(c => {
+    const s = document.createElement('canvas')
+    s.width = s.height = 16
+    const g = s.getContext('2d')
+    const grad = g.createRadialGradient(8, 8, 0, 8, 8, 8)
+    grad.addColorStop(0, `rgba(${c},.9)`)
+    grad.addColorStop(.45, `rgba(${c},.3)`)
+    grad.addColorStop(1, `rgba(${c},0)`)
+    g.fillStyle = grad
+    g.fillRect(0, 0, 16, 16)
+    SPRITES[c] = s
+  })
+}
+class P {
+  constructor() { this.reset(true) }
+  reset(init) {
+    this.x = Math.random() * W
+    this.y = init ? Math.random() * H : -10
+    this.r = Math.random() * 1.6 + 0.4
+    this.vy = Math.random() * 0.5 + 0.15
+    this.vx = (Math.random() - 0.5) * 0.25
+    const cols = ['0,229,255', '58,123,255', '139,92,246', '255,61,139']
+    this.col = cols[Math.floor(Math.random() * cols.length)]
+    this.a = Math.random() * 0.6 + 0.2
+  }
+  step() {
+    this.y += this.vy
+    this.x += this.vx
+    if (this.y > H + 10 || this.x < -10 || this.x > W + 10) this.reset(false)
+  }
+  draw() {
+    cvCtx.globalAlpha = this.a
+    cvCtx.drawImage(SPRITES[this.col], this.x - 8, this.y - 8, 16, 16)
+    cvCtx.globalAlpha = 1
+  }
+}
+function loopParts() {
+  if (!rafParts || !cvCtx) return
+  requestAnimationFrame(loopParts)
+  cvCtx.clearRect(0, 0, W, H)
+  for (let i = 0; i < parts.length; i++) {
+    for (let j = i + 1; j < parts.length; j++) {
+      const dx = parts[i].x - parts[j].x
+      if (dx > 110 || dx < -110) continue
+      const dy = parts[i].y - parts[j].y
+      const d2 = dx * dx + dy * dy
+      if (d2 < 12000) {
+        cvCtx.strokeStyle = `rgba(90,160,255,${0.12 * (1 - d2 / 12000)})`
+        cvCtx.lineWidth = 1
+        cvCtx.beginPath()
+        cvCtx.moveTo(parts[i].x, parts[i].y)
+        cvCtx.lineTo(parts[j].x, parts[j].y)
+        cvCtx.stroke()
       }
-    },
-    {
-      name: '订单量',
-      type: 'line',
-      smooth: true,
-      data: [820, 932, 901, 1234, 1490, 1830, 1620],
-      lineStyle: { color: '#36cfc9', width: 2 },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(54, 207, 201, 0.3)' },
-            { offset: 1, color: 'rgba(54, 207, 201, 0)' }
-          ]
-        }
-      }
     }
-  ]
-}))
+  }
+  parts.forEach(p => { p.step(); p.draw() })
+}
 
-// 饼图配置
-const pieChartOption = computed(() => ({
-  tooltip: { trigger: 'item' },
-  legend: {
-    orient: 'vertical',
-    right: '5%',
-    top: 'center',
-    textStyle: { color: 'var(--color-text-secondary)' }
-  },
-  color: ['#1e6fff', '#00c6ff', '#36cfc9', '#ffc53d', '#ff7a45'],
-  series: [{
-    type: 'pie',
-    radius: ['40%', '70%'],
-    center: ['35%', '50%'],
-    avoidLabelOverlap: false,
-    itemStyle: { borderRadius: 6, borderColor: 'var(--color-bg-card)', borderWidth: 2 },
-    label: { show: false },
-    emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
-    labelLine: { show: false },
-    data: [
-      { value: 1048, name: '产品A' },
-      { value: 735, name: '产品B' },
-      { value: 580, name: '产品C' },
-      { value: 484, name: '产品D' },
-      { value: 300, name: '其他' }
-    ]
-  }]
-}))
+/* ============ 主循环 ============ */
+const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 
-// 仪表盘配置
-const gaugeChartOption = computed(() => ({
-  series: [{
-    type: 'gauge',
-    startAngle: 180,
-    endAngle: 0,
-    min: 0,
-    max: 100,
-    splitNumber: 5,
-    itemStyle: { color: 'var(--color-primary)' },
-    progress: { show: true, width: 18 },
-    pointer: { show: false },
-    axisLine: { lineStyle: { width: 18, color: [[1, 'var(--color-border-light)']] } },
-    axisTick: { show: false },
-    splitLine: { show: false },
-    axisLabel: { show: false },
-    title: { show: false },
-    detail: {
-      valueAnimation: true,
-      offsetCenter: [0, '0%'],
-      fontSize: 36,
-      fontWeight: 'bold',
-      color: 'var(--color-primary)',
-      formatter: '{value}%'
-    },
-    data: [{ value: 76 }]
-  }]
-}))
+function frame() {
+  rafId = requestAnimationFrame(frame)
+  if (!started) return
+  const now = performance.now()
+  if (state === 'hold') {
+    if (now - holdStart >= HOLD) step()
+  } else if (state === 'manual') {
+    const k = Math.round(-rot / STEP)
+    if (mod(k, N) !== frontIdx) frontIdx = mod(k, N)
+  } else {
+    const t = Math.min((now - transStart) / transMs, 1)
+    rot = fromRot + (targetRot - fromRot) * easeInOutCubic(t)
+    if (t >= 1) {
+      rot = targetRot
+      frontIdx = mod(Math.round(-rot / STEP), N)
+      state = 'hold'
+      holdStart = now
+      // 自动轮播到达首页卡片时不跳（它就是首页自己）
+    }
+  }
+  // 鼠标视差
+  tfCur += ((0.24 - myT * 0.10) - tfCur) * 0.05
+  cxo += ((mxT * 36) - cxo) * 0.05
+  const wrap = ringWrapRef.value
+  const tilt = ringTiltRef.value
+  const h = wrap ? wrap.clientHeight : 600
+  const cyo = Math.round(h * 0.38 - h * 0.5)
+  if (tilt) {
+    tilt.style.setProperty('--tf', tfCur.toFixed(3))
+    tilt.style.setProperty('--cyo', cyo + 'px')
+    tilt.style.transform = `translateX(${cxo.toFixed(1)}px)`
+  }
+  const els = slotEls.value
+  els.forEach((el, i) => {
+    if (!el) return
+    const a = i * STEP + rot
+    const r = a * Math.PI / 180
+    const s = Math.sin(r)
+    const c = Math.cos(r)
+    const depth = (c + 1) / 2
+    const sx = s * Rpx
+    const sy = c * Rpx * tfCur
+    const wave = Math.sin(r * 2 + 1) * 9
+    const scale = (0.5 + 0.5 * depth) * (1 + Math.max(0, depth - 0.85) * 0.9)
+    el.style.transform =
+      `translate(-50%,-50%) translate(${sx.toFixed(1)}px,${(sy + wave + cyo).toFixed(1)}px) scale(${scale.toFixed(3)})`
+    el.style.zIndex = Math.round(depth * 100)
+    el.style.opacity = (0.14 + 0.86 * depth).toFixed(3)
+    el.style.filter = `blur(${((1 - depth) * 3).toFixed(1)}px)`
+    // 高亮态
+    const card = el.querySelector('.card')
+    if (card) card.classList.toggle('spot', i === frontIdx)
+  })
+}
 
-// ============ 排行列表数据 ============
-const rankList = ref([
-  { name: '华东区销售一部', value: '¥1,286万' },
-  { name: '华南区销售二部', value: '¥1,052万' },
-  { name: '华北区销售一部', value: '¥968万' },
-  { name: '西南区销售中心', value: '¥745万' },
-  { name: '华中区销售三部', value: '¥692万' },
-  { name: '西北区办事处', value: '¥428万' },
-  { name: '东北区办事处', value: '¥356万' }
-])
+function onKey(e) {
+  if (e.code === 'Space') { e.preventDefault(); step() }
+}
+function onResize() { resizeCanvas(); layoutRing() }
+function onMouseMove(e) {
+  mxT = e.clientX / innerWidth - 0.5
+  myT = e.clientY / innerHeight - 0.5
+}
 
-// ============ 进度条数据 ============
-const progressData = ref([
-  { name: '年度销售目标', value: 76 },
-  { name: '新客户拓展', value: 89 },
-  { name: '项目交付进度', value: 62 },
-  { name: '售后服务满意度', value: 94 }
-])
+onMounted(() => {
+  tickClock()
+  clockTimer = setInterval(tickClock, 1000)
+  buildSprites()
+  resizeCanvas()
+  cvCtx = partsCanvas.value.getContext('2d')
+  for (let i = 0; i < 80; i++) parts.push(new P())
+  loopParts()
+  layoutRing()
+  addEventListener('resize', onResize)
+  addEventListener('keydown', onKey)
+  addEventListener('mousemove', onMouseMove)
+  // 开场
+  setTimeout(() => {
+    introHidden.value = true
+    started = true
+    state = 'hold'
+    holdStart = performance.now()
+    rafId = requestAnimationFrame(frame)
+  }, 1800)
+})
+onBeforeUnmount(() => {
+  if (clockTimer) clearInterval(clockTimer)
+  if (rafId) cancelAnimationFrame(rafId)
+  rafParts = false
+  removeEventListener('resize', onResize)
+  removeEventListener('keydown', onKey)
+  removeEventListener('mousemove', onMouseMove)
+  clearTimeout(wheelTimer)
+})
 </script>
 
 <style scoped lang="scss">
-.home-screen {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.screen-content {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1.4fr 1fr;
-  gap: $spacing-md;
-  padding: $spacing-md;
+.home-stage {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
+  background: #04060d;
+  font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  color: #e8f1ff;
+  --cyan: #00e5ff;
+  --blue: #3a7bff;
+  --violet: #8b5cf6;
+  --pink: #ff3d8b;
+  --gold: #ffc94d;
+  --green: #00ffa3;
+  --text: #e8f1ff;
+  --dim: #7d8db3;
+  --card-glass: rgba(13, 20, 40, 0.55);
+  --line: rgba(120, 180, 255, 0.16);
 }
 
-.left-col,
-.center-col,
-.right-col {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  overflow: hidden;
+/* ============ 背景层 ============ */
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.bg-aurora {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(60% 50% at 15% 20%, rgba(0,120,255,.16), transparent 60%),
+    radial-gradient(50% 45% at 85% 15%, rgba(139,92,246,.14), transparent 60%),
+    radial-gradient(55% 50% at 60% 90%, rgba(255,61,139,.10), transparent 60%);
+  filter: blur(30px);
+  animation: auroraDrift 22s ease-in-out infinite alternate;
+}
+@keyframes auroraDrift {
+  0%   { transform: translate3d(0,0,0) scale(1); }
+  50%  { transform: translate3d(2%,-2%,0) scale(1.06); }
+  100% { transform: translate3d(-2%,2%,0) scale(1.03); }
+}
+.bg-grid {
+  position: absolute;
+  inset: -64px;
+  background-image:
+    linear-gradient(rgba(90,150,255,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90,150,255,.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 40%, transparent 100%);
+  animation: gridScroll 30s linear infinite;
+}
+@keyframes gridScroll { to { transform: translate3d(64px, 64px, 0); } }
+.parts-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bg-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 80% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%);
+}
+.bg-scan {
+  position: absolute;
+  inset: 0;
+  opacity: .35;
+  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.014) 3px 4px);
+}
+.beam {
+  position: absolute;
+  top: -30%;
+  width: 1px;
+  height: 160%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(0,229,255,.28), transparent);
+  animation: beamMove 9s linear infinite;
+  opacity: 0;
+}
+.beam.b1 { left: 12%; }
+.beam.b2 { left: 38%; animation-delay: 3s; background: linear-gradient(180deg, transparent, rgba(255,61,139,.22), transparent); }
+.beam.b3 { left: 63%; animation-delay: 5s; }
+.beam.b4 { left: 86%; animation-delay: 7s; background: linear-gradient(180deg, transparent, rgba(139,92,246,.22), transparent); }
+@keyframes beamMove {
+  0%   { opacity: 0; transform: translateY(-10%); }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(10%); }
+}
+.film-grain {
+  position: fixed;
+  inset: -100px;
+  z-index: 50;
+  pointer-events: none;
+  opacity: .05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+  animation: grain .5s steps(4) infinite;
+}
+@keyframes grain {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-30px, 20px); }
+  50%  { transform: translate(20px, -25px); }
+  75%  { transform: translate(-15px, -10px); }
+  100% { transform: translate(0, 0); }
 }
 
-// ============ 指标卡片 ============
-.metrics-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: $spacing-md;
-  flex-shrink: 0;
-}
-
-.metric-card {
-  height: 120px;
-  
-  .metric-value {
-    text-align: center;
-    margin-bottom: $spacing-sm;
-  }
-  
-  .metric-trend {
-    text-align: center;
-    font-size: $font-sm;
-    
-    &.up {
-      color: #52c41a;
-    }
-    
-    &.down {
-      color: #ff4d4f;
-    }
-  }
-}
-
-// ============ 图表卡片高度分配 ============
-.chart-card {
-  height: 320px;
-  flex-shrink: 0;
-}
-
-.list-card {
-  flex: 1;
-  min-height: 200px;
-}
-
-.main-chart-card {
-  flex: 1;
-  min-height: 400px;
-}
-
-.line-chart-card {
-  height: 280px;
-  flex-shrink: 0;
-}
-
-.pie-card {
-  height: 280px;
-  flex-shrink: 0;
-}
-
-.gauge-card {
-  height: 260px;
-  flex-shrink: 0;
-}
-
-.progress-card {
-  flex: 1;
-  min-height: 200px;
-}
-
-.chart-placeholder {
-  width: 100%;
-  height: 100%;
+/* ============ 开场 ============ */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
-  font-size: $font-sm;
+  flex-direction: column;
+  gap: 26px;
+  transition: opacity .8s ease, visibility .8s;
 }
+.intro.hide { opacity: 0; visibility: hidden; }
+.intro-logo {
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: 24px;
+  background: linear-gradient(180deg,#fff,#7fd8ff 60%,#3a7bff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 40px rgba(0,180,255,.5));
+  animation: logoIn 1.6s ease both;
+}
+@keyframes logoIn {
+  0%   { opacity: 0; letter-spacing: 60px; filter: blur(10px); }
+  100% { opacity: 1; letter-spacing: 24px; }
+}
+.intro-sub {
+  font-size: 12px;
+  letter-spacing: 10px;
+  color: rgba(200,225,255,.6);
+  animation: subIn 1.2s ease .5s both;
+}
+@keyframes subIn { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform:none; } }
+.intro-line {
+  width: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  animation: lineIn 1.4s ease .7s forwards;
+}
+@keyframes lineIn { to { width: 420px; } }
 
-.main-chart-placeholder {
-  width: 100%;
-  height: 100%;
+/* ============ 舞台 ============ */
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
+}
+
+/* ============ 头部 ============ */
+.home-header {
+  position: relative;
+  height: 84px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 44px;
+}
+.title-wrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 12px;
+  background: linear-gradient(180deg,#fff 20%,#7fc4ff 60%,#3a7bff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 24px rgba(60,150,255,.45));
+}
+.hd-side {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  min-width: 260px;
+}
+.hd-side.right { justify-content: flex-end; }
+.clock {
+  font-family: "Consolas", monospace;
+  font-size: 20px;
+  color: #bfe3ff;
+  text-shadow: 0 0 12px rgba(0,180,255,.6);
+}
+.date { font-size: 11px; color: var(--dim); letter-spacing: 2px; text-align: right; }
+.hd-line {
+  position: absolute;
+  left: 44px;
+  right: 44px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan) 30%, var(--violet) 60%, transparent);
+  opacity: .5;
+}
+
+/* ============ 环形舞台 ============ */
+.ring-wrap {
+  flex: 1;
+  position: relative;
+  perspective: 1750px;
+  overflow: hidden;
+  cursor: grab;
+}
+.ring-wrap.grabbing { cursor: grabbing; }
+.ring-tilt {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.ring { position: absolute; inset: 0; }
+.slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--cw);
+  will-change: transform, opacity;
+  cursor: pointer;
+}
+.orbit-line {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--cyo, 0px));
+  pointer-events: none;
+  border-radius: 50%;
+  width: calc(var(--R) * 2.7);
+  height: calc(var(--R) * 2.7 * var(--tf,.24));
+  transform: translate(-50%,-50%);
+  border: 1px solid rgba(0,190,255,.20);
+  box-shadow: 0 0 30px rgba(0,180,255,.10), inset 0 0 30px rgba(0,180,255,.08);
+}
+.orbit-line.l2 {
+  width: calc(var(--R) * 3.4);
+  height: calc(var(--R) * 3.4 * var(--tf,.24));
+  border-color: rgba(139,92,246,.14);
+}
+.orbit-halo {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--cyo, 0px));
+  width: calc(var(--R) * 2.4);
+  height: calc(var(--R) * 2.4 * var(--tf,.24));
+  transform: translate(-50%,-50%);
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(0,180,255,.16) 0%, rgba(0,180,255,.05) 45%, transparent 72%);
+  animation: haloPulse 4s ease-in-out infinite;
+}
+@keyframes haloPulse {
+  50% { opacity: .6; transform: translate(-50%,-50%) scale(1.05); }
+}
+
+/* ============ 中心 LOGO ============ */
+.center-logo {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 60;
+}
+.logo-calb {
+  font-size: 84px;
+  font-weight: 900;
+  letter-spacing: 14px;
+  background: linear-gradient(180deg,#fff 20%,#9fd8ff 55%,#3a7bff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 28px rgba(0,180,255,.55));
+}
+.logo-sub {
+  margin-top: 14px;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 10px;
+  color: #cfe4ff;
+  text-shadow: 0 0 16px rgba(0,160,255,.5);
+}
+.logo-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  border: 1px solid rgba(0,200,255,.35);
+  transform: translate(-50%,-50%);
+  pointer-events: none;
+}
+.logo-ring.r1 { width: 380px; height: 380px; box-shadow: 0 0 30px rgba(0,180,255,.15); }
+.logo-ring.r2 {
+  width: 470px; height: 470px;
+  border-style: dashed;
+  border-color: rgba(139,92,246,.25);
+  animation: spin 40s linear infinite;
+}
+.logo-ring.r3 {
+  width: 560px; height: 560px;
+  border-color: rgba(0,200,255,.18);
+  box-shadow: 0 0 40px rgba(0,180,255,.1);
+}
+@keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+/* ============ 卡片 ============ */
+.card {
+  position: relative;
+  border-radius: 14px;
+  padding: 18px 22px;
+  overflow: hidden;
+  height: 100%;
+  background: var(--card-glass);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  opacity: 1;
+  transition: border-color .4s ease, box-shadow .4s ease;
+}
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ac,#00e5ff), transparent);
+  opacity: .8;
+}
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(300px 200px at var(--mx,50%) var(--my,50%),
+              color-mix(in srgb, var(--ac,#00e5ff) 13%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity .4s;
+}
+.card:hover::after { opacity: 1; }
+.corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--ac,#00e5ff);
+  opacity: .85;
+}
+.corner.tl { top:7px; left:7px; border-top:2px solid; border-left:2px solid; }
+.corner.tr { top:7px; right:7px; border-top:2px solid; border-right:2px solid; }
+.corner.bl { bottom:7px; left:7px; border-bottom:2px solid; border-left:2px solid; }
+.corner.br { bottom:7px; right:7px; border-bottom:2px solid; border-right:2px solid; }
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.card-name {
+  font-size: 22px;
+  color: #fff;
+  letter-spacing: 3px;
+  font-weight: 700;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--ac,#00e5ff) 40%, transparent);
+}
+.card-badge {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  letter-spacing: 2px;
+  background: color-mix(in srgb, var(--ac) 15%, transparent);
+  color: var(--ac);
+  border: 1px solid color-mix(in srgb, var(--ac) 40%, transparent);
+}
+.card-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
-  border: 2px dashed var(--color-border);
-  border-radius: $radius-md;
-  
-  .placeholder-text {
-    font-size: $font-lg;
-    margin-bottom: $spacing-sm;
-    color: var(--color-text-secondary);
-  }
-  
-  .placeholder-hint {
-    font-size: $font-sm;
-  }
+  background: color-mix(in srgb, var(--ac,#00e5ff) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ac,#00e5ff) 35%, transparent);
+}
+.card-icon :deep(svg) {
+  width: 24px; height: 24px;
+  stroke: var(--ac,#00e5ff);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px var(--ac,#00e5ff));
+}
+.card-desc {
+  margin-top: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #aec2e6;
+  letter-spacing: 1px;
+}
+.card.spot {
+  border-color: color-mix(in srgb, var(--ac) 75%, transparent) !important;
+  box-shadow:
+    0 0 44px color-mix(in srgb, var(--ac) 30%, transparent),
+    inset 0 0 30px color-mix(in srgb, var(--ac) 10%, transparent) !important;
+}
+.card.spot .card-name {
+  animation: namePulse 1.8s ease infinite;
+}
+@keyframes namePulse {
+  50% { text-shadow: 0 0 22px var(--ac), 0 0 40px var(--ac); }
 }
 
-// ============ 进度条样式 ============
-.progress-list {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  padding: $spacing-sm 0;
-}
-
-.progress-item {
+/* ============ 底栏 ============ */
+.home-footer {
+  flex: 0 0 auto;
+  height: 30px;
   display: flex;
   align-items: center;
-  gap: $spacing-sm;
-  
-  .progress-label {
-    width: 110px;
-    font-size: $font-sm;
-    color: var(--color-text-secondary);
-    flex-shrink: 0;
-  }
-  
-  .progress-bar-bg {
-    flex: 1;
-    height: 8px;
-    background: var(--color-border-light);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--color-primary-dark), var(--color-primary-light));
-    border-radius: 4px;
-    transition: width 1s ease;
-  }
-  
-  .progress-value {
-    width: 45px;
-    text-align: right;
-    font-size: $font-sm;
-    color: var(--color-primary);
-    font-weight: 600;
-    font-family: 'DIN Alternate', sans-serif;
-    flex-shrink: 0;
-  }
+  justify-content: center;
+  gap: 16px;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: rgba(125,141,179,.6);
 }
+.home-footer .sep { color: rgba(125,141,179,.3); }
 </style>
