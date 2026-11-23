@@ -40,7 +40,7 @@
       <!-- 核心内容 2x2 -->
       <div class="main-grid">
         <!-- 左上：各车间计划完成对比柱状图 -->
-        <ScreenCard title="各车间周计划完成对比" class="grid-card">
+        <ScreenCard title="各车间上周计划完成对比" class="grid-card">
           <div class="chart-box" ref="barRef">
             <BaseChart v-if="barReady" ref="barChartRef" :option="barOption" @chart-ready="onChartReady" />
           </div>
@@ -58,7 +58,7 @@
         </ScreenCard>
 
         <!-- 左下：计划完成状态占比饼图 -->
-        <ScreenCard title="本周计划完成状态" class="grid-card">
+        <ScreenCard title="上周计划完成状态" class="grid-card">
           <div class="chart-box" ref="pieRef">
             <BaseChart v-if="pieReady" ref="pieChartRef" :option="pieOption" @chart-ready="onChartReady" />
           </div>
@@ -256,6 +256,7 @@ async function load() {
   try {
     const sheet = await loadSheet('plan', 0)
     const { weeks: w, workshops: ws } = parseWeeklyPlan(sheet)
+    console.log('weekly plan', w, ws)
     // 按"标题里的 wXX 数字"倒序，最新一周排前面；解析不出来就保持原顺序
     w.sort((a, b) => weekNo(b.title) - weekNo(a.title))
     // 过滤掉 items 为空的周

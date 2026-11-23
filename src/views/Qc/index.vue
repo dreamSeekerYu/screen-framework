@@ -15,7 +15,7 @@
 
     <div class="qc-body">
       <!-- KPI 四卡 -->
-      <StatCardRow :gap="12" :min-card-width="220" :max-card-width="420">
+      <StatCardRow :gap="12" :min-card-width="220" :max-card-width="520">
         <NewStatCard v-for="(c, i) in kpiCards" :key="i"
                      :theme="c.theme" :title="c.title" :value="c.value" :unit="c.unit"
                      :explain="c.explain" :trend="c.trend" :trend-type="c.trendType">
@@ -136,7 +136,7 @@
     </div>
 
     <!-- 查看明细弹窗（复用项目 Dialog 组件） -->
-    <Dialog v-model="detailVisible" title="各车间人力明细" width="960px">
+    <Dialog v-model="detailVisible" title="各车间人力明细" :width="1550">
       <div class="qc-detail">
         <table class="qc-detail__table">
           <thead>
@@ -144,10 +144,14 @@
               <th>车间名称</th>
               <th>配置架构</th>
               <th>在职架构</th>
+              <th>代培</th>
+              <th>借调</th>
+              <th>外部支援</th>
+              <th>休假</th>
               <th>实际人力</th>
-              <th>内部支援</th>
               <th>当前缺口</th>
               <th>预离职</th>
+              <th>规划支援</th>
               <th>预计缺口</th>
               <th>状态</th>
               <th>备注</th>
@@ -158,10 +162,14 @@
               <td class="qc-detail__name">{{ s.name }}车间</td>
               <td class="ar">{{ s.config }}</td>
               <td class="ar">{{ s.onjob }}</td>
+              <td class="ar text-success">{{ s.train }}</td>
+              <td class="ar text-success">{{ s.supportIn }}</td>
+              <td class="ar text-success">{{ s.otherSupport }}</td>
+              <td class="ar text-success">{{ s.leaveDay }}</td>
               <td class="ar">{{ s.actual }}</td>
-              <td class="ar text-success">{{ s.supportIn + s.otherSupport }}</td>
               <td class="ar" :class="s.gapNow < 0 ? 'text-danger' : 'text-success'">{{ formatGap(s.gapNow) }}</td>
               <td class="ar" :class="s.preLeave > 0 ? 'text-warning' : ''">{{ s.preLeave }}</td>
+              <td class="ar text-success">{{ s.outSupport }}</td>
               <td class="ar" :class="s.gapExpect < 0 ? 'text-danger' : 'text-success'">{{ formatGap(s.gapExpect) }}</td>
               <td class="ac">
                 <StatusTag :text="shopStatusTag(s).text" :type="shopStatusTag(s).type" effect="light" size="small" round />
@@ -172,10 +180,14 @@
               <td>合计</td>
               <td class="ar">{{ qc.total?.config }}</td>
               <td class="ar">{{ qc.total?.onjob }}</td>
+              <td class="ar">{{ qc.total?.train }}</td>
+              <td class="ar">{{ qc.total?.supportIn }}</td>
+              <td class="ar">{{ qc.total?.otherSupport }}</td>
+              <td class="ar">{{ qc.total?.leaveDay }}</td>
               <td class="ar">{{ qc.total?.actual }}</td>
-              <td class="ar">{{ qc.kpi?.totalSupport }}</td>
-              <td class="ar text-warning">{{ formatGap(qc.total?.gapNow) }}</td>
-              <td class="ar text-danger">{{ qc.total?.preLeave }}</td>
+              <td class="ar">{{ qc.kpi?.gapNow }}</td>
+              <td class="ar text-warning">{{ formatGap(qc.total?.preLeave) }}</td>
+              <td class="ar text-danger">{{ qc.total?.outSupport }}</td>
               <td class="ar text-danger">{{ formatGap(qc.total?.gapExpect) }}</td>
               <td class="ac"><StatusTag text="总缺口" type="danger" effect="light" size="small" round /></td>
               <td>整体充足率{{ qc.kpi?.fillRate }}%</td>
@@ -303,6 +315,7 @@ const gaugeOpt = computed(() => {
         valueAnimation: true, offsetCenter: [0, '5%'],
         formatter: v => v.toFixed(1) + '%',
         color: 'var(--text-main)', fontSize: 24, fontWeight: 'bold',
+        offsetCenter:[0,'35%'],
       },
       data: [{ value: fill }],
     }],
@@ -408,6 +421,7 @@ onMounted(async () => {
   try {
     const data = await parseQcData()
     Object.assign(qc, data)
+    console.log('QC 数据加载成功:', data)
     // 等布局稳定后触发一次 resize，确保 flex/grid 高度变化后图表尺寸正确
     await nextTick()
     window.dispatchEvent(new Event('resize'))

@@ -4,7 +4,7 @@
     <ScreenHeader title="过程能力达标率" subtitle="过程能力指数（CPK）≥1.33 项目达标率统计" />
 
     <!-- KPI 卡片区：4 张等宽 -->
-    <StatCardRow style="margin-bottom: 16px;" :gap="16" :min-card-width="200" :max-card-width="420">
+    <StatCardRow style="margin-bottom: 16px;" :gap="16" :min-card-width="200" :max-card-width="520">
       <StatCard
         v-for="(item, idx) in kpiCards"
         :key="idx"
