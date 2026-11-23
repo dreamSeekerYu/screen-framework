@@ -335,11 +335,11 @@ function cssVar(name, fallback) {
 }
 
 const RISK_TYPE_COLOR = {
-  人力风险: '#f56c6c',
-  质量风险: '#e6a23c',
-  产能风险: '#409eff',
-  设备风险: '#909399',
-  普通风险: '#b37feb',
+  人力风险: 'var(--color-danger)',
+  质量风险: 'var(--color-warning)',
+  产能风险: 'var(--color-primary)',
+  设备风险: 'var(--chart-text-muted)',
+  普通风险: 'var(--color-accent)',
 }
 
 const pieOption = computed(() => {
@@ -539,9 +539,9 @@ function onPlanToggle() {
   text-align: center;
   border: 1px solid;
 
-  &.high { background: #fef0f0; border-color: #fbc4c4; }
-  &.mid { background: #fef8e7; border-color: #f5dab1; }
-  &.low { background: #f0f9eb; border-color: #c2e7b0; }
+  &.high { background: var(--color-danger-bg); border-color: var(--color-danger); }
+  &.mid { background: var(--color-warning-bg); border-color: var(--color-warning); }
+  &.low { background: var(--color-success-bg); border-color: var(--color-success); }
 
   .workshop-name {
     font-size: $font-md;
@@ -557,9 +557,9 @@ function onPlanToggle() {
     color: white;
     margin-bottom: 4px;
 
-    &.high { background: #f56c6c; }
-    &.mid { background: #e6a23c; }
-    &.low { background: #67c23a; }
+    &.high { background: var(--color-danger); }
+    &.mid { background: var(--color-warning); }
+    &.low { background: var(--color-success); }
   }
   .workshop-count {
     font-size: 20px;
@@ -621,8 +621,8 @@ function onPlanToggle() {
 }
 
 .task-card {
-  border-left: 4px solid #f56c6c;
-  background: #fef0f0;
+  border-left: 4px solid var(--color-danger);
+  background: var(--color-danger-bg);
   border-radius: $radius-sm;
   padding: $spacing-sm $spacing-md;
   margin-bottom: $spacing-sm;
@@ -634,20 +634,20 @@ function onPlanToggle() {
   gap: $spacing-sm;
 
   &.mid-risk {
-    border-left-color: #e6a23c;
-    background: #fef8e7;
+    border-left-color: var(--color-warning);
+    background: var(--color-warning-bg);
   }
   &.low-risk {
-    border-left-color: #67c23a;
-    background: #f0f9eb;
+    border-left-color: var(--color-success);
+    background: var(--color-success-bg);
   }
   &:hover {
     transform: translateX(3px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-card);
   }
   &.active {
     border-left-color: var(--color-primary, #409eff);
-    background: #ecf5ff;
+    background: var(--color-info-bg);
   }
 
   .task-info { flex: 1; min-width: 0; }
@@ -691,9 +691,9 @@ function onPlanToggle() {
     flex-shrink: 0;
     margin-left: 6px;
 
-    &.high { background: #f56c6c; }
-    &.mid { background: #e6a23c; }
-    &.low { background: #67c23a; }
+    &.high { background: var(--color-danger); }
+    &.mid { background: var(--color-warning); }
+    &.low { background: var(--color-success); }
   }
 }
 

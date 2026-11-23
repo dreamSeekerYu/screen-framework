@@ -50,7 +50,7 @@ const clamped = computed(() => Math.min(100, Math.max(0, props.percentage)))
 
 const trackStyle = computed(() => ({
   height: `${props.strokeWidth}px`,
-  backgroundColor: props.trackColor || 'rgba(255,255,255,0.08)'
+  backgroundColor: props.trackColor || 'color-mix(in srgb, var(--color-text-primary) 10%, transparent)'
 }))
 
 const barStyle = computed(() => {
@@ -58,9 +58,9 @@ const barStyle = computed(() => {
   if (!bg) {
     // 根据 status 自动配色
     switch (props.status) {
-      case 'success': bg = '#10b981'; break
-      case 'warning': bg = '#f59e0b'; break
-      case 'danger':  bg = '#ef4444'; break
+      case 'success': bg = 'var(--color-success)'; break
+      case 'warning': bg = 'var(--color-warning)'; break
+      case 'danger':  bg = 'var(--color-danger)'; break
       default: bg = 'linear-gradient(90deg, var(--color-primary), var(--color-primary-light))'; break
     }
   } else if (Array.isArray(bg)) {
@@ -142,9 +142,9 @@ const showStriped = computed(() => props.striped)
     text-align: right;
   }
 
-  &--success .ui-progress__bar { background-color: #10b981 !important; }
-  &--warning .ui-progress__bar { background-color: #f59e0b !important; }
-  &--danger  .ui-progress__bar { background-color: #ef4444 !important; }
+  &--success .ui-progress__bar { background-color: var(--color-success) !important; }
+  &--warning .ui-progress__bar { background-color: var(--color-warning) !important; }
+  &--danger  .ui-progress__bar { background-color: var(--color-danger) !important; }
 }
 
 @keyframes progress-stripes {

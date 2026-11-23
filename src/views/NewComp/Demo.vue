@@ -132,7 +132,7 @@ import SummaryBar from '@/components/common/SummaryBar.vue'
   padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
-  background-color: #f0f7ff;
+  background-color: var(--color-info-bg);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -142,13 +142,13 @@ import SummaryBar from '@/components/common/SummaryBar.vue'
 
 h2 {
   margin: 30px 0 16px 0;
-  color: #1e293b;
+  color: var(--color-text-primary);
   font-size: 20px;
 }
 
 p {
   margin: 0 0 12px 0;
-  color: #475569;
+  color: var(--color-text-secondary);
   font-size: 14px;
 }
 

@@ -131,32 +131,32 @@ const props = defineProps({
   }
 })
 
-// 预设状态颜色映射
+// 预设状态颜色映射（语义变量，随主题自动切换）
 const statusColors = {
   primary: {
-    text: '#4080ff',
-    border: '#4080ff',
-    bg: 'rgba(64, 128, 255, 0.08)'
+    text: 'var(--color-primary)',
+    border: 'var(--color-primary)',
+    bg: 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
   },
   success: {
-    text: '#00b42a',
-    border: '#00b42a',
-    bg: 'rgba(0, 180, 42, 0.08)'
+    text: 'var(--color-success)',
+    border: 'var(--color-success)',
+    bg: 'color-mix(in srgb, var(--color-success) 10%, transparent)'
   },
   warning: {
-    text: '#ff7d00',
-    border: '#ff7d00',
-    bg: 'rgba(255, 125, 0, 0.08)'
+    text: 'var(--color-warning)',
+    border: 'var(--color-warning)',
+    bg: 'color-mix(in srgb, var(--color-warning) 10%, transparent)'
   },
   danger: {
-    text: '#f53f3f',
-    border: '#f53f3f',
-    bg: 'rgba(245, 63, 63, 0.08)'
+    text: 'var(--color-danger)',
+    border: 'var(--color-danger)',
+    bg: 'color-mix(in srgb, var(--color-danger) 10%, transparent)'
   },
   info: {
-    text: '#86909c',
-    border: '#c9cdd4',
-    bg: 'rgba(134, 144, 156, 0.06)'
+    text: 'var(--color-info)',
+    border: 'var(--color-border)',
+    bg: 'color-mix(in srgb, var(--color-info) 8%, transparent)'
   }
 }
 
@@ -169,7 +169,7 @@ const customStyle = computed(() => {
     colorConfig = {
       text: props.color,
       border: props.color,
-      bg: hexToRgba(props.color, props.brightness === 'light' ? 0.06 : props.brightness === 'dark' ? 0.15 : 0.1)
+      bg: `color-mix(in srgb, ${props.color} ${props.brightness === 'light' ? 6 : props.brightness === 'dark' ? 15 : 10}%, transparent)`
     }
   }
 
@@ -184,10 +184,8 @@ const customStyle = computed(() => {
   if (props.bgColor) {
     style['--card-bg-color'] = props.bgColor
   } else if (props.variant === 'plain') {
-    let bgOpacity = 0.08
-    if (props.brightness === 'light') bgOpacity = 0.05
-    if (props.brightness === 'dark') bgOpacity = 0.15
-    style['--card-bg-color'] = hexToRgba(colorConfig.border, bgOpacity)
+    const bgOpacity = props.brightness === 'light' ? 6 : props.brightness === 'dark' ? 18 : 10
+    style['--card-bg-color'] = `color-mix(in srgb, ${colorConfig.border} ${bgOpacity}%, transparent)`
   }
 
   // 数值颜色
@@ -213,9 +211,9 @@ defineExpose({
 <style scoped>
 .stat-card {
   position: relative;
-  --card-bg-color: #ffffff;
+  --card-bg-color: var(--color-bg-card);
   --card-border-color: transparent;
-  --value-color: #4080ff;
+  --value-color: var(--color-primary);
   --border-radius: 16px;
   --padding: 20px 28px;
   --title-size: 22px;
@@ -227,7 +225,7 @@ defineExpose({
   border-radius: var(--border-radius);
   padding: var(--padding);
   border: 2px solid var(--card-border-color);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-card);
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
@@ -235,7 +233,7 @@ defineExpose({
 
 .stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-hover);
 }
 
 /* 尺寸变体 */
@@ -263,12 +261,12 @@ defineExpose({
 }
 
 .stat-card--default {
-  border-color: #f0f2f5;
-  background: #ffffff;
+  border-color: var(--color-border-light);
+  background: var(--color-bg-card);
 }
 
 .stat-card--outlined {
-  background: #ffffff;
+  background: var(--color-bg-card);
 }
 
 /* 内容布局 */
@@ -289,7 +287,7 @@ defineExpose({
 .stat-card__title {
   font-size: var(--title-size);
   font-weight: 500;
-  color: #1d2129;
+  color: var(--color-text-primary);
   line-height: 1.4;
   margin-bottom: 6px;
   white-space: nowrap;
@@ -299,7 +297,7 @@ defineExpose({
 
 .stat-card__explain {
   font-size: var(--explain-size);
-  color: #4e5969;
+  color: var(--color-text-secondary);
   line-height: 1.5;
   white-space: nowrap;
   overflow: hidden;
@@ -333,17 +331,13 @@ defineExpose({
   top: 16px;
   right: 20px;
   font-size: 14px;
-  color: #86909c;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
 /* 亮度调整 - plain模式 */
 .stat-card--brightness-light.stat-card--plain {
-  --card-bg-color: rgba(255, 255, 255, 0.9);
-}
-
-.stat-card--brightness-dark.stat-card--plain {
-  --card-bg-color: var(--card-bg-color);
+  --card-bg-color: color-mix(in srgb, var(--color-bg-card) 88%, transparent);
 }
 
 /* 插槽自定义样式支持 */

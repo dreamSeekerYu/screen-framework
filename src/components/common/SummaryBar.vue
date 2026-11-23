@@ -110,32 +110,32 @@ const props = defineProps({
   font-size: 15px;
   font-weight: 500;
   line-height: 1.5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-card);
 }
 
 .is-round {
   border-radius: 16px;
 }
 
-/* 背景渐变色系，完全对齐截图 */
+/* 背景渐变色系：语义色驱动，随主题切换 */
 .summary-bar--primary {
-  background: linear-gradient(90deg, #1e3a66 0%, #1e88e5 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 55%, #0a1428) 0%, var(--color-primary) 100%);
 }
 
 .summary-bar--success {
-  background: linear-gradient(90deg, #065f46 0%, #10b981 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-success) 55%, #0a1428) 0%, var(--color-success) 100%);
 }
 
 .summary-bar--info {
-  background: linear-gradient(90deg, #0c3b5a 0%, #0ea5e9 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-info) 55%, #0a1428) 0%, var(--color-info) 100%);
 }
 
 .summary-bar--warning {
-  background: linear-gradient(90deg, #92400e 0%, #f59e0b 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-warning) 55%, #0a1428) 0%, var(--color-warning) 100%);
 }
 
 .summary-bar--danger {
-  background: linear-gradient(90deg, #7f1d1d 0%, #ef4444 100%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-danger) 55%, #0a1428) 0%, var(--color-danger) 100%);
 }
 
 /* 左侧图标容器 */
@@ -147,7 +147,7 @@ const props = defineProps({
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.2);
   color: #ffffff;
   margin-right: 12px;
   font-size: 14px;

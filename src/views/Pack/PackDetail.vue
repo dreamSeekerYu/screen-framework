@@ -203,7 +203,7 @@ const chartOption = computed(() => {
   const cColor = getCssVar('--color-primary', '#2F7CFF')
   const cDanger = getCssVar('--color-danger', '#FF4D4F')
   const cText = getCssVar('--text-main', '#fff')
-  const cGrid = 'rgba(255,255,255,0.08)'
+  const cGrid = getCssVar('--chart-split-line', 'rgba(148,163,184,0.15)')
   return {
     grid: { top: 24, left: 50, right: 20, bottom: 28 },
     tooltip: { trigger: 'axis' },
@@ -260,7 +260,7 @@ const m6ChartOption = computed(() => {
   const cDanger = getCssVar('--color-danger', '#FF4D4F')
   const cWarn = getCssVar('--color-warning', '#FAAD14')
   const cText = getCssVar('--text-main', '#fff')
-  const cGrid = 'rgba(255,255,255,0.08)'
+  const cGrid = getCssVar('--chart-split-line', 'rgba(148,163,184,0.15)')
   return {
     grid: { top: 24, left: 50, right: 20, bottom: 28 },
     tooltip: { trigger: 'axis' },
@@ -299,22 +299,22 @@ const m6ChartOption = computed(() => {
 }
 .pd-kpi--m6 { grid-template-columns: repeat(3, 1fr); }
 .pd-kpi__item {
-  background: rgba(255,255,255,0.04);
+  background: var(--color-bg-soft);
   border-radius: 6px;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.pd-kpi__label { font-size: 12px; color: var(--text-sub, rgba(255,255,255,0.6)); }
+.pd-kpi__label { font-size: 12px; color: var(--text-sub); }
 .pd-kpi__value {
   font-size: 24px; font-weight: 700;
   display: flex; align-items: baseline; gap: 4px;
 }
-.pd-kpi__value.is-danger { color: var(--color-danger, #FF4D4F); }
-.pd-kpi__value.is-warning { color: var(--color-warning, #FAAD14); }
-.pd-kpi__value.is-success { color: var(--color-success, #00C292); }
-.pd-kpi__unit { font-size: 12px; color: var(--text-sub, rgba(255,255,255,0.6)); font-weight: 400; }
+.pd-kpi__value.is-danger { color: var(--color-danger); }
+.pd-kpi__value.is-warning { color: var(--color-warning); }
+.pd-kpi__value.is-success { color: var(--color-success); }
+.pd-kpi__unit { font-size: 12px; color: var(--text-sub); font-weight: 400; }
 
 .pd-chart-card :deep(.screen-card__body),
 .pd-table-card :deep(.screen-card__body),
@@ -329,18 +329,18 @@ const m6ChartOption = computed(() => {
 .pd-table th, .pd-table td {
   padding: 7px 10px;
   text-align: center;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--color-border-light);
 }
 .pd-table th {
-  background: rgba(47,124,255,0.12);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   color: var(--text-main, #fff);
   font-weight: 500;
   font-size: 11px;
 }
-.pd-table__name { text-align: left; color: var(--text-sub, rgba(255,255,255,0.8)); font-weight: 500; }
-.pd-table td.is-target { color: var(--color-warning, #FAAD14); }
-.pd-table td.is-danger { color: var(--color-danger, #FF4D4F); font-weight: 600; }
-.pd-table td.is-zero { color: var(--text-sub, rgba(255,255,255,0.3)); }
+.pd-table__name { text-align: left; color: var(--text-sub); font-weight: 500; }
+.pd-table td.is-target { color: var(--color-warning); }
+.pd-table td.is-danger { color: var(--color-danger); font-weight: 600; }
+.pd-table td.is-zero { color: var(--text-sub); }
 
 .pd-conclusion__text {
   font-size: 13px;
@@ -350,11 +350,11 @@ const m6ChartOption = computed(() => {
   padding: 4px 0 8px;
 }
 .pd-models { margin-top: 8px; }
-.pd-models__title { font-size: 12px; color: var(--text-sub, rgba(255,255,255,0.6)); margin-bottom: 6px; }
+.pd-models__title { font-size: 12px; color: var(--text-sub); margin-bottom: 6px; }
 .pd-models__list { display: flex; flex-wrap: wrap; gap: 6px; }
 .pd-model-tag {
-  background: rgba(47,124,255,0.15);
-  border: 1px solid rgba(47,124,255,0.3);
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
   color: var(--color-primary, #2F7CFF);
   border-radius: 4px;
   padding: 4px 8px;
@@ -363,5 +363,5 @@ const m6ChartOption = computed(() => {
   gap: 4px;
   align-items: center;
 }
-.pd-model-tag small { color: var(--text-sub, rgba(255,255,255,0.5)); font-size: 10px; }
+.pd-model-tag small { color: var(--text-sub); font-size: 10px; }
 </style>

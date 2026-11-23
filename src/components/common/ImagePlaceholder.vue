@@ -143,7 +143,7 @@ defineExpose({ reload: load })
   position: relative;
   display: inline-block;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-text-primary) 4%, transparent), color-mix(in srgb, var(--color-text-primary) 2%, transparent));
   border: 1px dashed var(--color-border-light);
   color: var(--color-text-muted);
   vertical-align: middle;
@@ -172,9 +172,9 @@ defineExpose({ reload: load })
     position: absolute;
     inset: 0;
     background: linear-gradient(90deg,
-      rgba(255,255,255,0.04) 25%,
-      rgba(255,255,255,0.08) 37%,
-      rgba(255,255,255,0.04) 63%
+      color-mix(in srgb, var(--color-text-primary) 4%, transparent) 25%,
+      color-mix(in srgb, var(--color-text-primary) 8%, transparent) 37%,
+      color-mix(in srgb, var(--color-text-primary) 4%, transparent) 63%
     );
     background-size: 400% 100%;
     animation: iph-skeleton 1.4s ease infinite;

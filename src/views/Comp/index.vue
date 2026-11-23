@@ -1,10 +1,10 @@
 <template>
-  <div style="padding: 40px; background: #f5f7fa; min-height: 100vh;">
-    <h2 style="margin-bottom: 24px; color: #1d2129;">📊 统计卡片组件 - 插槽用法演示</h2>
+  <div style="padding: 40px; background: var(--color-bg-soft); min-height: 100vh;">
+    <h2 style="margin-bottom: 24px; color: var(--color-text-primary);">📊 统计卡片组件 - 插槽用法演示</h2>
     
     <!-- 第一行：基础用法（原有props方式） -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px;">
-      <h3 style="grid-column: 1 / -1; margin: 0 0 8px 0; color: #4e5969;">一、基础Props用法（原有方式完全兼容）</h3>
+      <h3 style="grid-column: 1 / -1; margin: 0 0 8px 0; color: var(--color-text-secondary);">一、基础Props用法（原有方式完全兼容）</h3>
       <StatCard
         title="上周重点困难工作"
         explain="描述性文本 explain"
@@ -41,7 +41,7 @@
 
     <!-- 第二行：样式变体演示 -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px;">
-      <h3 style="grid-column: 1 / -1; margin: 0 0 8px 0; color: #4e5969;">二、样式变体（outlined / plain / dash）</h3>
+      <h3 style="grid-column: 1 / -1; margin: 0 0 8px 0; color: var(--color-text-secondary);">二、样式变体（outlined / plain / dash）</h3>
       <StatCard
         title="本周防错失效率"
         explain="CW44 零失效"
@@ -81,7 +81,7 @@
         explain="11条线体全覆盖"
         :value="11"
         unit="条"
-        color="#722ed1"
+        color="var(--color-accent)"
         variant="plain"
         brightness="light"
       />
@@ -89,7 +89,7 @@
 
     <!-- 第三行：插槽用法演示 -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px;">
-      <h3 style="grid-column: 1 / -1; margin: 0 0 8px 0; color: #4e5969;">三、插槽基础用法（局部自定义）</h3>
+      <h3 style="grid-column: 1 / -1; margin: 0 0 8px 0; color: var(--color-text-secondary);">三、插槽基础用法（局部自定义）</h3>
       
       <!-- 带图标前缀 -->
       <StatCard
@@ -104,7 +104,7 @@
           <span style="margin-right: 10px; font-size: 28px;">👥</span>
         </template>
         <template #suffix>
-          <span style="margin-left: 8px; font-size: 16px; color: #00b42a;">↑</span>
+          <span style="margin-left: 8px; font-size: 16px; color: var(--color-success);">↑</span>
         </template>
       </StatCard>
 
@@ -118,7 +118,7 @@
       >
         <template #title>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="color: #00b42a;">●</span>
+            <span style="color: var(--color-success);">●</span>
             <span>系统运行状态</span>
             <el-tag size="small" type="success" style="margin-left: auto;">正常</el-tag>
           </div>
@@ -135,7 +135,7 @@
         variant="default"
       >
         <template #action>
-          <span style="color: #4080ff; cursor: pointer; font-size: 14px;">查看全部 →</span>
+          <span style="color: var(--color-primary); cursor: pointer; font-size: 14px;">查看全部 →</span>
         </template>
       </StatCard>
 
@@ -146,20 +146,20 @@
         brightness="light"
       >
         <template #title>
-          <span style="color: #f53f3f;">⚠️ 异常告警</span>
+          <span style="color: var(--color-danger);">⚠️ 异常告警</span>
         </template>
         <template #explain>
-          <span style="color: #f53f3f;">CPU使用率超过90%，请及时处理</span>
+          <span style="color: var(--color-danger);">CPU使用率超过90%，请及时处理</span>
         </template>
         <template #value>
-          <span style="font-size: 42px; font-weight: bold; color: #f53f3f;">92%</span>
+          <span style="font-size: 42px; font-weight: bold; color: var(--color-danger);">92%</span>
         </template>
       </StatCard>
     </div>
 
     <!-- 第四行：扩展插槽演示 -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px;">
-      <h3 style="grid-column: 1 / -1; margin: 0 0 8px 0; color: #4e5969;">四、扩展插槽（增加额外内容）</h3>
+      <h3 style="grid-column: 1 / -1; margin: 0 0 8px 0; color: var(--color-text-secondary);">四、扩展插槽（增加额外内容）</h3>
       
       <!-- 左侧扩展 -->
       <StatCard
@@ -171,12 +171,12 @@
         brightness="light"
       >
         <template #left-extra>
-          <div style="margin-top: 8px; font-size: 13px; color: #86909c;">
-            目标完成率：<span style="color: #00b42a; font-weight: 600;">85.7%</span>
+          <div style="margin-top: 8px; font-size: 13px; color: var(--color-text-muted);">
+            目标完成率：<span style="color: var(--color-success); font-weight: 600;">85.7%</span>
           </div>
         </template>
         <template #suffix>
-          <span style="margin-left: 8px; font-size: 16px; color: #00b42a;">↑ 18.2%</span>
+          <span style="margin-left: 8px; font-size: 16px; color: var(--color-success);">↑ 18.2%</span>
         </template>
       </StatCard>
 
@@ -190,8 +190,8 @@
         variant="default"
       >
         <template #right-extra>
-          <div style="margin-top: 8px; font-size: 13px; color: #86909c; text-align: right;">
-            退款率：<span style="color: #f53f3f;">1.2%</span>
+          <div style="margin-top: 8px; font-size: 13px; color: var(--color-text-muted); text-align: right;">
+            退款率：<span style="color: var(--color-danger);">1.2%</span>
           </div>
         </template>
       </StatCard>
@@ -207,7 +207,7 @@
         variant="outlined"
       >
         <template #suffix>
-          <span style="margin-left: 6px; font-size: 14px; color: #86909c;">PV</span>
+          <span style="margin-left: 6px; font-size: 14px; color: var(--color-text-muted);">PV</span>
         </template>
       </StatCard>
 
@@ -218,7 +218,7 @@
         :value="1.2"
         unit="亿"
         size="large"
-        color="#eb2f96"
+        color="var(--color-accent)"
         variant="plain"
         brightness="dark"
       />
@@ -226,20 +226,20 @@
 
     <!-- 第五行：完全自定义默认插槽 -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
-      <h3 style="grid-column: 1 / -1; margin: 0 0 8px 0; color: #4e5969;">五、完全自定义（默认插槽覆盖全部布局）</h3>
+      <h3 style="grid-column: 1 / -1; margin: 0 0 8px 0; color: var(--color-text-secondary);">五、完全自定义（默认插槽覆盖全部布局）</h3>
       
       <!-- 完全自定义布局1：带进度条 -->
       <StatCard status="primary" variant="default" size="default">
         <div style="width: 100%;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
             <div>
-              <div style="font-size: 18px; font-weight: 500; color: #1d2129;">项目完成进度</div>
-              <div style="font-size: 14px; color: #86909c; margin-top: 4px;">剩余工期：15天</div>
+              <div style="font-size: 18px; font-weight: 500; color: var(--color-text-primary);">项目完成进度</div>
+              <div style="font-size: 14px; color: var(--color-text-muted); margin-top: 4px;">剩余工期：15天</div>
             </div>
-            <div style="font-size: 32px; font-weight: bold; color: #4080ff;">76%</div>
+            <div style="font-size: 32px; font-weight: bold; color: var(--color-primary);">76%</div>
           </div>
-          <div style="height: 8px; background: #e5e6eb; border-radius: 4px; overflow: hidden;">
-            <div style="width: 76%; height: 100%; background: linear-gradient(90deg, #4080ff, #69b1ff); border-radius: 4px;"></div>
+          <div style="height: 8px; background: var(--color-border); border-radius: 4px; overflow: hidden;">
+            <div style="width: 76%; height: 100%; background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light)); border-radius: 4px;"></div>
           </div>
         </div>
       </StatCard>
@@ -248,18 +248,18 @@
       <StatCard status="success" variant="plain" brightness="light">
         <div style="width: 100%; display: flex; justify-content: space-around; text-align: center;">
           <div>
-            <div style="font-size: 28px; font-weight: bold; color: #00b42a;">128</div>
-            <div style="font-size: 14px; color: #4e5969; margin-top: 4px;">已完成</div>
+            <div style="font-size: 28px; font-weight: bold; color: var(--color-success);">128</div>
+            <div style="font-size: 14px; color: var(--color-text-secondary); margin-top: 4px;">已完成</div>
           </div>
-          <div style="width: 1px; background: #c9cdd4;"></div>
+          <div style="width: 1px; background: var(--color-border);"></div>
           <div>
-            <div style="font-size: 28px; font-weight: bold; color: #ff7d00;">24</div>
-            <div style="font-size: 14px; color: #4e5969; margin-top: 4px;">进行中</div>
+            <div style="font-size: 28px; font-weight: bold; color: var(--color-warning);">24</div>
+            <div style="font-size: 14px; color: var(--color-text-secondary); margin-top: 4px;">进行中</div>
           </div>
-          <div style="width: 1px; background: #c9cdd4;"></div>
+          <div style="width: 1px; background: var(--color-border);"></div>
           <div>
-            <div style="font-size: 28px; font-weight: bold; color: #86909c;">8</div>
-            <div style="font-size: 14px; color: #4e5969; margin-top: 4px;">待开始</div>
+            <div style="font-size: 28px; font-weight: bold; color: var(--color-text-muted);">8</div>
+            <div style="font-size: 14px; color: var(--color-text-secondary); margin-top: 4px;">待开始</div>
           </div>
         </div>
       </StatCard>
@@ -268,9 +268,9 @@
       <StatCard status="warning" variant="outlined">
         <div style="width: 100%; display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <div style="font-size: 16px; color: #4e5969;">转化率趋势</div>
-            <div style="font-size: 36px; font-weight: bold; color: #ff7d00; margin-top: 4px;">4.82%</div>
-            <div style="font-size: 13px; color: #00b42a; margin-top: 4px;">周同比 ↑ 0.6pp</div>
+            <div style="font-size: 16px; color: var(--color-text-secondary);">转化率趋势</div>
+            <div style="font-size: 36px; font-weight: bold; color: var(--color-warning); margin-top: 4px;">4.82%</div>
+            <div style="font-size: 13px; color: var(--color-success); margin-top: 4px;">周同比 ↑ 0.6pp</div>
           </div>
           <div style="font-size: 48px;">📈</div>
         </div>

@@ -25,9 +25,9 @@
     <SummaryBar
       :type="summary.type"
       :icon="summary.icon"
+      :content="summary.text"
       style="margin-bottom: 16px; flex-shrink: 0;"
     >
-      {{ summary.text }}
       <template #tags>
         <StatusTag v-for="(tag, i) in summary.tags" :key="i" :text="tag.text" :type="tag.type" effect="dark" round />
       </template>
@@ -302,10 +302,10 @@ const trendOption = computed(() => {
   return {
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'cross', crossStyle: { color: '#94a3b8' } },
-      backgroundColor: 'rgba(255,255,255,0.98)',
-      borderColor: 'var(--color-border,#e2e8f0)',
-      textStyle: { color: '#334155' },
+      axisPointer: { type: 'cross', crossStyle: { color: 'var(--chart-text-muted)' } },
+      backgroundColor: 'var(--chart-tooltip-bg)',
+      borderColor: 'var(--chart-tooltip-border)',
+      textStyle: { color: 'var(--chart-tooltip-text)' },
       padding: 12,
       formatter: (params) => {
         const idx = params[0].dataIndex
@@ -356,30 +356,30 @@ const trendOption = computed(() => {
         name: '达标率', type: 'line', yAxisIndex: 0, data: rates,
         smooth: true, connectNulls: true,
         symbol: 'circle', symbolSize: 7,
-        lineStyle: { width: 3, color: '#10b981' },
-        itemStyle: { color: '#10b981', borderWidth: 2, borderColor: '#fff' },
+        lineStyle: { width: 3, color: 'var(--color-success)' },
+        itemStyle: { color: 'var(--color-success)', borderWidth: 2, borderColor: 'var(--color-bg-card)' },
         areaStyle: {
           color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
-            { offset: 0, color: 'rgba(16,185,129,0.25)' },
-            { offset: 1, color: 'rgba(16,185,129,0.02)' },
+            { offset: 0, color: 'color-mix(in srgb, var(--color-success) 25%, transparent)' },
+            { offset: 1, color: 'color-mix(in srgb, var(--color-success) 2%, transparent)' },
           ]},
         },
         label: {
-          show: true, position: 'top', color: '#059669', fontSize: 10, fontWeight: 'bold',
+          show: true, position: 'top', color: 'var(--color-success)', fontSize: 10, fontWeight: 'bold',
           formatter: p => p.value != null ? p.value.toFixed(1) + '%' : '',
         },
         markLine: {
           silent: true,
           symbol: 'none',
-          lineStyle: { color: '#ef4444', type: 'dashed', width: 1 },
-          data: [{ yAxis: 100, label: { formatter: '目标100%', color: '#ef4444', fontSize: 10, position: 'end' } }],
+          lineStyle: { color: 'var(--color-danger)', type: 'dashed', width: 1 },
+          data: [{ yAxis: 100, label: { formatter: '目标100%', color: 'var(--color-danger)', fontSize: 10, position: 'end' } }],
         },
       },
       {
         name: '达标项目数', type: 'bar', yAxisIndex: 1, data: pass, barWidth: 18,
         itemStyle: {
           color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
-            { offset:0, color:'#60a5fa' }, { offset:1, color:'#3b82f6' }
+            { offset:0, color:'var(--color-primary-light)' }, { offset:1, color:'var(--color-primary)' }
           ]},
           borderRadius: [4,4,0,0],
         },
@@ -400,15 +400,15 @@ const processBarOption = computed(() => {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      backgroundColor: 'rgba(255,255,255,0.98)',
-      borderColor: 'var(--color-border,#e2e8f0)',
-      textStyle: { color: '#334155', fontSize: 12 },
+      backgroundColor: 'var(--chart-tooltip-bg)',
+      borderColor: 'var(--chart-tooltip-border)',
+      textStyle: { color: 'var(--chart-tooltip-text)', fontSize: 12 },
       formatter: (params) => {
         const idx = params[0].dataIndex
         const d = list[idx]
         let html = `<div style="font-weight:600;font-size:13px;margin-bottom:6px;">${d.workshop}车间 / ${d.process}工序</div>`
         if (d.status === '无数据') {
-          html += `<div style="color:#64748b;font-size:12px;">${d.remark}</div>`
+          html += `<div style="color:var(--chart-text-muted);font-size:12px;">${d.remark}</div>`
           return html
         }
         for (const p of params) {
@@ -420,8 +420,8 @@ const processBarOption = computed(() => {
             html += `<div style="margin:3px 0;">● ${p.seriesName}：<b>${d.rate.toFixed(1)}%</b></div>`
         }
         if (d.remark && d.remark !== '/') {
-          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;font-size:12px;color:#475569;line-height:1.5;">
-            <span style="color:#64748b;">备注：</span><br>${d.remark.replace(/\n/g,'<br>')}
+          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--color-border-light);font-size:12px;color:var(--color-text-secondary);line-height:1.5;">
+            <span style="color:var(--chart-text-muted);">备注：</span><br>${d.remark.replace(/\n/g,'<br>')}
           </div>`
         }
         return html
@@ -462,8 +462,8 @@ const processBarOption = computed(() => {
         name: '达标项目', type: 'bar', stack: 'total',
         data: passArr.map((v, i) => ({
           value: v,
-          itemStyle: { color: isNoData[i] ? '#e2e8f0' : { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
-            { offset:0, color:'#34d399' },{ offset:1, color:'#10b981' }
+          itemStyle: { color: isNoData[i] ? 'var(--chart-empty)' : { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
+            { offset:0, color:'color-mix(in srgb, var(--color-success) 60%, #ffffff)' },{ offset:1, color:'var(--color-success)' }
           ]}},
         })),
         barWidth: 26,
@@ -476,8 +476,8 @@ const processBarOption = computed(() => {
         name: '未达标项目', type: 'bar', stack: 'total',
         data: failArr.map((v, i) => ({
           value: v,
-          itemStyle: { color: isNoData[i] ? '#e2e8f0' : { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
-            { offset:0, color:'#fb923c' },{ offset:1, color:'#f97316' }
+          itemStyle: { color: isNoData[i] ? 'var(--chart-empty)' : { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
+            { offset:0, color:'color-mix(in srgb, var(--color-warning) 60%, #ffffff)' },{ offset:1, color:'var(--color-warning)' }
           ]}},
         })),
         barWidth: 26,
@@ -491,11 +491,11 @@ const processBarOption = computed(() => {
         name: '达成率', type: 'line', yAxisIndex: 1,
         data: rateArr,
         smooth: true, symbol: 'circle', symbolSize: 7,
-        lineStyle: { width: 2.5, color: '#3b82f6' },
-        itemStyle: { color: '#3b82f6', borderWidth: 2, borderColor:'#fff' },
+        lineStyle: { width: 2.5, color: 'var(--color-primary)' },
+        itemStyle: { color: 'var(--color-primary)', borderWidth: 2, borderColor:'var(--color-bg-card)' },
         connectNulls: false,
         label: {
-          show:true, position:'top', color:'#2563eb', fontSize:10, fontWeight:'bold',
+          show:true, position:'top', color:'var(--color-primary-dark)', fontSize:10, fontWeight:'bold',
           formatter: p => p.value !== null && p.value !== undefined ? p.value + '%' : '',
         },
       },

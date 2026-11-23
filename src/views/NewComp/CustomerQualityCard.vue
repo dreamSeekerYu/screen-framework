@@ -34,7 +34,7 @@
     <!-- 自定义状态示例 -->
     <h2 class="section-title">自定义色系示例</h2>
     <div class="cards-grid cards-grid-small">
-      <CustomerQualityCard title="重点客户" status="custom" customColor="#f59e0b" statusText="待审核" layout="standard"
+      <CustomerQualityCard title="重点客户" status="custom" customColor="var(--color-warning)" statusText="待审核" layout="standard"
         :metrics="[
           { label: '0KM PPM', value: '1200', extra: '(WK44)', highlight: true },
           { label: '3MIS PPM', value: '85', extra: '(WK43)' },
@@ -42,7 +42,7 @@
           { label: '12MIS PPM', value: '18', extra: '(26-2月)' }
         ]" :progress="72" remark="待审核客户，等待质量部确认" :theme="currentTheme" />
 
-      <CustomerQualityCard title="风险客户" status="custom" customColor="#ef4444" statusText="高风险" layout="standard"
+      <CustomerQualityCard title="风险客户" status="custom" customColor="var(--color-danger)" statusText="高风险" layout="standard"
         :metrics="[
           { label: '0KM PPM', value: '5280', extra: '(WK44)', highlight: true },
           { label: '3MIS PPM', value: '156', extra: '(WK43)', highlight: true },
@@ -77,7 +77,7 @@ import CustomerQualityCard from './components/CustomerQualityCard.vue'
 &lt;CustomerQualityCard
   title="重点客户"
   status="custom"
-  customColor="#f59e0b"
+  customColor="var(--color-warning)"
   layout="multi"
   :sections="[
     {
@@ -171,11 +171,11 @@ body {
 }
 
 .demo-container.theme-light {
-  background: #f0f7ff;
+  background: var(--color-info-bg);
 }
 
 .demo-container.theme-dark {
-  background: #0f172a;
+  background: var(--color-text-primary);
 }
 
 .demo-header {
@@ -191,11 +191,11 @@ body {
 }
 
 .theme-light .demo-title {
-  color: #0f2b5c;
+  color: var(--color-primary-dark);
 }
 
 .theme-dark .demo-title {
-  color: #f1f5f9;
+  color: var(--color-bg-soft);
 }
 
 .theme-toggle {
@@ -209,21 +209,21 @@ body {
 }
 
 .theme-light .theme-toggle {
-  background: #1e40af;
+  background: var(--color-primary-dark);
   color: white;
 }
 
 .theme-light .theme-toggle:hover {
-  background: #1e3a8a;
+  background: var(--color-primary-dark);
 }
 
 .theme-dark .theme-toggle {
-  background: #3b82f6;
+  background: var(--color-primary);
   color: white;
 }
 
 .theme-dark .theme-toggle:hover {
-  background: #2563eb;
+  background: var(--color-primary);
 }
 
 .demo-desc {
@@ -232,11 +232,11 @@ body {
 }
 
 .theme-light .demo-desc {
-  color: #4b5563;
+  color: var(--color-text-secondary);
 }
 
 .theme-dark .demo-desc {
-  color: #94a3b8;
+  color: var(--color-text-muted);
 }
 
 .cards-grid {
@@ -258,11 +258,11 @@ body {
 }
 
 .theme-light .section-title {
-  color: #1f2937;
+  color: var(--color-text-primary);
 }
 
 .theme-dark .section-title {
-  color: #e2e8f0;
+  color: var(--color-border-light);
 }
 
 .code-block {
@@ -272,12 +272,12 @@ body {
 }
 
 .theme-light .code-block {
-  background: #1e293b;
+  background: var(--color-text-primary);
 }
 
 .theme-dark .code-block {
-  background: #020617;
-  border: 1px solid #334155;
+  background: var(--color-text-primary);
+  border: 1px solid var(--color-text-secondary);
 }
 
 .code-block pre {
@@ -285,7 +285,7 @@ body {
 }
 
 .code-block code {
-  color: #e2e8f0;
+  color: var(--color-border-light);
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;
   line-height: 1.7;

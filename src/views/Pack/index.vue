@@ -329,6 +329,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, h, watch } from 'vue'
 import * as echarts from 'echarts'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
+import { useThemeStore } from '@/stores/theme'
 import { loadPackData, PERIOD_FIELD } from '@/utils/parsePack.js'
 import { getCssVar } from '@/utils/color.js'
 
@@ -379,17 +380,20 @@ const currentA = computed(() => {
 })
 
 const color = {
-  primary:  () => getCssVar('--color-primary', '#0d5caf'),
-  primaryL: () => getCssVar('--color-primary-light', '#06b6d4'),
-  primaryD: () => getCssVar('--color-primary-deep', '#0f3a6b'),
-  success:  () => getCssVar('--color-success', '#0e7490'),
-  warning:  () => getCssVar('--color-warning', '#1d4ed8'),
-  danger:   () => getCssVar('--color-danger', '#1e3a8a'),
-  accent:   () => getCssVar('--color-accent', '#3b82f6'),
-  textM:    () => getCssVar('--text-main', '#0f3a6b'),
-  textS:    () => getCssVar('--text-sec', '#64748b'),
-  border:   () => getCssVar('--border-color', '#e2e8f0'),
-  split:    () => getCssVar('--border-color-light', '#f1f5f9'),
+  primary:  () => getCssVar('--color-primary', '#2f54eb'),
+  primaryL: () => getCssVar('--color-primary-light', '#597ef7'),
+  primaryD: () => getCssVar('--color-primary-deep', '#1d39c4'),
+  success:  () => getCssVar('--color-success', '#16a34a'),
+  warning:  () => getCssVar('--color-warning', '#d97706'),
+  danger:   () => getCssVar('--color-danger', '#e5484d'),
+  accent:   () => getCssVar('--color-accent', '#13c2c2'),
+  textM:    () => getCssVar('--text-main', '#1f2329'),
+  textS:    () => getCssVar('--text-sec', '#4e5969'),
+  border:   () => getCssVar('--border-color', 'rgba(15,34,87,0.12)'),
+  split:    () => getCssVar('--chart-split-line', 'rgba(84,105,141,0.14)'),
+  axis:     () => getCssVar('--chart-axis-line', '#c9d2e3'),
+  tooltipBg: () => getCssVar('--chart-tooltip-bg', 'rgba(255,255,255,0.96)'),
+  cardBg:   () => getCssVar('--color-bg-card', '#ffffff'),
 }
 
 function chartTheme() {
@@ -401,16 +405,16 @@ function chartTheme() {
     legend: { textStyle: { color: color.textS() } },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
     tooltip: {
-      trigger: 'axis', backgroundColor: '#ffffff',
+      trigger: 'axis', backgroundColor: color.tooltipBg(),
       borderColor: color.primary(), textStyle: { color: color.textM() }
     },
     xAxis: {
-      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisLine: { lineStyle: { color: color.axis() } },
       axisLabel: { color: color.textS(), fontSize: 11 },
       splitLine: { lineStyle: { color: color.split() } }
     },
     yAxis: {
-      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisLine: { lineStyle: { color: color.axis() } },
       axisLabel: { color: color.textS(), fontSize: 11 },
       splitLine: { lineStyle: { color: color.split() } }
     },
@@ -656,7 +660,7 @@ function renderOverviewCharts() {
   // 雷达图
   initChart('overviewRadar', {
     ...chartTheme(),
-    tooltip: { backgroundColor:'#fff', borderColor: color.primary(), textStyle:{color: color.textM()} },
+    tooltip: { backgroundColor: color.tooltipBg(), borderColor: color.primary(), textStyle:{color: color.textM()} },
     legend: { data: ['A1','A2','A3','A4'], top: 0 },
     radar: {
       indicator: [
@@ -664,7 +668,7 @@ function renderOverviewCharts() {
         { name:'6MIS达标率',max:100},{name:'12MIS达标率',max:100},{name:'趋势稳定性',max:100}
       ],
       axisName: { color: color.textS() },
-      splitArea: { areaStyle:{ color:['rgba(13,92,175,0.02)','rgba(13,92,175,0.05)']} },
+      splitArea: { areaStyle:{ color:['color-mix(in srgb, ' + color.primary() + ' 2%, transparent)','color-mix(in srgb, ' + color.primary() + ' 5%, transparent)']} },
       axisLine: { lineStyle:{color: color.border()} }
     },
     series: [{
@@ -693,7 +697,7 @@ function renderADetailCharts(cust) {
     const rotate = allLabels.length > 14 ? 45 : 0
     return {
       ...chartTheme(),
-      tooltip: { trigger:'axis', backgroundColor:'#fff', borderColor: color.primary(), textStyle:{color:color.textM()} },
+      tooltip: { trigger:'axis', backgroundColor: color.tooltipBg(), borderColor: color.primary(), textStyle:{color:color.textM()} },
       legend: { data:['供货数','故障数',f.label.replace('PPM','目标'),f.label.replace('PPM','实际')], top:0, textStyle:{fontSize:10, color: color.textS()} },
       xAxis: { type:'category', data: allLabels, axisLabel:{ rotate, fontSize: 9 } },
       yAxis: [
@@ -751,7 +755,7 @@ function renderM6Chart() {
       { type:'value', name:'PPM', position:'right', max: 1500 },
     ],
     series:[
-      { name:'周交付',  type:'bar', data: get('delivery'), yAxisIndex:0, itemStyle:{color:'rgba(13,92,175,0.6)'} },
+      { name:'周交付',  type:'bar', data: get('delivery'), yAxisIndex:0, itemStyle:{color: color.accent()} },
       { name:'PPM-外观',type:'line',data: get('ppmApp'),   yAxisIndex:1, lineStyle:{color: color.danger(),width:2}, symbolSize:8 },
       { name:'PPM-性能',type:'line',data: get('ppmPerf'),  yAxisIndex:1, lineStyle:{color: color.warning(),width:2}, symbolSize:8 },
       { name:'目标-外观',type:'line',data: labels.map(()=>300), yAxisIndex:1, lineStyle:{color: color.danger(),width:1,type:'dashed'}, symbol:'none' },
@@ -763,10 +767,10 @@ function renderM6Chart() {
 function renderIssueCharts() {
   initChart('issueType', {
     ...chartTheme(),
-    tooltip:{ trigger:'item', backgroundColor:'#fff', borderColor: color.primary(), textStyle:{color: color.textM()} },
+    tooltip:{ trigger:'item', backgroundColor: color.tooltipBg(), borderColor: color.primary(), textStyle:{color: color.textM()} },
     series:[{
       type:'pie', radius:['40%','70%'], avoidLabelOverlap:false,
-      itemStyle:{ borderRadius:8, borderColor:'#fff', borderWidth:2 },
+      itemStyle:{ borderRadius:8, borderColor: color.cardBg(), borderWidth:2 },
       label:{ show:true, formatter:'{b}: {d}%' },
       data:[
         { value:3, name:'0KM异常', itemStyle:{color: color.danger()} },
@@ -778,7 +782,7 @@ function renderIssueCharts() {
   })
   initChart('risk', {
     ...chartTheme(),
-    tooltip:{ backgroundColor:'#fff', borderColor: color.primary(), textStyle:{color: color.textM()} },
+    tooltip:{ backgroundColor: color.tooltipBg(), borderColor: color.primary(), textStyle:{color: color.textM()} },
     grid:{ left:'5%', right:'12%', bottom:'3%', top:'3%', containLabel:true },
     xAxis:{ type:'value', max:100, axisLabel:{formatter:'{value}分'} },
     yAxis:{ type:'category', data:['A3客户','A1客户','A4客户','A2客户'] },
@@ -801,6 +805,12 @@ function renderAllCharts() {
   if (activeClient.value === 'M6') renderM6Chart()
   renderIssueCharts()
 }
+
+/* 主题切换时重绘所有图表 */
+const themeStore = useThemeStore()
+watch(() => themeStore.currentTheme, () => {
+  nextTick(renderAllCharts)
+})
 
 /* 客户切换时重绘当前详情 */
 let _stopWatch = null
@@ -863,11 +873,11 @@ watch(activeClient, async () => {
   color: var(--text-body);
   cursor: pointer;
   transition: all .25s;
-  box-shadow: 0 2px 8px rgba(13,92,175,0.04);
+  box-shadow: var(--shadow-card);
   .icon { margin-right: 6px; }
-  &:hover { background: #f1f5f9; }
+  &:hover { background: var(--color-bg-hover); }
   &.active {
-    background: linear-gradient(90deg, #0d5caf, #0891b2);
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
     color: #fff;
     border-color: transparent;
   }
@@ -888,14 +898,14 @@ watch(activeClient, async () => {
 .pack-kpi-card {
   padding: $spacing-md $spacing-lg;
   border-radius: $radius-lg;
-  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+  background: var(--color-bg-card);
   border-left: 4px solid var(--color-primary);
   transition: all .3s;
-  box-shadow: 0 2px 8px rgba(13,92,175,0.06);
-  &:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(13,92,175,0.12); }
-  &.kpi-success { border-left-color: var(--color-success); background: linear-gradient(135deg,#ecfeff,#fff); }
-  &.kpi-warning { border-left-color: var(--color-warning); background: linear-gradient(135deg,#eff6ff,#fff); }
-  &.kpi-danger  { border-left-color: var(--color-danger);  background: linear-gradient(135deg,#eef2ff,#fff); }
+  box-shadow: var(--shadow-card);
+  &:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+  &.kpi-success { border-left-color: var(--color-success); background: color-mix(in srgb, var(--color-success) 6%, var(--color-bg-card)); }
+  &.kpi-warning { border-left-color: var(--color-warning); background: color-mix(in srgb, var(--color-warning) 6%, var(--color-bg-card)); }
+  &.kpi-danger  { border-left-color: var(--color-danger);  background: color-mix(in srgb, var(--color-danger) 6%, var(--color-bg-card)); }
   .kpi-label { font-size: $font-sm; color: var(--text-sec); margin-bottom: $spacing-xs; }
   .kpi-value { font-size: 2rem; font-weight: 900; color: var(--text-main); line-height: 1.1; }
   .kpi-sub   { font-size: $font-xs; margin-top: $spacing-xs; }
@@ -924,17 +934,17 @@ watch(activeClient, async () => {
   padding: $spacing-md $spacing-lg;
   cursor: pointer;
   transition: all .25s;
-  box-shadow: 0 2px 8px rgba(13,92,175,0.04);
+  box-shadow: var(--shadow-card);
   &:hover { transform: scale(1.01); border-color: var(--color-primary); }
-  &.selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(13,92,175,0.15); }
+  &.selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 15%, transparent); }
 }
 .cc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: $spacing-md; }
 .cc-name { font-size: $font-lg; font-weight: 700; color: var(--text-main); margin: 0; }
 .cc-status {
   padding: 4px 12px; border-radius: 20px; font-size: $font-xs; font-weight: 600; display: inline-block;
-  &.status-pass { background: rgba(14,116,144,0.1); color: var(--color-success); border: 1px solid rgba(14,116,144,0.3); }
-  &.status-warn { background: rgba(29,78,216,0.1);  color: var(--color-warning); border: 1px solid rgba(29,78,216,0.3); }
-  &.status-fail { background: rgba(30,58,138,0.1);  color: var(--color-danger);  border: 1px solid rgba(30,58,138,0.3); }
+  &.status-pass { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success); }
+  &.status-warn { background: var(--color-warning-bg);  color: var(--color-warning); border: 1px solid var(--color-warning); }
+  &.status-fail { background: var(--color-danger-bg);  color: var(--color-danger);  border: 1px solid var(--color-danger); }
 }
 .cc-metrics { display: flex; flex-direction: column; gap: $spacing-xs; }
 .cc-row { display: flex; justify-content: space-between; font-size: $font-sm; }
@@ -942,12 +952,12 @@ watch(activeClient, async () => {
 .cc-label { color: var(--text-sec); }
 .cc-val { font-weight: 600; }
 .cc-sub-title { color: var(--color-primary); font-weight: 600; font-size: $font-sm; margin-top: $spacing-xs; &.mt { margin-top: $spacing-sm; } }
-.cc-bar { height: 4px; background: #f1f5f9; border-radius: 99px; overflow: hidden; margin-top: $spacing-md; }
+.cc-bar { height: 4px; background: var(--color-bg-soft); border-radius: 99px; overflow: hidden; margin-top: $spacing-md; }
 .cc-bar-fill { height: 100%; border-radius: 99px;
-  &.bar-green-orange { background: linear-gradient(90deg,#22d3ee,#1d4ed8); }
-  &.bar-orange-red    { background: linear-gradient(90deg,#60a5fa,#1e3a8a); }
-  &.bar-green-green   { background: linear-gradient(90deg,#67e8f9,#0e7490); width: 95%; }
-  &.bar-green-yellow  { background: linear-gradient(90deg,#22d3ee,#1d4ed8); }
+  &.bar-green-orange { background: linear-gradient(90deg,var(--color-accent),var(--color-primary)); }
+  &.bar-orange-red    { background: linear-gradient(90deg,var(--color-warning),var(--color-danger)); }
+  &.bar-green-green   { background: linear-gradient(90deg,color-mix(in srgb, var(--color-success) 60%, #ffffff),var(--color-success)); width: 95%; }
+  &.bar-green-yellow  { background: linear-gradient(90deg,var(--color-accent),var(--color-primary)); }
 }
 .cc-remark { font-size: $font-xs; color: var(--text-muted); margin-top: $spacing-xs; }
 
@@ -962,7 +972,7 @@ watch(activeClient, async () => {
   border: 1px solid var(--border-color);
   border-radius: $radius-lg;
   padding: $spacing-md $spacing-lg;
-  box-shadow: 0 2px 8px rgba(13,92,175,0.04);
+  box-shadow: var(--shadow-card);
   &.mb { margin-bottom: $spacing-md; }
 }
 .chart-title {
@@ -972,7 +982,7 @@ watch(activeClient, async () => {
   margin-bottom: $spacing-md;
   display: flex; align-items: center; gap: $spacing-sm;
 }
-.chart-bar { width: 4px; height: 20px; background: linear-gradient(180deg,#0d5caf,#06b6d4); border-radius: 2px; display: inline-block; }
+.chart-bar { width: 4px; height: 20px; background: linear-gradient(180deg,var(--color-primary),var(--color-accent)); border-radius: 2px; display: inline-block; }
 .chart-box-h300 { height: 300px; }
 .chart-box-h280 { height: 280px; }
 .chart-box-h250 { height: 250px; }
@@ -990,9 +1000,9 @@ watch(activeClient, async () => {
   color: var(--text-body);
   cursor: pointer;
   transition: all .25s;
-  &:hover { background: #f1f5f9; }
+  &:hover { background: var(--color-bg-hover); }
   &.active {
-    background: linear-gradient(90deg,#0d5caf,#0891b2);
+    background: linear-gradient(90deg,var(--color-primary),var(--color-accent));
     color: #fff;
     border-color: transparent;
   }
@@ -1003,7 +1013,7 @@ watch(activeClient, async () => {
   border-radius: $radius-lg;
   padding: $spacing-md $spacing-lg;
   margin-bottom: $spacing-md;
-  box-shadow: 0 2px 8px rgba(13,92,175,0.04);
+  box-shadow: var(--shadow-card);
 }
 .detail-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: $spacing-md; }
 .detail-title { font-size: $font-lg; font-weight: 700; color: var(--text-main); margin: 0; }
@@ -1022,20 +1032,20 @@ watch(activeClient, async () => {
 .detail-table-wrap { margin-top: $spacing-lg; overflow-x: auto; }
 .pack-data-table {
   width: 100%; border-collapse: collapse;
-  th { background: #f1f5f9; padding: 10px 8px; text-align: center; font-weight: 600; font-size: $font-sm; color: #334155; border-bottom: 1px solid var(--border-color); }
-  td { padding: 8px; text-align: center; font-size: $font-sm; color: var(--text-body); border-bottom: 1px solid #f1f5f9; }
-  tr:hover td { background: #f8fafc; }
+  th { background: var(--color-bg-soft); padding: 10px 8px; text-align: center; font-weight: 600; font-size: $font-sm; color: var(--color-text-primary); border-bottom: 1px solid var(--border-color); }
+  td { padding: 8px; text-align: center; font-size: $font-sm; color: var(--text-body); border-bottom: 1px solid var(--color-border-light); }
+  tr:hover td { background: var(--color-bg-soft); }
   td.tl { text-align: left; color: var(--text-main); font-weight: 600; }
 }
 
 /* M6 指标块 */
 .m6-metrics { display: flex; flex-direction: column; gap: $spacing-md; padding-top: $spacing-md; }
 .m6-metric-item {
-  padding: $spacing-md; background: #f8fafc; border: 1px solid var(--border-color); border-radius: $radius-md;
+  padding: $spacing-md; background: var(--color-bg-soft); border: 1px solid var(--border-color); border-radius: $radius-md;
 }
 .m6-m-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: $spacing-xs; color: var(--text-body); font-size: $font-sm; }
 .m6-val { font-weight: 700; font-size: $font-xl; }
-.m6-bar { height: 8px; background: #f1f5f9; border-radius: 99px; overflow: hidden; }
+.m6-bar { height: 8px; background: var(--color-bg-soft); border-radius: 99px; overflow: hidden; }
 .m6-bar-fill { height: 100%; border-radius: 99px;
   &.bar-red   { background: var(--color-danger); }
   &.bar-green { background: var(--color-success); }
@@ -1048,9 +1058,9 @@ watch(activeClient, async () => {
   padding: $spacing-md;
   border-radius: $radius-md;
   border: 1px solid;
-  &.note-blue   { background: rgba(13,92,175,0.08);  border-color: rgba(13,92,175,0.3);  h4 { color: var(--color-primary); } }
-  &.note-yellow { background: rgba(29,78,216,0.08);  border-color: rgba(29,78,216,0.3);  h4 { color: var(--color-warning); } }
-  &.note-green  { background: rgba(14,116,144,0.08); border-color: rgba(14,116,144,0.3); h4 { color: var(--color-success); } }
+  &.note-blue   { background: var(--color-info-bg);  border-color: var(--color-primary);  h4 { color: var(--color-primary); } }
+  &.note-yellow { background: var(--color-warning-bg);  border-color: var(--color-warning);  h4 { color: var(--color-warning); } }
+  &.note-green  { background: var(--color-success-bg); border-color: var(--color-success); h4 { color: var(--color-success); } }
   &.mt { margin-top: $spacing-md; }
   h4 { font-weight: 700; margin: 0 0 $spacing-xs 0; font-size: $font-md; }
   p, li { color: var(--text-body); font-size: $font-sm; line-height: 1.6; margin: 0 0 $spacing-xs 0; }
@@ -1069,7 +1079,7 @@ watch(activeClient, async () => {
   padding-left: $spacing-md;
   transition: all .25s;
   padding: $spacing-xs 0 $spacing-xs $spacing-md;
-  &:hover { background: #f8fafc; padding-left: 16px; }
+  &:hover { background: var(--color-bg-hover); padding-left: 16px; }
 }
 .issue-head { display: flex; align-items: center; gap: $spacing-sm; margin-bottom: $spacing-xs; }
 .issue-head h4 { margin: 0; font-weight: 700; color: var(--text-main); font-size: $font-md; }
@@ -1078,7 +1088,7 @@ watch(activeClient, async () => {
 
 .conclude-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: $spacing-md; }
 .conclude-card {
-  padding: $spacing-md; border-radius: $radius-md; background: #f8fafc; border-left: 4px solid;
+  padding: $spacing-md; border-radius: $radius-md; background: var(--color-bg-soft); border-left: 4px solid;
   h4 { font-weight: 700; margin: 0 0 $spacing-xs 0; font-size: $font-md; }
   p { color: var(--text-body); font-size: $font-sm; margin: 0; line-height: 1.5; }
   &.border-green  { border-left-color: var(--color-success); h4 { color: var(--color-success); } }
@@ -1090,9 +1100,9 @@ watch(activeClient, async () => {
 .suggest-item { display: flex; gap: $spacing-sm; align-items: flex-start; font-size: $font-sm; color: var(--text-body); }
 .suggest-no {
   width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 700; font-size: $font-sm;
-  &.no-red    { background: rgba(30,58,138,0.12); color: var(--color-danger); }
-  &.no-orange { background: rgba(29,78,216,0.12); color: var(--color-warning); }
-  &.no-blue   { background: rgba(13,92,175,0.12); color: var(--color-primary); }
+  &.no-red    { background: var(--color-danger-bg); color: var(--color-danger); }
+  &.no-orange { background: var(--color-warning-bg); color: var(--color-warning); }
+  &.no-blue   { background: var(--color-info-bg); color: var(--color-primary); }
   &.no-green  { background: rgba(14,116,144,0.12); color: var(--color-success); }
 }
 

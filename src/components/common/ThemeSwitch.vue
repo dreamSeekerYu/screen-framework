@@ -46,8 +46,8 @@ const { setTheme } = themeStore
     
     &.active {
       opacity: 1;
-      border-color: #fff;
-      box-shadow: 0 0 8px currentColor;
+      border-color: var(--color-text-primary);
+      box-shadow: 0 0 8px var(--color-border);
     }
   }
 }

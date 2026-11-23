@@ -27,7 +27,7 @@
           </div>
           <div class="row gap-sm flex-wrap" style="margin-top: 16px;">
             <Tag type="danger" text="可关闭" closable @close="tagMsg('closed danger')" />
-            <Tag color="#FF9500" text="自定义色" />
+            <Tag color="var(--color-warning)" text="自定义色" />
             <Tag plain type="primary" text="透明边框" />
             <Tag type="success" size="small" text="小尺寸" />
           </div>
@@ -51,7 +51,7 @@
             <Progress :percentage="82" status="success" striped text-inside />
             <Progress :percentage="65" status="primary" />
             <Progress :percentage="90" status="warning" striped :stroke-width="14" />
-            <Progress :percentage="78" color="linear-gradient(90deg, #f66, #f90)" />
+            <Progress :percentage="78" color="linear-gradient(90deg, var(--color-danger), var(--color-warning))" />
           </div>
         </div>
       </section>
@@ -307,7 +307,7 @@ const openByJs = () => {
 <style lang="scss" scoped>
 .common-demo-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--color-bg-soft);
   padding: 24px 32px 80px;
   overflow-y: auto;
   position: relative;
@@ -325,10 +325,10 @@ const openByJs = () => {
     padding: 6px 14px;
     border-radius: 999px;
     font-size: 13px;
-    color: #606266;
+    color: var(--color-text-secondary);
     text-decoration: none;
     transition: all 0.2s;
-    &:hover { background: #f0f2f5; color: #303133; }
+    &:hover { background: var(--color-bg-soft); color: var(--color-text-primary); }
     &.active { background: var(--color-primary); color: #fff; }
   }
 }
@@ -342,21 +342,21 @@ const openByJs = () => {
 .page-title {
   font-size: 24px;
   font-weight: 600;
-  color: #303133;
+  color: var(--color-text-primary);
   margin: 0 0 8px;
 }
 .page-desc {
   font-size: 14px;
-  color: #909399;
+  color: var(--color-text-muted);
   margin: 0 0 24px;
   line-height: 1.6;
   b { color: var(--color-primary); font-weight: 600; }
   code {
     padding: 2px 6px;
-    background: #f0f2f5;
+    background: var(--color-bg-soft);
     border-radius: 4px;
     font-size: 13px;
-    color: #e6a23c;
+    color: var(--color-warning);
   }
 }
 
@@ -365,22 +365,22 @@ const openByJs = () => {
   .section-title {
     font-size: 16px;
     font-weight: 600;
-    color: #303133;
+    color: var(--color-text-primary);
     margin: 0 0 12px;
     padding-left: 10px;
     border-left: 3px solid var(--color-primary);
   }
   .section-desc {
     font-size: 13px;
-    color: #909399;
+    color: var(--color-text-muted);
     margin: 0 0 16px;
     line-height: 1.6;
     code {
       padding: 2px 6px;
-      background: #f0f2f5;
+      background: var(--color-bg-soft);
       border-radius: 4px;
       font-size: 12px;
-      color: #e6a23c;
+      color: var(--color-warning);
     }
   }
 }
@@ -405,7 +405,7 @@ const openByJs = () => {
 
 .demo-label {
   font-size: 13px;
-  color: #606266;
+  color: var(--color-text-secondary);
   margin-bottom: 10px;
   font-weight: 500;
   :deep(.progress) { margin-bottom: 12px; }
@@ -414,7 +414,7 @@ const openByJs = () => {
 .tab-pane-content {
   padding: 20px;
   font-size: 14px;
-  color: #606266;
+  color: var(--color-text-secondary);
   min-height: 80px;
 }
 
@@ -433,7 +433,7 @@ const openByJs = () => {
 .lpa-card-demo {
   cursor: pointer;
   padding: 16px;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--color-border-light);
   border-radius: 8px;
   transition: all 0.2s;
   &:hover {
@@ -444,11 +444,11 @@ const openByJs = () => {
   .lpa-card-header {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 8px;
-    .lpa-date { font-size: 13px; color: #909399; }
+    .lpa-date { font-size: 13px; color: var(--color-text-muted); }
   }
   .lpa-desc {
     font-size: 14px;
-    color: #303133;
+    color: var(--color-text-primary);
     line-height: 1.6;
     margin-bottom: 12px;
   }
@@ -456,7 +456,7 @@ const openByJs = () => {
     display: flex; align-items: center; gap: 20px;
     .lpa-thumbs { display: flex; gap: 8px; }
     .lpa-progress { flex: 1;
-      .progress-label { font-size: 12px; color: #909399; margin-bottom: 4px; }
+      .progress-label { font-size: 12px; color: var(--color-text-muted); margin-bottom: 4px; }
     }
   }
 }
@@ -471,11 +471,11 @@ const openByJs = () => {
     padding: 8px 0;
     font-size: 14px;
     &.col { flex-direction: column; align-items: flex-start; gap: 6px; }
-    .label { color: #909399; min-width: 70px; }
-    .val { color: #303133; line-height: 1.6; flex: 1; }
+    .label { color: var(--color-text-muted); min-width: 70px; }
+    .val { color: var(--color-text-primary); line-height: 1.6; flex: 1; }
   }
   .lpa-right .label {
-    font-size: 13px; color: #606266; font-weight: 500;
+    font-size: 13px; color: var(--color-text-secondary); font-weight: 500;
     margin-bottom: 10px; display: block;
   }
 }

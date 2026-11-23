@@ -260,76 +260,99 @@ const props = defineProps({
 })
 
 // ===== 预设状态颜色映射（扩展 stat2 的 purple/cyan） =====
+// 全部改为主题变量驱动：text/textSoft 用于数字文字，border/gradient 用于色条，
+// bg/iconBg/halo 为低透明度填充，accentBg 为强调卡背景。
+// 语义色（success/warning/danger/info）每套主题单独定义，天然保证深浅主题对比度。
+const tint = (color, pct) => `color-mix(in srgb, ${color} ${pct}%, transparent)`
+const darken = (color, pct) => `color-mix(in srgb, ${color} ${pct}%, #000)`
+const lighten = (color, pct) => `color-mix(in srgb, ${color} ${pct}%, #fff)`
+
 const statusColors = {
     primary: {
-        text: '#1e40af',
-        textSoft: '#2563eb',
-        border: '#3b82f6',
-        bg: 'rgba(59, 130, 246, 0.06)',
-        iconBg: 'rgba(59, 130, 246, 0.08)',
-        gradient: ['#1e40af', '#2563eb', '#3b82f6'],
-        halo: 'rgba(59,130,246,0.10)',
-        accentBg: ['#eff6ff', '#ffffff', '#dbeafe']
+        text: 'var(--color-primary)',
+        textSoft: 'var(--color-primary)',
+        border: 'var(--color-primary-light)',
+        bg: tint('var(--color-primary)', 6),
+        iconBg: tint('var(--color-primary)', 8),
+        gradient: ['var(--color-primary-dark)', 'var(--color-primary)', 'var(--color-primary-light)'],
+        halo: tint('var(--color-primary)', 10),
+        accentBg: [tint('var(--color-primary)', 6), 'var(--color-bg-card)', tint('var(--color-primary)', 14)]
     },
     success: {
-        text: '#047857',
-        textSoft: '#059669',
-        border: '#10b981',
-        bg: 'rgba(16, 185, 129, 0.06)',
-        iconBg: 'rgba(16, 185, 129, 0.08)',
-        gradient: ['#059669', '#10b981', '#34d399'],
-        halo: 'rgba(16,185,129,0.12)',
-        accentBg: ['#ecfdf5', '#ffffff', '#d1fae5']
+        text: 'var(--color-success)',
+        textSoft: 'var(--color-success)',
+        border: 'var(--color-success)',
+        bg: tint('var(--color-success)', 6),
+        iconBg: tint('var(--color-success)', 8),
+        gradient: [darken('var(--color-success)', 25), 'var(--color-success)', lighten('var(--color-success)', 35)],
+        halo: tint('var(--color-success)', 12),
+        accentBg: [tint('var(--color-success)', 6), 'var(--color-bg-card)', tint('var(--color-success)', 12)]
     },
     warning: {
-        text: '#c2410c',
-        textSoft: '#d97706',
-        border: '#f97316',
-        bg: 'rgba(249, 115, 22, 0.06)',
-        iconBg: 'rgba(249, 115, 22, 0.08)',
-        gradient: ['#d97706', '#f59e0b', '#fbbf24'],
-        halo: 'rgba(245,158,11,0.10)',
-        accentBg: ['#fff7ed', '#ffffff', '#ffedd5']
+        text: 'var(--color-warning)',
+        textSoft: 'var(--color-warning)',
+        border: 'var(--color-warning)',
+        bg: tint('var(--color-warning)', 6),
+        iconBg: tint('var(--color-warning)', 8),
+        gradient: [darken('var(--color-warning)', 25), 'var(--color-warning)', lighten('var(--color-warning)', 35)],
+        halo: tint('var(--color-warning)', 10),
+        accentBg: [tint('var(--color-warning)', 6), 'var(--color-bg-card)', tint('var(--color-warning)', 12)]
     },
     danger: {
-        text: '#b91c1c',
-        textSoft: '#dc2626',
-        border: '#ef4444',
-        bg: 'rgba(239, 68, 63, 0.06)',
-        iconBg: 'rgba(239, 68, 63, 0.08)',
-        gradient: ['#b91c1c', '#dc2626', '#f87171'],
-        halo: 'rgba(239,68,68,0.10)',
-        accentBg: ['#fef2f2', '#ffffff', '#fee2e2']
+        text: 'var(--color-danger)',
+        textSoft: 'var(--color-danger)',
+        border: 'var(--color-danger)',
+        bg: tint('var(--color-danger)', 6),
+        iconBg: tint('var(--color-danger)', 8),
+        gradient: [darken('var(--color-danger)', 25), 'var(--color-danger)', lighten('var(--color-danger)', 35)],
+        halo: tint('var(--color-danger)', 10),
+        accentBg: [tint('var(--color-danger)', 6), 'var(--color-bg-card)', tint('var(--color-danger)', 12)]
     },
     info: {
-        text: '#475569',
-        textSoft: '#64748b',
-        border: '#94a3b8',
-        bg: 'rgba(148, 163, 184, 0.06)',
-        iconBg: 'rgba(148, 163, 184, 0.08)',
-        gradient: ['#475569', '#64748b', '#94a3b8'],
-        halo: 'rgba(148,163,184,0.10)',
-        accentBg: ['#f8fafc', '#ffffff', '#f1f5f9']
+        text: 'var(--color-info)',
+        textSoft: 'var(--color-info)',
+        border: 'color-mix(in srgb, var(--color-info) 65%, var(--color-text-secondary))',
+        bg: tint('var(--color-info)', 6),
+        iconBg: tint('var(--color-info)', 8),
+        gradient: [
+            'color-mix(in srgb, var(--color-info) 70%, var(--color-text-primary))',
+            'var(--color-info)',
+            'color-mix(in srgb, var(--color-info) 70%, var(--color-text-secondary))'
+        ],
+        halo: tint('var(--color-info)', 10),
+        accentBg: [tint('var(--color-info)', 6), 'var(--color-bg-card)', tint('var(--color-info)', 10)]
     },
     purple: {
-        text: '#6d28d9',
-        textSoft: '#7c3aed',
-        border: '#8b5cf6',
-        bg: 'rgba(139, 92, 246, 0.06)',
-        iconBg: 'rgba(139, 92, 246, 0.08)',
-        gradient: ['#7c3aed', '#8b5cf6', '#a78bfa'],
-        halo: 'rgba(139,92,246,0.10)',
-        accentBg: ['#f5f3ff', '#ffffff', '#ede9fe']
+        text: 'color-mix(in srgb, var(--color-secondary) 60%, var(--color-primary))',
+        textSoft: 'color-mix(in srgb, var(--color-secondary) 60%, var(--color-primary))',
+        border: 'color-mix(in srgb, var(--color-secondary) 70%, var(--color-primary))',
+        bg: tint('color-mix(in srgb, var(--color-secondary) 65%, var(--color-primary))', 8),
+        iconBg: tint('color-mix(in srgb, var(--color-secondary) 65%, var(--color-primary))', 10),
+        gradient: [
+            'color-mix(in srgb, var(--color-secondary) 55%, var(--color-primary-dark))',
+            'color-mix(in srgb, var(--color-secondary) 65%, var(--color-primary))',
+            'color-mix(in srgb, var(--color-secondary) 75%, var(--color-primary-light))'
+        ],
+        halo: tint('color-mix(in srgb, var(--color-secondary) 65%, var(--color-primary))', 12),
+        accentBg: [
+            tint('color-mix(in srgb, var(--color-secondary) 65%, var(--color-primary))', 7),
+            'var(--color-bg-card)',
+            tint('color-mix(in srgb, var(--color-secondary) 65%, var(--color-primary))', 13)
+        ]
     },
     cyan: {
-        text: '#0e7490',
-        textSoft: '#0891b2',
-        border: '#06b6d4',
-        bg: 'rgba(6, 182, 212, 0.06)',
-        iconBg: 'rgba(6, 182, 212, 0.08)',
-        gradient: ['#0891b2', '#06b6d4', '#22d3ee'],
-        halo: 'rgba(6,182,212,0.10)',
-        accentBg: ['#ecfeff', '#ffffff', '#cffafe']
+        text: 'var(--color-secondary)',
+        textSoft: 'var(--color-secondary)',
+        border: 'var(--color-secondary)',
+        bg: tint('var(--color-secondary)', 6),
+        iconBg: tint('var(--color-secondary)', 8),
+        gradient: [
+            'color-mix(in srgb, var(--color-secondary) 75%, #000)',
+            'var(--color-secondary)',
+            'color-mix(in srgb, var(--color-secondary) 55%, #fff)'
+        ],
+        halo: tint('var(--color-secondary)', 10),
+        accentBg: [tint('var(--color-secondary)', 6), 'var(--color-bg-card)', tint('var(--color-secondary)', 12)]
     }
 }
 
@@ -350,6 +373,13 @@ function hexToRgba(hex, alpha = 1) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
+// 把任意颜色（hex / var() / color-mix()）转为带透明度的版本：
+// hex 走 rgba 计算，其余交给 color-mix（浏览器内解析变量）
+function alphaColor(color, alpha) {
+    if (typeof color === 'string' && color.startsWith('#')) return hexToRgba(color, alpha)
+    return `color-mix(in srgb, ${color} ${Math.round(alpha * 100)}%, transparent)`
+}
+
 function pickColorConfig() {
     // 自定义主色
     if (props.color && props.color.startsWith('#')) {
@@ -362,7 +392,7 @@ function pickColorConfig() {
             iconBg: hexToRgba(base, 0.08),
             gradient: [base, base, base],
             halo: hexToRgba(base, 0.10),
-            accentBg: [hexToRgba(base, 0.05), '#ffffff', hexToRgba(base, 0.08)]
+            accentBg: [hexToRgba(base, 0.05), 'var(--color-bg-card)', hexToRgba(base, 0.08)]
         }
     }
     // 自定义 status 为 hex
@@ -376,7 +406,7 @@ function pickColorConfig() {
             iconBg: hexToRgba(base, 0.08),
             gradient: [base, base, base],
             halo: hexToRgba(base, 0.10),
-            accentBg: [hexToRgba(base, 0.05), '#ffffff', hexToRgba(base, 0.08)]
+            accentBg: [hexToRgba(base, 0.05), 'var(--color-bg-card)', hexToRgba(base, 0.08)]
         }
     }
     return statusColors[props.status] || statusColors.primary
@@ -419,7 +449,7 @@ const customStyle = computed(() => {
             let bgOpacity = 0.08
             if (props.brightness === 'light') bgOpacity = 0.05
             if (props.brightness === 'dark') bgOpacity = 0.15
-            style['--card-bg-color'] = hexToRgba(borderColor, bgOpacity)
+            style['--card-bg-color'] = alphaColor(borderColor, bgOpacity)
         }
 
         style['--value-color'] = textColor
@@ -479,7 +509,7 @@ const badgeStyle = computed(() => {
     return {
         background: cfg.bg,
         color: cfg.textSoft,
-        border: `1px solid ${hexToRgba(cfg.border, 0.2)}`
+        border: `1px solid ${alphaColor(cfg.border, 0.2)}`
     }
 })
 
@@ -609,9 +639,9 @@ defineExpose({ statusColors, hexToRgba })
  * 一、经典主题（向后兼容：原 StatCard 样式原封不动）
  * ========================================================= */
 .stat-card--theme-classic {
-    --card-bg-color: #ffffff;
+    --card-bg-color: var(--color-bg-card);
     --card-border-color: transparent;
-    --value-color: #4080ff;
+    --value-color: var(--color-primary);
     --border-radius: 16px;
     --padding: 20px 28px;
     --title-size: 22px;
@@ -622,14 +652,14 @@ defineExpose({ statusColors, hexToRgba })
     border-radius: var(--border-radius);
     padding: var(--padding);
     border: 2px solid var(--card-border-color);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--shadow-card);
     display: flex;
     align-items: center;
 }
 
 .stat-card--theme-classic:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-hover);
 }
 
 .stat-card--theme-classic.stat-card--small {
@@ -655,12 +685,12 @@ defineExpose({ statusColors, hexToRgba })
 }
 
 .stat-card--theme-classic.stat-card--default {
-    border-color: #f0f2f5;
-    background: #ffffff;
+    border-color: var(--color-border-light);
+    background: var(--color-bg-card);
 }
 
 .stat-card--theme-classic.stat-card--outlined {
-    background: #ffffff;
+    background: var(--color-bg-card);
 }
 
 .stat-card--theme-classic .stat-card__content {
@@ -680,7 +710,7 @@ defineExpose({ statusColors, hexToRgba })
 .stat-card--theme-classic .stat-card__title {
     font-size: var(--title-size);
     font-weight: 500;
-    color: #1d2129;
+    color: var(--color-text-primary);
     line-height: 1.4;
     margin-bottom: 6px;
     white-space: nowrap;
@@ -690,7 +720,7 @@ defineExpose({ statusColors, hexToRgba })
 
 .stat-card--theme-classic .stat-card__explain {
     font-size: var(--explain-size);
-    color: #4e5969;
+    color: var(--color-text-secondary);
     line-height: 1.5;
     white-space: nowrap;
     overflow: hidden;
@@ -719,21 +749,19 @@ defineExpose({ statusColors, hexToRgba })
 }
 
 .stat-card--theme-classic.stat-card--brightness-light.stat-card--plain {
-    --card-bg-color: rgba(255, 255, 255, 0.9);
+    --card-bg-color: color-mix(in srgb, var(--color-bg-card) 90%, transparent);
 }
 
 /* =========================================================
  * 二、kpi-side 主题（stat1 风格：玻璃拟态 + 左侧色条 + 图标块）
  * ========================================================= */
 .stat-card--theme-kpi-side {
-    background: linear-gradient(90deg, var(--accent-bg) 0%, rgba(255, 255, 255, 0.95) 60%);
+    background: linear-gradient(90deg, var(--accent-bg) 0%, var(--color-bg-card) 60%);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(59, 130, 246, 0.08);
+    border: 1px solid var(--color-border-light);
     border-radius: 10px;
-    box-shadow:
-        0 1px 3px rgba(59, 130, 246, 0.04),
-        0 1px 2px rgba(0, 0, 0, 0.02);
+    box-shadow: var(--shadow-card);
     padding: 0 22px;
     min-height: 105px;
     display: flex;
@@ -742,8 +770,8 @@ defineExpose({ statusColors, hexToRgba })
 
 .stat-card--theme-kpi-side:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03);
-    border-color: rgba(59, 130, 246, 0.15);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--color-border);
 }
 
 .stat-card--theme-kpi-side.stat-card--small {
@@ -829,7 +857,7 @@ defineExpose({ statusColors, hexToRgba })
 
 .kpi-side__title {
     font-size: 14px;
-    color: #475569;
+    color: var(--color-text-secondary);
     text-align: left;
     line-height: 1.4;
     font-weight: 500;
@@ -849,7 +877,7 @@ defineExpose({ statusColors, hexToRgba })
 .kpi-side__title small {
     display: block;
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--color-text-muted);
     margin-top: 2px;
     font-weight: 400;
     white-space: nowrap;
@@ -907,15 +935,15 @@ defineExpose({ statusColors, hexToRgba })
     text-align: right;
     margin-top: 7px;
     font-weight: 500;
-    color: #64748b;
+    color: var(--color-text-secondary);
 }
 
 .kpi-side__trend--up {
-    color: #059669;
+    color: var(--color-success);
 }
 
 .kpi-side__trend--down {
-    color: #dc2626;
+    color: var(--color-danger);
 }
 
 .kpi-side__badge {
@@ -932,23 +960,17 @@ defineExpose({ statusColors, hexToRgba })
  * 三、kpi-top 主题（stat2 风格：顶部渐变彩条 + 立体质感 + 光晕扫光）
  * ========================================================= */
 .stat-card--theme-kpi-top {
-    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    background: linear-gradient(180deg, var(--color-bg-card) 0%, var(--color-bg-soft) 100%);
     border-radius: 12px;
     padding: 18px 18px 16px;
-    border: 1px solid rgba(30, 120, 208, 0.12);
-    box-shadow:
-        0 4px 16px rgba(30, 64, 175, 0.06),
-        0 1px 3px rgba(30, 64, 175, 0.04),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-card);
     display: block;
 }
 
 .stat-card--theme-kpi-top:hover {
     transform: translateY(-2px);
-    box-shadow:
-        0 8px 24px rgba(30, 64, 175, 0.10),
-        0 2px 6px rgba(30, 64, 175, 0.06),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    box-shadow: var(--shadow-hover);
 }
 
 .stat-card--theme-kpi-top.stat-card--small {
@@ -965,7 +987,6 @@ defineExpose({ statusColors, hexToRgba })
 .stat-card--theme-kpi-top.stat-card--accent {
     background: var(--accent-card-bg);
     border-color: var(--accent-border);
-    border-color: rgba(16, 185, 129, 0.2);
 }
 
 .stat-card--theme-kpi-top .stat-card__top-bar {
@@ -1009,7 +1030,7 @@ defineExpose({ statusColors, hexToRgba })
 
 .kpi-top__title {
     font-size: 13px;
-    color: #475569;
+    color: var(--color-text-secondary);
     font-weight: 500;
     line-height: 1.4;
     white-space: nowrap;
@@ -1027,7 +1048,7 @@ defineExpose({ statusColors, hexToRgba })
 
 .kpi-top__sub {
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--color-text-muted);
     margin-top: 3px;
     white-space: nowrap;
     overflow: hidden;
@@ -1140,7 +1161,7 @@ defineExpose({ statusColors, hexToRgba })
 
 .stat-card--theme-mini:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-card);
 }
 
 .stat-card--theme-mini .mini-stat {
@@ -1166,7 +1187,7 @@ defineExpose({ statusColors, hexToRgba })
 
 .mini-stat__label {
     font-size: 12px;
-    color: #475569;
+    color: var(--color-text-secondary);
     margin-top: 4px;
     line-height: 1.4;
 }
@@ -1219,7 +1240,7 @@ defineExpose({ statusColors, hexToRgba })
     top: 16px;
     right: 20px;
     font-size: 14px;
-    color: #86909c;
+    color: var(--color-text-muted);
     cursor: pointer;
 }
 

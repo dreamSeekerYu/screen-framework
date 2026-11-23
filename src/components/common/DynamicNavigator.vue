@@ -13,11 +13,78 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useThemeStore } from '@/stores/theme'
 
 const router = useRouter()
 const route = useRoute()
+const themeStore = useThemeStore()
+
+// ---- 主题色板：canvas 无法识别 var()，在每次 draw 时通过 getCssVar 读取实时主题色 ----
+import { getCssVar } from '@/utils/color'
+
+// 把任意颜色（hex / rgb(a) 字符串）转为指定透明度版本
+function alphaColor(color, a) {
+  const c = (color || '').trim()
+  if (c.startsWith('#')) {
+    let h = c.slice(1)
+    if (h.length === 3) h = h.split('').map((x) => x + x).join('')
+    const n = parseInt(h, 16)
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
+  }
+  const m = c.match(/rgba?\(([^)]+)\)/)
+  if (m) {
+    const p = m[1].split(',').map((s) => parseFloat(s.trim()))
+    return `rgba(${p[0]}, ${p[1]}, ${p[2]}, ${a})`
+  }
+  return c
+}
+
+function toRgb(color) {
+  const c = (color || '').trim()
+  if (c.startsWith('#')) {
+    let h = c.slice(1)
+    if (h.length === 3) h = h.split('').map((x) => x + x).join('')
+    const n = parseInt(h, 16)
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+  }
+  const m = c.match(/rgba?\(([^)]+)\)/)
+  if (m) {
+    const p = m[1].split(',').map((s) => parseFloat(s.trim()))
+    return [p[0], p[1], p[2]]
+  }
+  return [0, 0, 0]
+}
+
+// canvas 内等价于 color-mix(in srgb, B w%, A) 的混色
+function colorMixVar(a, b, w) {
+  const [r1, g1, b1] = toRgb(a)
+  const [r2, g2, b2] = toRgb(b)
+  return `rgb(${Math.round(r1 * (1 - w) + r2 * w)}, ${Math.round(g1 * (1 - w) + g2 * w)}, ${Math.round(b1 * (1 - w) + b2 * w)})`
+}
+
+function readPalette() {
+  return {
+    overlay: getCssVar('--overlay-bg', 'rgba(0, 0, 0, 0.5)'),
+    primary: getCssVar('--color-primary', '#2f54eb'),
+    primaryLight: getCssVar('--color-primary-light', '#597ef7'),
+    primaryDark: getCssVar('--color-primary-dark', '#1d39c4'),
+    accent: getCssVar('--color-accent', '#13c2c2'),
+    bgElevated: getCssVar('--color-bg-elevated', '#122d52'),
+    text: getCssVar('--color-text-primary', '#ffffff'),
+  }
+}
+
+// 主题切换时重绘（canvas 每帧都会重新读色板，这里只负责在主题变化时强制刷新一帧）
+function redrawOnThemeChange() {
+  if (visible.value) {
+    cancelAnimationFrame(rafId)
+    lastT = 0
+    rafId = requestAnimationFrame(draw)
+  }
+}
+watch(() => themeStore.currentTheme, redrawOnThemeChange)
 
 const visible = ref(false)
 const wrapRef = ref(null)
@@ -172,6 +239,9 @@ function draw(t) {
   const dt = lastT ? t - lastT : 16
   lastT = t
 
+  // 每帧读取实时主题色（主题切换后无需额外处理即可生效）
+  const C = readPalette()
+
   ctx.clearRect(0, 0, W, H)
 
   const cx = W / 2
@@ -179,18 +249,18 @@ function draw(t) {
   // 整体尺寸：整体视觉直径 ≈ 页面的 1/2
   const vmin = Math.min(W, H)
 
-  // ---- 背景：中心聚焦 + 周边半透明渐隐（非全屏深色遮罩） ----
+  // ---- 背景：中心聚焦 + 周边半透明渐隐（基于主题遮罩色 --overlay-bg） ----
   const focusR = vmin * 0.36
   const bgGrad = ctx.createRadialGradient(cx, cy, focusR * 0.3, cx, cy, Math.max(W, H) * 0.8)
-  bgGrad.addColorStop(0, 'rgba(5, 20, 50, 0.92)')
-  bgGrad.addColorStop(0.35, 'rgba(6, 22, 52, 0.72)')
-  bgGrad.addColorStop(0.6, 'rgba(4, 14, 36, 0.28)')
-  bgGrad.addColorStop(1, 'rgba(2, 8, 22, 0)')
+  bgGrad.addColorStop(0, alphaColor(C.overlay, 0.92))
+  bgGrad.addColorStop(0.35, alphaColor(C.overlay, 0.72))
+  bgGrad.addColorStop(0.6, alphaColor(C.overlay, 0.28))
+  bgGrad.addColorStop(1, alphaColor(C.overlay, 0))
   ctx.fillStyle = bgGrad
   ctx.fillRect(0, 0, W, H)
 
   // 网格
-  ctx.strokeStyle = 'rgba(120, 180, 255, 0.08)'
+  ctx.strokeStyle = alphaColor(C.primary, 0.08)
   ctx.lineWidth = 1
   const gs = 60
   ctx.beginPath()
@@ -206,10 +276,10 @@ function draw(t) {
     ctx.fillStyle = g
     ctx.fillRect(0, 0, W, H)
   }
-  cornerGlow(0, 0, 500, 400, 'rgba(40, 120, 255, 0.25)')
-  cornerGlow(W, 0, 500, 400, 'rgba(20, 80, 200, 0.22)')
-  cornerGlow(W, H, 500, 400, 'rgba(10, 60, 160, 0.2)')
-  cornerGlow(0, H, 500, 400, 'rgba(30, 100, 220, 0.2)')
+  cornerGlow(0, 0, 500, 400, alphaColor(C.primaryLight, 0.25))
+  cornerGlow(W, 0, 500, 400, alphaColor(C.primary, 0.22))
+  cornerGlow(W, H, 500, 400, alphaColor(C.primaryDark, 0.2))
+  cornerGlow(0, H, 500, 400, alphaColor(C.primary, 0.2))
 
   // 左上角小柱图
   ctx.save()
@@ -218,8 +288,8 @@ function draw(t) {
   const barH = [20, 40, 28, 55, 70, 50, 85, 100, 75, 120]
   barH.forEach((h, i) => {
     const grad = ctx.createLinearGradient(0, barY - h, 0, barY)
-    grad.addColorStop(0, 'rgba(80,180,255,0.9)')
-    grad.addColorStop(1, 'rgba(20,80,180,0.2)')
+    grad.addColorStop(0, alphaColor(C.primaryLight, 0.9))
+    grad.addColorStop(1, alphaColor(C.primaryDark, 0.2))
     ctx.fillStyle = grad
     ctx.fillRect(barX + i * 14, barY - h, 10, h)
   })
@@ -232,8 +302,8 @@ function draw(t) {
   const barH2 = [30, 60, 45, 80, 55, 95, 70, 110]
   barH2.forEach((h, i) => {
     const grad = ctx.createLinearGradient(0, barY2 - h, 0, barY2)
-    grad.addColorStop(0, 'rgba(80,200,255,0.9)')
-    grad.addColorStop(1, 'rgba(20,100,200,0.2)')
+    grad.addColorStop(0, alphaColor(C.accent, 0.9))
+    grad.addColorStop(1, alphaColor(C.primaryDark, 0.2))
     ctx.fillStyle = grad
     ctx.fillRect(barX2 + i * 18, barY2 - h, 12, h)
   })
@@ -284,12 +354,12 @@ function draw(t) {
   ctx.beginPath()
   ctx.arc(cx, cy, innerR, 0, Math.PI * 2)
   const inG = ctx.createRadialGradient(cx, cy, innerR - 20, cx, cy, innerR + 4)
-  inG.addColorStop(0, 'rgba(120, 200, 255, 0)')
-  inG.addColorStop(0.85, 'rgba(140, 220, 255, 0.5)')
-  inG.addColorStop(1, 'rgba(180, 230, 255, 0.95)')
+  inG.addColorStop(0, alphaColor(C.accent, 0))
+  inG.addColorStop(0.85, alphaColor(C.accent, 0.5))
+  inG.addColorStop(1, alphaColor(C.primaryLight, 0.95))
   ctx.strokeStyle = inG
   ctx.lineWidth = 2.5
-  ctx.shadowColor = 'rgba(120, 220, 255, 0.9)'
+  ctx.shadowColor = alphaColor(C.accent, 0.9)
   ctx.shadowBlur = 20
   ctx.stroke()
   ctx.shadowBlur = 0
@@ -298,12 +368,12 @@ function draw(t) {
   ctx.beginPath()
   ctx.arc(cx, cy, midR, 0, Math.PI * 2)
   const midG = ctx.createLinearGradient(cx - midR, cy, cx + midR, cy)
-  midG.addColorStop(0, 'rgba(40, 120, 220, 0.2)')
-  midG.addColorStop(0.5, 'rgba(80, 170, 255, 0.8)')
-  midG.addColorStop(1, 'rgba(40, 120, 220, 0.2)')
+  midG.addColorStop(0, alphaColor(C.primary, 0.2))
+  midG.addColorStop(0.5, alphaColor(C.primaryLight, 0.8))
+  midG.addColorStop(1, alphaColor(C.primary, 0.2))
   ctx.strokeStyle = midG
   ctx.lineWidth = 2
-  ctx.shadowColor = 'rgba(60, 150, 255, 0.7)'
+  ctx.shadowColor = alphaColor(C.primaryLight, 0.7)
   ctx.shadowBlur = 16
   ctx.stroke()
   ctx.shadowBlur = 0
@@ -315,7 +385,7 @@ function draw(t) {
   ctx.beginPath()
   ctx.arc(0, 0, outerR, 0, Math.PI * 2)
   ctx.setLineDash([8, 14])
-  ctx.strokeStyle = 'rgba(140, 200, 255, 0.55)'
+  ctx.strokeStyle = alphaColor(C.primaryLight, 0.55)
   ctx.lineWidth = 1.5
   ctx.stroke()
   ctx.setLineDash([])
@@ -330,11 +400,11 @@ function draw(t) {
     ctx.save()
     ctx.rotate(a)
     const beam = ctx.createLinearGradient(-outerR * 1.6, 0, outerR * 1.6, 0)
-    beam.addColorStop(0, 'rgba(100, 190, 255, 0)')
-    beam.addColorStop(0.45, `rgba(140, 220, 255, ${0.25 * pulse})`)
-    beam.addColorStop(0.5, `rgba(200, 240, 255, ${0.55 * pulse})`)
-    beam.addColorStop(0.55, `rgba(140, 220, 255, ${0.25 * pulse})`)
-    beam.addColorStop(1, 'rgba(100, 190, 255, 0)')
+    beam.addColorStop(0, alphaColor(C.primaryLight, 0))
+    beam.addColorStop(0.45, alphaColor(C.primaryLight, 0.25 * pulse))
+    beam.addColorStop(0.5, alphaColor(C.accent, 0.55 * pulse))
+    beam.addColorStop(0.55, alphaColor(C.primaryLight, 0.25 * pulse))
+    beam.addColorStop(1, alphaColor(C.primaryLight, 0))
     ctx.fillStyle = beam
     ctx.fillRect(-outerR * 1.6, -1, outerR * 3.2, 2)
     ctx.restore()
@@ -354,8 +424,8 @@ function draw(t) {
     const alpha = p.a * (0.6 + 0.4 * Math.sin(t * 0.002 + p.ph))
     ctx.beginPath()
     ctx.arc(px, py, p.r, 0, Math.PI * 2)
-    ctx.fillStyle = `rgba(160, 220, 255, ${alpha})`
-    ctx.shadowColor = 'rgba(120, 200, 255, 0.8)'
+    ctx.fillStyle = alphaColor(C.primaryLight, alpha)
+    ctx.shadowColor = alphaColor(C.accent, 0.8)
     ctx.shadowBlur = 6
     ctx.fill()
   })
@@ -367,14 +437,14 @@ function draw(t) {
   ctx.textBaseline = 'middle'
   ctx.font = 'bold 54px Arial Black, "Helvetica Neue", sans-serif'
   const calbGrad = ctx.createLinearGradient(cx, cy - 45, cx, cy + 12)
-  calbGrad.addColorStop(0, '#e8f4ff')
-  calbGrad.addColorStop(0.45, '#9ec8ff')
-  calbGrad.addColorStop(0.55, '#c9e2ff')
-  calbGrad.addColorStop(1, '#3a6bb5')
+  calbGrad.addColorStop(0, C.text)
+  calbGrad.addColorStop(0.45, C.primaryLight)
+  calbGrad.addColorStop(0.55, alphaColor(C.primaryLight, 0.9))
+  calbGrad.addColorStop(1, C.primaryDark)
   ctx.fillStyle = calbGrad
-  ctx.shadowColor = 'rgba(100, 180, 255, 0.9)'
+  ctx.shadowColor = alphaColor(C.primaryLight, 0.9)
   ctx.shadowBlur = 14
-  ctx.strokeStyle = 'rgba(180, 220, 255, 0.7)'
+  ctx.strokeStyle = alphaColor(C.primaryLight, 0.7)
   ctx.lineWidth = 1
   ctx.strokeText('CALB', cx, cy - 18)
   ctx.fillText('CALB', cx, cy - 18)
@@ -382,10 +452,10 @@ function draw(t) {
 
   ctx.font = 'bold 26px "Microsoft YaHei", "PingFang SC", sans-serif'
   const subGrad = ctx.createLinearGradient(cx, cy + 6, cx, cy + 48)
-  subGrad.addColorStop(0, '#ffffff')
-  subGrad.addColorStop(1, '#9ecbff')
+  subGrad.addColorStop(0, C.text)
+  subGrad.addColorStop(1, C.primaryLight)
   ctx.fillStyle = subGrad
-  ctx.shadowColor = 'rgba(100, 180, 255, 0.8)'
+  ctx.shadowColor = alphaColor(C.primaryLight, 0.8)
   ctx.shadowBlur = 12
   ctx.fillText('集成工厂质量周报', cx, cy + 30)
   ctx.shadowBlur = 0
@@ -432,12 +502,12 @@ function draw(t) {
   ctx.save()
   const bandR2 = arcR + cardRadialH * 0.5 + 4
   const bandG2 = ctx.createRadialGradient(arcCx, arcCy, bandR2 - 8, arcCx, arcCy, bandR2 + 12)
-  bandG2.addColorStop(0, 'rgba(100, 200, 255, 0)')
-  bandG2.addColorStop(0.5, 'rgba(120, 215, 255, 0.95)')
-  bandG2.addColorStop(1, 'rgba(180, 235, 255, 0)')
+  bandG2.addColorStop(0, alphaColor(C.accent, 0))
+  bandG2.addColorStop(0.5, alphaColor(C.accent, 0.95))
+  bandG2.addColorStop(1, alphaColor(C.primaryLight, 0))
   ctx.strokeStyle = bandG2
   ctx.lineWidth = 5
-  ctx.shadowColor = 'rgba(100, 200, 255, 0.95)'
+  ctx.shadowColor = alphaColor(C.accent, 0.95)
   ctx.shadowBlur = 24
   ctx.beginPath()
   ctx.arc(arcCx, arcCy, bandR2,
@@ -483,8 +553,8 @@ function draw(t) {
       const bx = arcCx + Math.cos(ang) * (R2 + 22)
       const by = arcCy + Math.sin(ang) * (R2 + 22)
       const beamG = ctx.createRadialGradient(bx, by, 2, bx, by, 55)
-      beamG.addColorStop(0, `rgba(140, 225, 255, ${0.80 * bp})`)
-      beamG.addColorStop(1, 'rgba(80, 160, 255, 0)')
+      beamG.addColorStop(0, alphaColor(C.accent, 0.80 * bp))
+      beamG.addColorStop(1, alphaColor(C.primary, 0))
       ctx.fillStyle = beamG
       ctx.beginPath()
       ctx.arc(bx, by, 55, 0, Math.PI * 2)
@@ -495,13 +565,14 @@ function draw(t) {
     drawArcTrapezoid(arcCx, arcCy, R1, R2, ang, spanA, ro, ri)
     const fillGrad = ctx.createRadialGradient(arcCx, arcCy, R1, arcCx, arcCy, R2)
     if (dist === 0) {
-      fillGrad.addColorStop(0, 'rgba(20, 80, 180, 0.85)')
-      fillGrad.addColorStop(0.55, 'rgba(55, 155, 255, 0.90)')
-      fillGrad.addColorStop(1, 'rgba(40, 120, 230, 0.88)')
+      fillGrad.addColorStop(0, alphaColor(C.primaryDark, 0.85))
+      fillGrad.addColorStop(0.55, alphaColor(C.primary, 0.90))
+      fillGrad.addColorStop(1, alphaColor(C.primaryLight, 0.88))
     } else {
-      fillGrad.addColorStop(0, 'rgba(10, 35, 80, 0.50)')
-      fillGrad.addColorStop(0.5, 'rgba(20, 55, 110, 0.42)')
-      fillGrad.addColorStop(1, 'rgba(30, 75, 145, 0.48)')
+      // 非选中卡：悬浮卡面（--color-bg-elevated）+ 主色微光
+      fillGrad.addColorStop(0, alphaColor(C.bgElevated, 0.85))
+      fillGrad.addColorStop(0.5, alphaColor(colorMixVar(C.bgElevated, C.primary, 0.15), 0.55))
+      fillGrad.addColorStop(1, alphaColor(C.bgElevated, 0.80))
     }
     ctx.fillStyle = fillGrad
     ctx.fill()
@@ -514,8 +585,9 @@ function draw(t) {
     const hlR2 = R1 + (R2 - R1) * 0.22
     drawArcTrapezoid(arcCx, arcCy, hlR1, hlR2, ang, spanA * 0.96, ri * 0.5, ri * 0.3)
     const hlG = ctx.createRadialGradient(arcCx, arcCy, hlR1, arcCx, arcCy, hlR2)
-    hlG.addColorStop(0, 'rgba(220, 240, 255, 0.85)')
-    hlG.addColorStop(1, 'rgba(220, 240, 255, 0)')
+    const hlBase = colorMixVar(C.accent, '#ffffff', 0.7)
+    hlG.addColorStop(0, alphaColor(hlBase, 0.85))
+    hlG.addColorStop(1, alphaColor(hlBase, 0))
     ctx.fillStyle = hlG
     ctx.fill()
     ctx.restore()
@@ -523,10 +595,10 @@ function draw(t) {
     // ---- 双层描边 ----
     drawArcTrapezoid(arcCx, arcCy, R1, R2, ang, spanA, ro, ri)
     ctx.strokeStyle = dist === 0
-      ? 'rgba(140, 220, 255, 0.95)'
-      : 'rgba(100, 170, 230, 0.55)'
+      ? alphaColor(C.accent, 0.95)
+      : alphaColor(C.primaryLight, 0.55)
     ctx.lineWidth = dist === 0 ? 2.2 : 1.3
-    ctx.shadowColor = dist === 0 ? 'rgba(100, 200, 255, 0.9)' : 'rgba(60, 140, 220, 0.35)'
+    ctx.shadowColor = dist === 0 ? alphaColor(C.accent, 0.9) : alphaColor(C.primary, 0.35)
     ctx.shadowBlur = dist === 0 ? 16 : 5
     ctx.stroke()
     ctx.shadowBlur = 0
@@ -535,7 +607,7 @@ function draw(t) {
     ctx.globalAlpha = dist === 0 ? 0.50 : 0.22
     ctx.beginPath()
     drawArcTrapezoid(arcCx, arcCy, R1 + 2, R2 - 3, ang, spanA * 0.94, Math.max(2, ro - 3), Math.max(2, ri - 3))
-    ctx.strokeStyle = 'rgba(220, 245, 255, 1)'
+    ctx.strokeStyle = alphaColor(colorMixVar(C.accent, '#ffffff', 0.8), 0.95)
     ctx.lineWidth = 0.8
     ctx.stroke()
     ctx.restore()
@@ -552,8 +624,8 @@ function draw(t) {
     ctx.font = `bold ${fs}px "Microsoft YaHei", "PingFang SC", sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = dist === 0 ? '#ffffff' : 'rgba(220, 235, 255, 0.92)'
-    ctx.shadowColor = 'rgba(80, 160, 255, 0.75)'
+    ctx.fillStyle = dist === 0 ? '#ffffff' : alphaColor(C.text, 0.92)
+    ctx.shadowColor = alphaColor(C.primary, 0.75)
     ctx.shadowBlur = dist === 0 ? 10 : 4
     ctx.fillText(name, 0, 0)
     ctx.shadowBlur = 0
@@ -739,6 +811,7 @@ onMounted(() => {
   window.addEventListener('wheel', onWheel, { passive: false, capture: true })
   window.addEventListener('resize', onResize)
   window.addEventListener('blur', onBlur)
+  window.addEventListener('themechange', redrawOnThemeChange)
   document.addEventListener('click', onClick)
 })
 
@@ -749,6 +822,7 @@ onUnmounted(() => {
   window.removeEventListener('wheel', onWheel, { passive: false, capture: true })
   window.removeEventListener('resize', onResize)
   window.removeEventListener('blur', onBlur)
+  window.removeEventListener('themechange', redrawOnThemeChange)
   document.removeEventListener('click', onClick)
   clearTimeout(autoCommitTimer)
 })
@@ -777,11 +851,11 @@ onUnmounted(() => {
   bottom: 36px;
   left: 50%;
   transform: translateX(-50%);
-  color: rgba(200, 225, 255, 0.75);
+  color: var(--color-text-secondary);
   font-size: 13px;
   font-family: "Microsoft YaHei", sans-serif;
   letter-spacing: 0.5px;
-  text-shadow: 0 2px 8px rgba(0, 20, 60, 0.8);
+  text-shadow: 0 2px 8px color-mix(in srgb, #000 60%, transparent);
   user-select: none;
   pointer-events: none;
   kbd {
@@ -789,12 +863,14 @@ onUnmounted(() => {
     padding: 2px 8px;
     margin: 0 2px;
     border-radius: 4px;
-    background: linear-gradient(180deg, rgba(80,140,220,0.4), rgba(30,80,160,0.4));
-    border: 1px solid rgba(140,190,255,0.5);
-    color: #e6f2ff;
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--color-primary) 40%, transparent),
+        color-mix(in srgb, var(--color-primary-dark) 40%, transparent));
+    border: 1px solid color-mix(in srgb, var(--color-primary-light) 50%, transparent);
+    color: var(--color-text-primary);
     font-size: 12px;
     font-family: "SF Mono", Consolas, monospace;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    box-shadow: 0 2px 6px color-mix(in srgb, #000 40%, transparent);
   }
 }
 </style>

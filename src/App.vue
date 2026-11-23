@@ -192,7 +192,7 @@ watch(() => route.path, updateBodyScroll)
 .full-page {
   width: 100%;
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--color-bg-page);
   padding: 56px 24px 40px;
 }
 
@@ -208,12 +208,18 @@ watch(() => route.path, updateBodyScroll)
   a {
     margin-right: 0;
     font-size: 12px;
-    color: #4080ff;
-    background: #fff;
+    color: var(--color-primary);
+    background: var(--color-bg-card);
     padding: 4px 10px;
     border-radius: 4px;
-    box-shadow: 0 2px 6px rgba(0,0,0,.08);
+    box-shadow: var(--shadow-card);
     text-decoration: none;
+    transition: all 0.25s ease;
+
+    &:hover {
+      color: var(--color-primary-light);
+      box-shadow: var(--shadow-hover);
+    }
   }
 }
 </style>

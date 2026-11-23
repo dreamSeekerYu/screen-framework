@@ -162,7 +162,7 @@ onBeforeUnmount(() => {
 .ui-dialog-mask {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--overlay-bg);
   z-index: 2000;
   display: flex;
   align-items: flex-start;
@@ -174,10 +174,10 @@ onBeforeUnmount(() => {
 
 .ui-dialog {
   position: relative;
-  background: var(--color-bg-card);
+  background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: $radius-lg;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px var(--color-border-light);
+  box-shadow: var(--shadow-dialog), 0 0 0 1px var(--color-border-light);
   display: flex;
   flex-direction: column;
   max-height: 85vh;
@@ -237,7 +237,7 @@ onBeforeUnmount(() => {
     color: var(--color-text-secondary);
     cursor: pointer;
     transition: all 0.15s;
-    &:hover { background: rgba(255,255,255,0.1); color: var(--color-text-primary); }
+    &:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
   }
 
   &__close {

@@ -92,7 +92,7 @@ function handleClose(e) {
     cursor: pointer;
     opacity: 0.6;
     transition: opacity 0.15s;
-    &:hover { opacity: 1; background: rgba(255,255,255,0.15); }
+    &:hover { opacity: 1; background: var(--color-bg-hover); }
   }
 
   &.is-round { border-radius: 20px; }
@@ -102,15 +102,15 @@ function handleClose(e) {
   &-size--default{ height: 26px; padding: 0 10px; font-size: $font-sm; }
   &-size--large  { height: 30px; padding: 0 14px; font-size: $font-md; }
 
-  /* type - 描边风格，适配大屏深色渐变背景 */
+  /* type - 语义色驱动，自动适配浅色/深色主题 */
   &-type--primary {
-    color: var(--color-primary-light);
-    border-color: var(--color-primary);
-    background: rgba(30, 111, 255, 0.12);
+    color: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   }
-  &-type--success { color: #36cfc9; border-color: rgba(54,207,201,0.5); background: rgba(54,207,201,0.1); }
-  &-type--info    { color: #00c6ff; border-color: rgba(0,198,255,0.5);  background: rgba(0,198,255,0.1);  }
-  &-type--warning { color: #ffc53d; border-color: rgba(255,197,61,0.5); background: rgba(255,197,61,0.1); }
-  &-type--danger  { color: #ff7a45; border-color: rgba(255,122,69,0.5); background: rgba(255,122,69,0.1); }
+  &-type--success { color: var(--color-success); border-color: color-mix(in srgb, var(--color-success) 50%, transparent); background: color-mix(in srgb, var(--color-success) 12%, transparent); }
+  &-type--info    { color: var(--color-info); border-color: color-mix(in srgb, var(--color-info) 50%, transparent); background: color-mix(in srgb, var(--color-info) 12%, transparent); }
+  &-type--warning { color: var(--color-warning); border-color: color-mix(in srgb, var(--color-warning) 50%, transparent); background: color-mix(in srgb, var(--color-warning) 12%, transparent); }
+  &-type--danger  { color: var(--color-danger); border-color: color-mix(in srgb, var(--color-danger) 50%, transparent); background: color-mix(in srgb, var(--color-danger) 12%, transparent); }
 }
 </style>

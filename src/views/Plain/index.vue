@@ -158,17 +158,22 @@ const barOption = computed(() => {
   const doing = names.map((n) => groups[n].doing)
   const todo = names.map((n) => groups[n].todo)
   const total = names.map((n) => groups[n].total)
+  const tooltipStyle = {
+    backgroundColor: 'var(--chart-tooltip-bg)',
+    borderColor: 'var(--chart-tooltip-border)',
+    textStyle: { color: 'var(--chart-tooltip-text)' },
+  }
   return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { data: ['已完成', '推进中', '待启动'], textStyle: { color: '#94a3b8', fontSize: 11 }, top: 0 },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, ...tooltipStyle },
+    legend: { data: ['已完成', '推进中', '待启动'], textStyle: { color: 'var(--chart-text-muted)', fontSize: 11 }, top: 0 },
     grid: { left: 40, right: 20, top: 30, bottom: 30 },
-    xAxis: { type: 'category', data: names, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#cbd5e1' } },
-    yAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { color: 'rgba(148,163,184,.15)' } }, axisLabel: { color: '#94a3b8' } },
+    xAxis: { type: 'category', data: names, axisLine: { lineStyle: { color: 'var(--chart-axis-line)' } }, axisLabel: { color: 'var(--chart-text)' } },
+    yAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { color: 'var(--chart-split-line)' } }, axisLabel: { color: 'var(--chart-text-muted)' } },
     series: [
-      { name: '已完成', type: 'bar', stack: 'a', data: done, itemStyle: { color: '#10b981' }, barWidth: 24 },
-      { name: '推进中', type: 'bar', stack: 'a', data: doing, itemStyle: { color: '#f59e0b' } },
-      { name: '待启动', type: 'bar', stack: 'a', data: todo, itemStyle: { color: '#94a3b8' } },
-      { name: '总数', type: 'line', data: total, itemStyle: { color: '#38bdf8' }, symbolSize: 6, lineStyle: { width: 2 } },
+      { name: '已完成', type: 'bar', stack: 'a', data: done, itemStyle: { color: 'var(--color-success)' }, barWidth: 24 },
+      { name: '推进中', type: 'bar', stack: 'a', data: doing, itemStyle: { color: 'var(--color-warning)' } },
+      { name: '待启动', type: 'bar', stack: 'a', data: todo, itemStyle: { color: 'var(--chart-text-muted)' } },
+      { name: '总数', type: 'line', data: total, itemStyle: { color: 'var(--color-accent)' }, symbolSize: 6, lineStyle: { width: 2 } },
     ],
   }
 })
@@ -177,17 +182,17 @@ const pieOption = computed(() => {
   if (!currentWeek.value) return {}
   const s = currentWeek.value.stats
   return {
-    tooltip: { trigger: 'item', formatter: '{b}: {c}项 ({d}%)' },
-    legend: { bottom: 0, textStyle: { color: '#94a3b8', fontSize: 11 } },
+    tooltip: { trigger: 'item', formatter: '{b}: {c}项 ({d}%)', backgroundColor: 'var(--chart-tooltip-bg)', borderColor: 'var(--chart-tooltip-border)', textStyle: { color: 'var(--chart-tooltip-text)' } },
+    legend: { bottom: 0, textStyle: { color: 'var(--chart-text-muted)', fontSize: 11 } },
     series: [{
       type: 'pie', radius: ['45%', '70%'], center: ['50%', '45%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 4, borderColor: '#0f172a', borderWidth: 2 },
-      label: { show: true, color: '#cbd5e1', formatter: '{b}\n{d}%' },
+      itemStyle: { borderRadius: 4, borderColor: 'var(--color-bg-card)', borderWidth: 2 },
+      label: { show: true, color: 'var(--chart-text)', formatter: '{b}\n{d}%' },
       data: [
-        { value: s.done, name: '已完成', itemStyle: { color: '#10b981' } },
-        { value: s.doing, name: '推进中', itemStyle: { color: '#f59e0b' } },
-        { value: s.todo, name: '待启动', itemStyle: { color: '#94a3b8' } },
+        { value: s.done, name: '已完成', itemStyle: { color: 'var(--color-success)' } },
+        { value: s.doing, name: '推进中', itemStyle: { color: 'var(--color-warning)' } },
+        { value: s.todo, name: '待启动', itemStyle: { color: 'var(--chart-text-muted)' } },
       ],
     }],
   }

@@ -149,11 +149,11 @@ let LPAData = null
     font-size: $font-sm;
 
     &.up {
-      color: #52c41a;
+      color: var(--color-success);
     }
 
     &.down {
-      color: #ff4d4f;
+      color: var(--color-danger);
     }
   }
 }

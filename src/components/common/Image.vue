@@ -187,7 +187,7 @@ const handleClick = (e) => {
   position: relative;
   display: inline-block;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-text-primary) 5%, transparent);
   vertical-align: middle;
   flex-shrink: 0;
 
@@ -224,9 +224,9 @@ const handleClick = (e) => {
     align-items: center;
     justify-content: center;
     gap: $spacing-xs;
-    color: rgba(255,255,255,0.35);
+    color: var(--color-text-muted);
     font-size: $font-sm;
-    background: rgba(255,255,255,0.03);
+    background: color-mix(in srgb, var(--color-text-primary) 3%, transparent);
   }
 
   &__spinner {
@@ -260,14 +260,4 @@ const handleClick = (e) => {
   to { transform: rotate(360deg); }
 }
 
-/* 浅色主题适配 */
-[data-theme='light'] {
-  .sc-image {
-    background: rgba(0,0,0,0.04);
-    &__placeholder {
-      color: rgba(0,0,0,0.3);
-      background: rgba(0,0,0,0.02);
-    }
-  }
-}
 </style>

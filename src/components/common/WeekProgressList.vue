@@ -70,7 +70,7 @@ function pctColorCls(it) {
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(30, 120, 208, 0.15);
+    background: var(--color-border);
     border-radius: 2px;
   }
 
@@ -82,50 +82,50 @@ function pctColorCls(it) {
 .progress-item {
   position: relative;
   padding: 8px 12px 9px;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(180deg, var(--color-bg-soft) 0%, var(--color-bg-card) 100%);
   border-radius: 8px;
   cursor: pointer;
   transition: all .25s cubic-bezier(0.4, 0, 0.2, 1);
   border-left: 3px solid transparent;
-  border: 1px solid rgba(30, 120, 208, 0.08);
+  border: 1px solid var(--color-border-light);
 
   &::after {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: 8px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-text-primary) 10%, transparent);
     pointer-events: none;
   }
 
   &:hover {
-    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
-    border-color: rgba(30, 120, 208, 0.25);
+    background: linear-gradient(180deg, var(--color-bg-hover) 0%, color-mix(in srgb, var(--color-primary) 12%, transparent) 100%);
+    border-color: var(--color-border);
     transform: translateX(2px);
-    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.08);
+    box-shadow: var(--shadow-hover);
   }
 
   &.is-done {
-    background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
-    border-color: rgba(16, 185, 129, 0.2);
-    border-left-color: #10b981;
+    background: linear-gradient(180deg, var(--color-success-bg) 0%, color-mix(in srgb, var(--color-success) 12%, transparent) 100%);
+    border-color: color-mix(in srgb, var(--color-success) 25%, transparent);
+    border-left-color: var(--color-success);
 
     &:hover {
-      background: linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%);
-      border-color: rgba(16, 185, 129, 0.35);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--color-success) 14%, transparent) 0%, color-mix(in srgb, var(--color-success) 24%, transparent) 100%);
+      border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
     }
   }
 
   &.is-doing {
-    border-left-color: #3b82f6;
-    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
-    border-color: rgba(59, 130, 246, 0.18);
+    border-left-color: var(--color-primary);
+    background: linear-gradient(180deg, var(--color-info-bg) 0%, color-mix(in srgb, var(--color-primary) 10%, transparent) 100%);
+    border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
   }
 
   &.is-overdue {
-    border-left-color: #ef4444;
-    background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%);
-    border-color: rgba(239, 68, 68, 0.2);
+    border-left-color: var(--color-danger);
+    background: linear-gradient(180deg, var(--color-danger-bg) 0%, color-mix(in srgb, var(--color-danger) 12%, transparent) 100%);
+    border-color: color-mix(in srgb, var(--color-danger) 25%, transparent);
   }
 }
 
@@ -139,7 +139,7 @@ function pctColorCls(it) {
 .item-title {
   font-size: 12.5px;
   font-weight: 600;
-  color: #1e3a8a;
+  color: var(--color-text-primary);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -149,11 +149,11 @@ function pctColorCls(it) {
 }
 
 .is-done .item-title {
-  color: #065f46;
+  color: var(--color-success);
 }
 
 .is-overdue .item-title {
-  color: #991b1b;
+  color: var(--color-danger);
 }
 
 .item-pct {
@@ -165,29 +165,29 @@ function pctColorCls(it) {
   border-radius: 10px;
 
   &.pct-done {
-    color: #059669;
-    background: rgba(16, 185, 129, 0.12);
+    color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 12%, transparent);
   }
 
   &.pct-doing {
-    color: #1d4ed8;
-    background: rgba(59, 130, 246, 0.12);
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   }
 
   &.pct-overdue {
-    color: #dc2626;
-    background: rgba(239, 68, 68, 0.12);
+    color: var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
   }
 }
 
 .progress-track {
   height: 8px;
-  background: rgba(203, 213, 225, 0.6);
+  background: var(--color-border-light);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 6px;
   position: relative;
-  box-shadow: inset 0 1px 2px rgba(148, 163, 184, 0.3);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--color-text-muted) 30%, transparent);
 }
 
 .progress-fill {
@@ -205,20 +205,29 @@ function pctColorCls(it) {
   }
 
   &.fill-done {
-    background: linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%);
-    box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--color-success) 80%, #000) 0%,
+        var(--color-success) 50%,
+        color-mix(in srgb, var(--color-success) 60%, #fff) 100%);
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--color-success) 30%, transparent);
   }
 
   &.fill-doing {
-    background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%);
-    box-shadow: 0 1px 4px rgba(59, 130, 246, 0.3);
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--color-primary) 80%, #000) 0%,
+        var(--color-primary) 50%,
+        color-mix(in srgb, var(--color-primary) 60%, #fff) 100%);
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--color-primary) 30%, transparent);
     animation: shimmer 2s ease-in-out infinite;
     background-size: 200% 100%;
   }
 
   &.fill-overdue {
-    background: linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%);
-    box-shadow: 0 1px 4px rgba(239, 68, 68, 0.3);
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--color-danger) 80%, #000) 0%,
+        var(--color-danger) 50%,
+        color-mix(in srgb, var(--color-danger) 60%, #fff) 100%);
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--color-danger) 30%, transparent);
   }
 }
 
@@ -236,18 +245,18 @@ function pctColorCls(it) {
 
 .item-meta {
   font-size: 11px;
-  color: #64748b;
+  color: var(--color-text-secondary);
   display: flex;
   gap: 6px;
   align-items: center;
 
   b {
-    color: #334155;
+    color: var(--color-text-primary);
     font-weight: 600;
   }
 
   .meta-dot {
-    color: #cbd5e1;
+    color: var(--color-text-muted);
   }
 }
 
@@ -256,7 +265,7 @@ function pctColorCls(it) {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 </style>

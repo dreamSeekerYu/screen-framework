@@ -144,7 +144,7 @@ onMounted(() => {
     line-height: 16px;
     padding: 0 4px;
     border-radius: 8px;
-    background: #ef4444;
+    background: var(--color-danger);
     color: #fff;
     font-size: 10px;
     text-align: center;
@@ -176,7 +176,7 @@ onMounted(() => {
       border: 1px solid var(--color-border-light);
       border-bottom: none;
       border-radius: $radius-md $radius-md 0 0;
-      background: rgba(255,255,255,0.03);
+      background: var(--color-bg-soft);
       padding: 8px 16px;
       &.is-active {
         background: var(--color-bg-card);
@@ -194,7 +194,7 @@ onMounted(() => {
       border: 1px solid var(--color-border);
       border-radius: $radius-md;
       padding: 3px;
-      background: rgba(255,255,255,0.03);
+      background: var(--color-bg-soft);
       border-bottom: 1px solid var(--color-border);
     }
     .ui-tabs.stretch .ui-tabs__nav { width: 100%; }
@@ -205,7 +205,7 @@ onMounted(() => {
       &.is-active {
         background: var(--color-primary);
         color: #fff;
-        box-shadow: 0 2px 8px rgba(30,111,255,0.4);
+        box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 40%, transparent);
       }
     }
     .ui-tabs__active-bar { display: none; }

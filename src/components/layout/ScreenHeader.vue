@@ -91,12 +91,7 @@ const toggleFullscreen = () => {
 .screen-title {
   font-size: 32px;
   font-weight: 700;
-  // background: linear-gradient(180deg, #ffffff 0%, var(--color-primary-light) 100%);
-  // -webkit-background-clip: text;
-  // -webkit-text-fill-color: transparent;
-  background-clip: text;
-  // color: rgba(30, 111, 255, 0.5);
-  // text-shadow: 0 0 1px rgba(30, 111, 255, 0.5);
+  color: var(--color-text-primary);
   letter-spacing: 4px;
 }
 
@@ -116,7 +111,7 @@ const toggleFullscreen = () => {
   &:hover {
     color: var(--color-primary);
     border-color: var(--color-primary);
-    background: rgba(30, 111, 255, 0.1);
+    background: var(--color-bg-hover);
   }
 }
 </style>

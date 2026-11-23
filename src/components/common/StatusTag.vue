@@ -26,7 +26,7 @@ defineProps({
     default: 'info',
     validator: (val) => ['success', 'info', 'warning', 'danger', 'default'].includes(val)
   },
-  // 显示效果：solid=实色填充(适合浅色背景) / light=浅底深字(适合浅色背景) / plain=半透明白字(适合深色渐变背景)
+  // 显示效果：solid=实色填充 / light=浅底深字 / plain=半透明底
   effect: {
     type: String,
     default: 'solid',
@@ -86,84 +86,84 @@ defineProps({
   display: inline-block;
 }
 
-/* ============ solid 实色填充（适合浅色背景，对齐截图色值） ============ */
+/* ============ solid 实色填充（语义色随主题切换） ============ */
 .status-tag-effect--solid.status-tag-type--success {
-  background-color: #10b981;
+  background-color: var(--color-success);
   color: #ffffff;
 }
 
 .status-tag-effect--solid.status-tag-type--info {
-  background-color: #0ea5e9;
+  background-color: var(--color-info);
   color: #ffffff;
 }
 
 .status-tag-effect--solid.status-tag-type--warning {
-  background-color: #f59e0b;
+  background-color: var(--color-warning);
   color: #ffffff;
 }
 
 .status-tag-effect--solid.status-tag-type--danger {
-  background-color: #ef4444;
+  background-color: var(--color-danger);
   color: #ffffff;
 }
 
 .status-tag-effect--solid.status-tag-type--default {
-  background-color: #6b7280;
-  color: #ffffff;
+  background-color: color-mix(in srgb, var(--color-text-muted) 85%, transparent);
+  color: var(--color-bg-card);
 }
 
-/* ============ light 浅底深字（适合浅色背景，柔和风格） ============ */
+/* ============ light 浅底深字（浅色底随主题自适应） ============ */
 .status-tag-effect--light.status-tag-type--success {
-  background-color: #dcfce7;
-  color: #16a34a;
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .status-tag-effect--light.status-tag-type--info {
-  background-color: #e0f2fe;
-  color: #0284c7;
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .status-tag-effect--light.status-tag-type--warning {
-  background-color: #fef3c7;
-  color: #d97706;
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .status-tag-effect--light.status-tag-type--danger {
-  background-color: #fee2e2;
-  color: #dc2626;
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .status-tag-effect--light.status-tag-type--default {
-  background-color: #f3f4f6;
-  color: #4b5563;
+  background-color: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+  color: var(--color-text-secondary);
 }
 
-/* ============ plain 半透明白字（适合深色渐变背景，用于总结栏，完全对齐截图效果） ============ */
+/* ============ plain 半透明底（深浅主题均可用） ============ */
 .status-tag-effect--plain.status-tag-type--success {
-  background-color: rgba(16, 185, 129, 0.9);
+  background-color: color-mix(in srgb, var(--color-success) 85%, transparent);
   color: #ffffff;
 }
 
 .status-tag-effect--plain.status-tag-type--info {
-  background-color: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
+  background-color: color-mix(in srgb, var(--color-info) 22%, transparent);
+  color: var(--color-text-primary);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
 
 .status-tag-effect--plain.status-tag-type--warning {
-  background-color: rgba(245, 158, 11, 0.9);
+  background-color: color-mix(in srgb, var(--color-warning) 85%, transparent);
   color: #ffffff;
 }
 
 .status-tag-effect--plain.status-tag-type--danger {
-  background-color: rgba(239, 68, 68, 0.9);
+  background-color: color-mix(in srgb, var(--color-danger) 85%, transparent);
   color: #ffffff;
 }
 
 .status-tag-effect--plain.status-tag-type--default {
-  background-color: rgba(148, 163, 184, 0.3);
-  color: #ffffff;
+  background-color: color-mix(in srgb, var(--color-text-primary) 18%, transparent);
+  color: var(--color-text-primary);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }

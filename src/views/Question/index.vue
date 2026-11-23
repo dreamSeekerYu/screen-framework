@@ -255,11 +255,11 @@ const facts = computed(() => {
   const m6New = i.currentWeekItems.filter(x => x.workshop === 'M6').length
   const m6NewRatio = c.kpi.weekNew ? Math.round(m6New / c.kpi.weekNew * 100) : 0
   return [
-    { color: '#10b981', text: `<b>连续${c.kpi.consecutiveWeeks}周100%闭环：</b>${c.kpi.periodRange}到期${c.kpi.weekDue}件，实际关闭${c.kpi.cumulativeClosed}件，零超期` },
-    { color: '#f59e0b', text: `<b>${m6 ? m6.key : 'M6'}为重点车间：</b>累计${m6 ? m6.actual : 0}件占${m6Ratio}%，本周${m6New}件占新增${m6NewRatio}%` },
-    { color: '#3b82f6', text: `<b>异常类型集中：</b>${i.typeDistArr.map(t => `${t.name}${t.value}件`).join('、')}，均为人员操作类问题` },
-    { color: '#14b8a6', text: `<b>永久对策全覆盖：</b>所有异常均制定防错措施，含SOP更新、程序优化、标识区分` },
-    { color: '#94a3b8', text: `<b>零流出：</b>所有异常均在厂内检出，未发生客户端流出事故` },
+    { color: 'var(--color-success)', text: `<b>连续${c.kpi.consecutiveWeeks}周100%闭环：</b>${c.kpi.periodRange}到期${c.kpi.weekDue}件，实际关闭${c.kpi.cumulativeClosed}件，零超期` },
+    { color: 'var(--color-warning)', text: `<b>${m6 ? m6.key : 'M6'}为重点车间：</b>累计${m6 ? m6.actual : 0}件占${m6Ratio}%，本周${m6New}件占新增${m6NewRatio}%` },
+    { color: 'var(--color-primary)', text: `<b>异常类型集中：</b>${i.typeDistArr.map(t => `${t.name}${t.value}件`).join('、')}，均为人员操作类问题` },
+    { color: 'var(--color-accent)', text: `<b>永久对策全覆盖：</b>所有异常均制定防错措施，含SOP更新、程序优化、标识区分` },
+    { color: 'var(--chart-text-muted)', text: `<b>零流出：</b>所有异常均在厂内检出，未发生客户端流出事故` },
   ]
 })
 
@@ -268,9 +268,9 @@ const trendChartOption = computed(() => {
   if (!closeData.value) return {}
   const weeks = closeData.value.trendWeeks
   const COLOR = {
-    gray: '#cbd5e1', grayDark: '#94a3b8',
-    green: '#10b981', greenDark: '#059669', greenLight: '#34d399',
-    red: '#ef4444', text: '#334155', textLight: '#64748b', axis: '#cbd5e1', split: '#e2e8f0',
+    gray: 'var(--chart-axis-line)', grayDark: 'var(--chart-text-muted)',
+    green: 'var(--color-success)', greenDark: 'var(--color-success)', greenLight: 'color-mix(in srgb, var(--color-success) 55%, #ffffff)',
+    red: 'var(--color-danger)', text: 'var(--chart-text)', textLight: 'var(--color-text-secondary)', axis: 'var(--chart-axis-line)', split: 'var(--chart-empty)',
   }
   return {
     animation: true,
@@ -278,21 +278,21 @@ const trendChartOption = computed(() => {
     animationEasing: 'cubicOut',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderColor: 'rgba(30,120,208,0.15)',
+      backgroundColor: 'var(--chart-tooltip-bg)',
+      borderColor: 'var(--chart-tooltip-border)',
       borderWidth: 1,
       padding: [10, 14],
       textStyle: { color: COLOR.text, fontSize: 12 },
-      axisPointer: { type: 'cross', crossStyle: { color: '#3b82f6', opacity: 0.3, type: 'dashed' }, lineStyle: { color: '#3b82f6', opacity: 0.3, type: 'dashed' } },
-      extraCssText: 'box-shadow:0 8px 24px rgba(30,64,175,0.12);border-radius:10px;backdrop-filter:blur(8px);',
+      axisPointer: { type: 'cross', crossStyle: { color: 'var(--color-primary)', opacity: 0.3, type: 'dashed' }, lineStyle: { color: 'var(--color-primary)', opacity: 0.3, type: 'dashed' } },
+      extraCssText: 'box-shadow:0 8px 24px color-mix(in srgb, var(--color-primary) 12%, transparent);border-radius:10px;backdrop-filter:blur(8px);',
       formatter: (params) => {
-        let html = `<div style="font-weight:700;margin-bottom:6px;color:#0f2b5d;font-size:13px">${params[0].axisValue}</div>`
+        let html = `<div style="font-weight:700;margin-bottom:6px;color:var(--color-text-primary);font-size:13px">${params[0].axisValue}</div>`
         params.forEach((p) => {
           const unit = p.seriesName === '按期闭环率' ? '%' : '件'
           html += `<div style="display:flex;align-items:center;gap:6px;margin:3px 0">
             <span style="width:8px;height:8px;border-radius:2px;background:${p.color};display:inline-block"></span>
-            <span style="color:#64748b">${p.seriesName}</span>
-            <span style="margin-left:auto;font-weight:600;color:#0f2b5d">${p.value}${unit}</span>
+            <span style="color:var(--color-text-secondary)">${p.seriesName}</span>
+            <span style="margin-left:auto;font-weight:600;color:var(--color-text-primary)">${p.value}${unit}</span>
           </div>`
         })
         return html
@@ -327,7 +327,7 @@ const trendChartOption = computed(() => {
       {
         type: 'line', data: Array(weeks.length).fill(100), yAxisIndex: 1,
         lineStyle: { opacity: 0 }, symbol: 'none',
-        areaStyle: { color: 'rgba(16,185,129,0.04)' },
+        areaStyle: { color: 'color-mix(in srgb, var(--color-success) 5%, transparent)' },
         z: 1, tooltip: { show: false }, silent: true,
       },
       // 到期柱
@@ -337,7 +337,7 @@ const trendChartOption = computed(() => {
         itemStyle: {
           borderRadius: [3, 3, 0, 0],
           color: linearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#cbd5e1' }, { offset: 0.5, color: '#cbd5e1' }, { offset: 1, color: '#94a3b8' }
+            { offset: 0, color: 'var(--chart-axis-line)' }, { offset: 0.5, color: 'var(--chart-axis-line)' }, { offset: 1, color: 'var(--chart-text-muted)' }
           ]),
         },
       },
@@ -348,9 +348,9 @@ const trendChartOption = computed(() => {
         itemStyle: {
           borderRadius: [3, 3, 0, 0],
           color: linearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#34d399' }, { offset: 0.4, color: '#10b981' }, { offset: 1, color: '#059669' }
+            { offset: 0, color: 'color-mix(in srgb, var(--color-success) 55%, #ffffff)' }, { offset: 0.4, color: 'var(--color-success)' }, { offset: 1, color: 'var(--color-success)' }
           ]),
-          shadowColor: 'rgba(16,185,129,0.25)', shadowBlur: 8, shadowOffsetY: 2,
+          shadowColor: 'color-mix(in srgb, var(--color-success) 25%, transparent)', shadowBlur: 8, shadowOffsetY: 2,
         },
         label: { show: true, position: 'top', color: COLOR.greenDark, fontSize: 10, fontWeight: 700, formatter: p => p.value },
       },
@@ -360,7 +360,7 @@ const trendChartOption = computed(() => {
         symbol: 'circle', symbolSize: 7,
         data: weeks.map(w => Math.round(w.rate)),
         lineStyle: { color: COLOR.red, width: 2.5, type: 'dashed' },
-        itemStyle: { color: COLOR.red, borderWidth: 2, borderColor: '#fff', shadowColor: 'rgba(239,68,68,0.4)', shadowBlur: 6 },
+        itemStyle: { color: COLOR.red, borderWidth: 2, borderColor: '#fff', shadowColor: 'color-mix(in srgb, var(--color-danger) 40%, transparent)', shadowBlur: 6 },
         label: { show: true, position: 'top', color: COLOR.red, fontSize: 10, fontWeight: 700, formatter: '{c}%', offsetY: -4 },
         z: 5,
       },
@@ -372,15 +372,15 @@ const typePieOption = computed(() => {
   if (!issueData.value) return {}
   const data = issueData.value.typeDistArr
   // 按类型固定颜色
-  const colorMap = { '装配类': ['#fbbf24', '#f59e0b'], '焊接类': ['#38bdf8', '#0ea5e9'], '测试类': ['#a78bfa', '#8b5cf6'], '外观类': ['#f472b6', '#ec4899'], '其他': ['#94a3b8', '#64748b'] }
+  const colorMap = { '装配类': ['color-mix(in srgb, var(--color-warning) 45%, #ffffff)', 'var(--color-warning)'], '焊接类': ['var(--color-primary-light)', 'var(--color-accent)'], '测试类': ['#a78bfa', '#8b5cf6'], '外观类': ['#f472b6', '#ec4899'], '其他': ['var(--chart-text-muted)', 'var(--color-text-secondary)'] }
   const pieData = data.map(d => {
-    const [c1, c2] = colorMap[d.name] || ['#60a5fa', '#3b82f6']
+    const [c1, c2] = colorMap[d.name] || ['var(--color-primary-light)', 'var(--color-primary)']
     return {
       value: d.value, name: d.name,
       itemStyle: {
         color: linearGradient(0, 0, 1, 1, [{ offset: 0, color: c1 }, { offset: 1, color: c2 }]),
-        borderRadius: 6, borderColor: '#fff', borderWidth: 3,
-        shadowColor: c2.replace(')', ',0.3)').replace('rgb', 'rgba'), shadowBlur: 8,
+        borderRadius: 6, borderColor: 'var(--color-bg-card)', borderWidth: 3,
+        shadowColor: c2, shadowBlur: 8,
       },
     }
   })
@@ -389,24 +389,24 @@ const typePieOption = computed(() => {
     animation: true, animationDuration: 1000, animationEasing: 'cubicOut',
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderColor: 'rgba(30,120,208,0.15)',
-      textStyle: { color: '#334155', fontSize: 12 },
-      extraCssText: 'box-shadow:0 8px 24px rgba(30,64,175,0.12);border-radius:10px;',
+      backgroundColor: 'var(--chart-tooltip-bg)',
+      borderColor: 'var(--chart-tooltip-border)',
+      textStyle: { color: 'var(--chart-text)', fontSize: 12 },
+      extraCssText: 'box-shadow:0 8px 24px color-mix(in srgb, var(--color-primary) 12%, transparent);border-radius:10px;',
       formatter: '{b}<br/>{c}件 ({d}%)',
     },
     series: [
       {
         type: 'pie', radius: ['50%', '72%'], center: ['42%', '55%'],
         avoidLabelOverlap: false,
-        itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 3 },
+        itemStyle: { borderRadius: 6, borderColor: 'var(--color-bg-card)', borderWidth: 3 },
         label: {
           show: true, position: 'outside',
           formatter: p => [`{name|${p.name}}{val|${p.value}件}`, `{pct|${p.percent}%}`].join('\n'),
           rich: {
-            name: { fontSize: 12, color: '#1e3a68', fontWeight: 600, lineHeight: 16 },
-            val: { fontSize: 11, color: '#64748b', lineHeight: 15 },
-            pct: { fontSize: 11, color: '#0f2b5d', fontWeight: 700 },
+            name: { fontSize: 12, color: 'var(--color-text-primary)', fontWeight: 600, lineHeight: 16 },
+            val: { fontSize: 11, color: 'var(--color-text-secondary)', lineHeight: 15 },
+            pct: { fontSize: 11, color: 'var(--color-text-primary)', fontWeight: 700 },
           },
         },
         labelLine: { length: 10, length2: 14, lineStyle: { width: 1 } },
@@ -416,14 +416,14 @@ const typePieOption = computed(() => {
       {
         type: 'pie', radius: ['73%', '75%'], center: ['42%', '55%'],
         silent: true, label: { show: false }, labelLine: { show: false },
-        data: [{ value: 1, itemStyle: { color: 'rgba(30,120,208,0.06)', borderWidth: 0 } }],
+        data: [{ value: 1, itemStyle: { color: 'color-mix(in srgb, var(--color-primary) 6%, transparent)', borderWidth: 0 } }],
         z: 0,
       },
     ],
     graphic: [
-      { type: 'text', left: '36%', top: '46%', style: { text: String(total), fontSize: 28, fontWeight: 800, fill: '#0f2b5d', textAlign: 'center' } },
-      { type: 'text', left: '34%', top: '58%', style: { text: '本周异常', fontSize: 10, fill: '#94a3b8', textAlign: 'center' } },
-      { type: 'circle', shape: { cx: 0, cy: 0, r: 42 }, left: 'center', top: 'center', style: { fill: 'none', stroke: 'rgba(30,120,208,0.06)', lineWidth: 1 }, position: ['42%', '55%'] },
+      { type: 'text', left: '36%', top: '46%', style: { text: String(total), fontSize: 28, fontWeight: 800, fill: 'var(--color-text-primary)', textAlign: 'center' } },
+      { type: 'text', left: '34%', top: '58%', style: { text: '本周异常', fontSize: 10, fill: 'var(--chart-text-muted)', textAlign: 'center' } },
+      { type: 'circle', shape: { cx: 0, cy: 0, r: 42 }, left: 'center', top: 'center', style: { fill: 'none', stroke: 'color-mix(in srgb, var(--color-primary) 6%, transparent)', lineWidth: 1 }, position: ['42%', '55%'] },
     ],
   }
 })
@@ -436,16 +436,16 @@ const workshopBarOption = computed(() => {
   return {
     animation: true, animationDuration: 1000, animationDelay: idx => idx * 80,
     tooltip: {
-      trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(30,120,208,0.04)' } },
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderColor: 'rgba(30,120,208,0.15)',
-      textStyle: { color: '#334155', fontSize: 12 },
-      extraCssText: 'box-shadow:0 8px 24px rgba(30,64,175,0.12);border-radius:10px;',
+      trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: 'color-mix(in srgb, var(--color-primary) 4%, transparent)' } },
+      backgroundColor: 'var(--chart-tooltip-bg)',
+      borderColor: 'var(--chart-tooltip-border)',
+      textStyle: { color: 'var(--chart-text)', fontSize: 12 },
+      extraCssText: 'box-shadow:0 8px 24px color-mix(in srgb, var(--color-primary) 12%, transparent);border-radius:10px;',
       formatter: (params) => {
         const d = params[0]
         const w = ws[d.dataIndex]
-        return `<div style="font-weight:600;color:#0f2b5d;margin-bottom:4px">${names[d.dataIndex]}</div>
-          <div>关闭 <strong style="color:#059669">${w.actual}件</strong>，达成率 <strong style="color:#059669">${w.rateText}</strong></div>`
+        return `<div style="font-weight:600;color:var(--color-text-primary);margin-bottom:4px">${names[d.dataIndex]}</div>
+          <div>关闭 <strong style="color:var(--color-success)">${w.actual}件</strong>，达成率 <strong style="color:var(--color-success)">${w.rateText}</strong></div>`
       },
     },
     grid: { top: 8, right: 80, bottom: 5, left: 58 },
@@ -453,27 +453,27 @@ const workshopBarOption = computed(() => {
     yAxis: {
       type: 'category', data: names,
       axisLine: { show: false }, axisTick: { show: false },
-      axisLabel: { color: '#334155', fontSize: 11, fontWeight: 500 },
+      axisLabel: { color: 'var(--chart-text)', fontSize: 11, fontWeight: 500 },
     },
     series: [
       // 灰色背景轨
-      { type: 'bar', data: ws.map(() => maxVal - 5), barWidth: 14, itemStyle: { color: '#e2e8f0', borderRadius: 8 }, silent: true, z: 1, barGap: '-100%' },
+      { type: 'bar', data: ws.map(() => maxVal - 5), barWidth: 14, itemStyle: { color: 'var(--chart-empty)', borderRadius: 8 }, silent: true, z: 1, barGap: '-100%' },
       // 光晕层
-      { type: 'bar', data: ws.map(w => w.actual), barWidth: 14, itemStyle: { color: 'rgba(16,185,129,0.15)', borderRadius: 8 }, silent: true, z: 2, barGap: '-100%' },
+      { type: 'bar', data: ws.map(w => w.actual), barWidth: 14, itemStyle: { color: 'color-mix(in srgb, var(--color-success) 15%, transparent)', borderRadius: 8 }, silent: true, z: 2, barGap: '-100%' },
       // 主条
       {
         type: 'bar', data: ws.map(w => w.actual), barWidth: 10, z: 3,
         itemStyle: {
           borderRadius: 6,
           color: linearGradient(0, 0, 1, 0, [
-            { offset: 0, color: '#059669' }, { offset: 0.6, color: '#10b981' }, { offset: 1, color: '#34d399' }
+            { offset: 0, color: 'var(--color-success)' }, { offset: 0.6, color: 'var(--color-success)' }, { offset: 1, color: 'color-mix(in srgb, var(--color-success) 55%, #ffffff)' }
           ]),
-          shadowColor: 'rgba(16,185,129,0.2)', shadowBlur: 6, shadowOffsetX: 2,
+          shadowColor: 'color-mix(in srgb, var(--color-success) 20%, transparent)', shadowBlur: 6, shadowOffsetX: 2,
         },
         label: {
           show: true, position: 'right',
           formatter: (p) => `${ws[p.dataIndex].actual}件  ${ws[p.dataIndex].rateText}`,
-          color: '#059669', fontSize: 10.5, fontWeight: 700, fontFamily: 'SF Mono, Consolas, monospace',
+          color: 'var(--color-success)', fontSize: 10.5, fontWeight: 700, fontFamily: 'SF Mono, Consolas, monospace',
         },
       },
     ],
@@ -510,11 +510,11 @@ function openIssueDetail(it) {
   overflow: hidden;
   // 原型淡蓝多层渐变背景
   background:
-    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 85% 80%, rgba(14, 165, 233, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 100% 60% at 50% 100%, rgba(56, 189, 248, 0.05) 0%, transparent 70%),
-    linear-gradient(180deg, #ffffff 0%, #f0f7ff 25%, #e6f0fb 50%, #dceaf8 75%, #d4e5f5 100%);
-  color: #1e3a68;
+    radial-gradient(ellipse 80% 50% at 20% 10%, color-mix(in srgb, var(--color-primary) 8%, transparent) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 85% 80%, color-mix(in srgb, var(--color-accent) 6%, transparent) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 60% at 50% 100%, color-mix(in srgb, var(--color-primary-light) 5%, transparent) 0%, transparent 70%),
+    var(--bg-page-gradient);
+  color: var(--color-text-primary);
 
   // 网格纹
   &::before {
@@ -522,8 +522,8 @@ function openIssueDetail(it) {
     position: absolute;
     inset: 0;
     background-image:
-      linear-gradient(rgba(30, 120, 208, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(30, 120, 208, 0.03) 1px, transparent 1px);
+      linear-gradient(color-mix(in srgb, var(--color-primary) 3%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 3%, transparent) 1px, transparent 1px);
     background-size: 48px 48px;
     pointer-events: none;
     z-index: 0;
@@ -535,8 +535,8 @@ function openIssueDetail(it) {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(circle 300px at 0% 0%, rgba(59, 130, 246, 0.06) 0%, transparent 70%),
-      radial-gradient(circle 250px at 100% 0%, rgba(14, 165, 233, 0.05) 0%, transparent 70%);
+      radial-gradient(circle 300px at 0% 0%, color-mix(in srgb, var(--color-primary) 6%, transparent) 0%, transparent 70%),
+      radial-gradient(circle 250px at 100% 0%, color-mix(in srgb, var(--color-accent) 5%, transparent) 0%, transparent 70%);
     pointer-events: none;
     z-index: 0;
   }
@@ -553,7 +553,7 @@ function openIssueDetail(it) {
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  color: #64748b;
+  color: var(--color-text-secondary);
 }
 
 // ============ 顶部标题 ============
@@ -575,9 +575,9 @@ function openIssueDetail(it) {
 .q-title-deco {
   width: 5px;
   height: 38px;
-  background: linear-gradient(180deg, #1e78d0 0%, #0ea5e9 50%, #38bdf8 100%);
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-accent) 50%, var(--color-primary-light) 100%);
   border-radius: 3px;
-  box-shadow: 0 0 12px rgba(30, 120, 208, 0.4);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 40%, transparent);
   position: relative;
 
   &::after {
@@ -588,7 +588,7 @@ function openIssueDetail(it) {
     transform: translateY(-50%);
     width: 2px;
     height: 20px;
-    background: rgba(30, 120, 208, 0.3);
+    background: color-mix(in srgb, var(--color-primary) 30%, transparent);
     border-radius: 1px;
   }
 }
@@ -598,7 +598,7 @@ function openIssueDetail(it) {
   font-size: 26px;
   font-weight: 800;
   letter-spacing: 1px;
-  background: linear-gradient(135deg, #0c2d6b 0%, #1e40af 35%, #1d4ed8 65%, #2563eb 100%);
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary-dark) 35%, var(--color-primary) 65%, var(--color-primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -607,7 +607,7 @@ function openIssueDetail(it) {
 
 .q-title-sub {
   font-size: 11px;
-  color: #64748b;
+  color: var(--color-text-secondary);
   margin-top: 2px;
   letter-spacing: 0.5px;
 }
@@ -618,7 +618,7 @@ function openIssueDetail(it) {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, rgba(30, 120, 208, 0.2) 20%, rgba(14, 165, 233, 0.15) 80%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--color-primary) 20%, transparent) 20%, color-mix(in srgb, var(--color-accent) 15%, transparent) 80%, transparent 100%);
 }
 
 .q-header-right {
@@ -633,19 +633,19 @@ function openIssueDetail(it) {
 
 .q-cycle-label {
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--chart-text-muted);
 }
 
 .q-cycle-value {
   font-size: 13px;
-  color: #1e3a8a;
+  color: var(--color-primary-dark);
   font-weight: 600;
   margin-top: 1px;
 }
 
 .q-cycle-update {
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--chart-text-muted);
   margin-top: 1px;
 }
 
@@ -671,26 +671,26 @@ function openIssueDetail(it) {
 }
 
 .q-btn-primary {
-  background: linear-gradient(135deg, #1e78d0 0%, #2563eb 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary) 100%);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(30, 120, 208, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 25%, transparent), inset 0 1px 0 color-mix(in srgb, #ffffff 20%, transparent);
 
   &:hover {
-    box-shadow: 0 6px 20px rgba(30, 120, 208, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--color-primary) 35%, transparent), inset 0 1px 0 color-mix(in srgb, #ffffff 25%, transparent);
     transform: translateY(-1px);
   }
 }
 
 .q-btn-secondary {
   background: #fff;
-  color: #475569;
-  border: 1px solid rgba(30, 120, 208, 0.2);
-  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.06);
+  color: var(--color-text-secondary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 6%, transparent);
 
   &:hover {
-    border-color: rgba(30, 120, 208, 0.4);
-    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.1);
-    color: #1e40af;
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary-dark);
   }
 }
 
@@ -703,13 +703,13 @@ function openIssueDetail(it) {
 
 .q-kpi-row .q-kpi {
   height: 100%;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-  border-color: rgba(30, 120, 208, 0.12);
+  background: var(--color-bg-card);
+  border-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
   border-radius: 12px;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(30, 64, 175, 0.1), 0 2px 6px rgba(30, 64, 175, 0.06);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 10%, transparent), 0 2px 6px color-mix(in srgb, var(--color-primary) 6%, transparent);
   }
 }
 
@@ -743,13 +743,13 @@ function openIssueDetail(it) {
 // 面板容器视觉沿用页面淡蓝风格，结构由 ScreenCard 提供
 .q-main-grid .q-panel {
   padding: 12px 16px 10px;
-  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
-  border-color: rgba(30, 120, 208, 0.1);
+  background: var(--color-bg-card);
+  border-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(30, 64, 175, 0.05), 0 1px 3px rgba(30, 64, 175, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow-card);
 
   &:hover {
-    box-shadow: 0 8px 24px rgba(30, 64, 175, 0.08), 0 2px 6px rgba(30, 64, 175, 0.04);
+    box-shadow: var(--shadow-hover);
   }
 
   :deep(.screen-card__header) {
@@ -762,18 +762,18 @@ function openIssueDetail(it) {
 }
 
 .q-main-grid .q-panel-highlight {
-  border-color: rgba(16, 185, 129, 0.25);
+  border-color: color-mix(in srgb, var(--color-success) 25%, transparent);
 }
 
 .q-panel-title {
   font-size: 15px;
   font-weight: 700;
-  color: #0f2b5d;
+  color: var(--color-text-primary);
 }
 
 .q-panel-sub {
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--chart-text-muted);
   font-weight: 400;
 }
 
@@ -789,7 +789,7 @@ function openIssueDetail(it) {
   display: flex;
   gap: 14px;
   font-size: 11px;
-  color: #64748b;
+  color: var(--color-text-secondary);
   margin-top: 4px;
 }
 
@@ -805,12 +805,12 @@ function openIssueDetail(it) {
   border-radius: 2px;
 
   &.q-ldot-gray {
-    background: #94a3b8;
+    background: var(--chart-text-muted);
   }
 
   &.q-ldot-green {
-    background: linear-gradient(180deg, #34d399, #059669);
-    box-shadow: 0 1px 3px rgba(5, 150, 105, 0.3);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-success) 55%, #ffffff), var(--color-success));
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--color-success) 30%, transparent);
   }
 }
 
@@ -831,11 +831,11 @@ function openIssueDetail(it) {
   }
 
   &.q-lline-red {
-    background: #ef4444;
+    background: var(--color-danger);
 
     &::after {
-      background: #ef4444;
-      box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+      background: var(--color-danger);
+      box-shadow: 0 0 6px color-mix(in srgb, var(--color-danger) 50%, transparent);
     }
   }
 }
@@ -858,11 +858,11 @@ function openIssueDetail(it) {
     gap: 8px;
     font-size: 12px;
     line-height: 1.5;
-    color: #475569;
+    color: var(--color-text-secondary);
   }
 
   b {
-    color: #0f2b5d;
+    color: var(--color-text-primary);
     font-weight: 600;
   }
 }
@@ -887,8 +887,8 @@ function openIssueDetail(it) {
 
 // 进度面板高亮（点击查看明细时）
 .q-main-grid .q-panel-progress--hl {
-  border-color: rgba(30, 120, 208, 0.35);
-  box-shadow: 0 0 0 2px rgba(30, 120, 208, 0.1), 0 8px 24px rgba(30, 64, 175, 0.12);
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 10%, transparent), 0 8px 24px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 // 入场动画（作用于组件外层容器）

@@ -207,7 +207,7 @@ import { parseQcData } from '@/utils/parseQc'
 // ============ 数据状态 ============
 const qc = reactive({})
 const detailVisible = ref(false)
-const leaveColors = { A1: '#5470c6', A2: '#ee6666', A3: '#91cc75', M5: '#fac858', M6: '#73c0de' }
+const leaveColors = { A1: 'var(--color-primary)', A2: 'var(--color-danger)', A3: 'var(--color-success)', M5: 'var(--color-warning)', M6: 'var(--color-accent)' }
 
 // ============ 辅助函数 ============
 const formatGap = (v) => {
@@ -296,7 +296,7 @@ const gaugeOpt = computed(() => {
           ]),
         },
       },
-      axisLine: { lineStyle: { width: 14, color: [[1, 'rgba(148,163,184,0.2)']] } },
+      axisLine: { lineStyle: { width: 14, color: [[1, 'color-mix(in srgb, var(--color-text-muted) 20%, transparent)']] } },
       pointer: { length: '60%', width: 5, itemStyle: { color: 'var(--color-primary)' } },
       axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false },
       anchor: { show: false }, title: { show: false },
@@ -346,7 +346,7 @@ const barOpt = computed(() => {
 
 const pieOpt = computed(() => {
   const shops = qc.shops || []
-  const palette = ['#5470c6', '#ee6666', '#91cc75', '#fac858', '#73c0de']
+  const palette = ['var(--color-primary)', 'var(--color-danger)', 'var(--color-success)', 'var(--color-warning)', 'var(--color-accent)']
   return {
     tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
     legend: { bottom: 0, textStyle: { color: 'var(--text-sub)', fontSize: 11 }, itemWidth: 10, itemHeight: 10 },
@@ -398,7 +398,7 @@ const leaveOpt = computed(() => {
       label: { show: false }, labelLine: { show: false },
       data: dist.map(d => ({
         name: d.name + '车间', value: d.value,
-        itemStyle: { color: leaveColors[d.name] || '#94a3b8' },
+        itemStyle: { color: leaveColors[d.name] || 'var(--chart-text-muted)' },
       })),
     }],
   }
@@ -439,9 +439,9 @@ onMounted(async () => {
   font-size: $font-sm;
   font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 25%, transparent);
   transition: all .2s;
-  &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); }
+  &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 35%, transparent); }
 }
 
 .qc-summary { flex-shrink: 0; }
@@ -456,13 +456,13 @@ onMounted(async () => {
   margin-top: 8px;
   height: 4px;
   width: 100%;
-  background: rgba(148, 163, 184, 0.2);
+  background: color-mix(in srgb, var(--color-text-muted) 20%, transparent);
   border-radius: 2px;
   overflow: hidden;
 }
 .kpi-progress__fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-warning), #fbbf24);
+  background: linear-gradient(90deg, var(--color-warning), color-mix(in srgb, var(--color-warning) 55%, #ffffff));
   border-radius: 2px;
   transition: width 1s ease;
 }
