@@ -1,5 +1,5 @@
 <template>
-  <div class="home-stage">
+  <div class="home-stage" :class="{ 'no-decor': !decorEnabled }">
     <!-- 开场 -->
     <div class="intro" :class="{ hide: introHidden }">
       <div class="intro-logo">武汉基地</div>
@@ -12,7 +12,7 @@
     <div class="bg" aria-hidden="true">
       <div class="bg-aurora"></div>
       <div class="bg-grid"></div>
-      <canvas ref="partsCanvas" class="parts-canvas"></canvas>
+      <canvas v-if="partsEnabled" ref="partsCanvas" class="parts-canvas"></canvas>
       <div class="beam b1"></div>
       <div class="beam b2"></div>
       <div class="beam b3"></div>
@@ -189,6 +189,10 @@ let state = 'hold', holdStart = 0, transStart = 0
 let started = false, transMs = TRANS
 let Rpx = 594, tfCur = 0.4, cxo = 0, mxT = 0, myT = 0
 let rafId = null
+// 性能优化③配套缓存：每帧 DOM 写入前先比对，值不变不写（静止态零重排重绘）
+const slotCache = new WeakMap()
+const tiltCache = { tf: '', cyo: '', tx: '' }
+let lastFront = -1
 
 const introHidden = ref(false)
 const clockTime = ref('--:--:--')
@@ -325,6 +329,27 @@ let cvCtx = null, W = 0, H = 0, parts = [], SPRITES = {}, rafParts = true
 // 粒子色板（"r,g,b" 三元组）与连线色，均在 buildSprites 时按当前主题解析
 let SPRITE_COLORS = []
 let LINK_RGB = '90,160,255'
+// 性能参数：30fps 节流 + 粒子数随画布面积自适应（大屏 1920×1080 约封顶 80，小屏自动减少）
+const PART_FRAME_MS = 1000 / 30
+let lastPartsT = 0
+const REDUCED_MOTION = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/* 粒子动画开关（性能测试用）：设为 false 可完全关闭 canvas 粒子动画 */
+const PARTS_ENABLED = false
+const partsEnabled = ref(PARTS_ENABLED)
+/* 背景装饰动画开关（性能测试用）：关闭极光漂移/网格滚动/噪点/扫光/光晕呼吸等 CSS 动画 */
+const DECOR_ENABLED = false
+const decorEnabled = ref(DECOR_ENABLED)
+
+function targetPartCount() {
+  const area = (W || 1920) * (H || 1080)
+  return REDUCED_MOTION ? 0 : Math.max(30, Math.min(80, Math.round(area / 26000)))
+}
+function syncPartCount() {
+  const n = targetPartCount()
+  while (parts.length < n) parts.push(new P())
+  while (parts.length > n) parts.pop()
+}
 
 function hexToRgbTriplet(hex) {
   const h = hex.replace('#', '')
@@ -339,6 +364,7 @@ function resizeCanvas() {
   // 以画布元素实际渲染尺寸为准（缩放容器内 innerWidth 不等于容器设计尺寸）
   W = cv.width = cv.clientWidth || innerWidth
   H = cv.height = cv.clientHeight || innerHeight
+  syncPartCount()
 }
 function buildSprites() {
   // 从当前主题读取四个强调色作为粒子色板
@@ -387,9 +413,12 @@ class P {
     cvCtx.globalAlpha = 1
   }
 }
-function loopParts() {
+function loopParts(ts) {
   if (!rafParts || !cvCtx) return
   requestAnimationFrame(loopParts)
+  // 性能优化①：渲染节流 30fps（粒子运动缓慢，视觉几乎无差异，GPU/ CPU 减半）
+  if (ts - lastPartsT < PART_FRAME_MS - 1) return
+  lastPartsT = ts
   cvCtx.clearRect(0, 0, W, H)
   for (let i = 0; i < parts.length; i++) {
     for (let j = i + 1; j < parts.length; j++) {
@@ -398,7 +427,7 @@ function loopParts() {
       const dy = parts[i].y - parts[j].y
       const d2 = dx * dx + dy * dy
       if (d2 < 12000) {
-        cvCtx.strokeStyle = `rgba(${LINK_RGB},${0.12 * (1 - d2 / 12000)})`
+        cvCtx.strokeStyle = `rgba(${LINK_RGB},${(0.12 * (1 - d2 / 12000)).toFixed(3)})`
         cvCtx.lineWidth = 1
         cvCtx.beginPath()
         cvCtx.moveTo(parts[i].x, parts[i].y)
@@ -433,7 +462,7 @@ function frame() {
       // 自动轮播到达首页卡片时不跳（它就是首页自己）
     }
   }
-  // 鼠标视差
+  // 鼠标视差（性能优化③：值未变化时不写 DOM，静止态零样式计算）
   tfCur += ((0.4 - myT * 0.10) - tfCur) * 0.05
   cxo += ((mxT * 36) - cxo) * 0.05
   const wrap = ringWrapRef.value
@@ -441,11 +470,21 @@ function frame() {
   const h = wrap ? wrap.clientHeight : 600
   const cyo = Math.round(h * 0.44 - h * 0.5)
   if (tilt) {
-    tilt.style.setProperty('--tf', tfCur.toFixed(3))
-    tilt.style.setProperty('--cyo', cyo + 'px')
-    tilt.style.transform = `translateX(${cxo.toFixed(1)}px)`
+    const tfStr = tfCur.toFixed(3)
+    if (tiltCache.tf !== tfStr) { tilt.style.setProperty('--tf', tfStr); tiltCache.tf = tfStr }
+    if (tiltCache.cyo !== cyo) { tilt.style.setProperty('--cyo', cyo + 'px'); tiltCache.cyo = cyo }
+    const txStr = cxo.toFixed(1)
+    if (tiltCache.tx !== txStr) { tilt.style.transform = `translateX(${txStr}px)`; tiltCache.tx = txStr }
   }
   const els = slotEls.value
+  // 前置高亮仅在 frontIdx 变化时更新一次（原先每帧 classList.toggle）
+  if (frontIdx !== lastFront) {
+    els.forEach((el, i) => {
+      const card = el?.querySelector('.card')
+      if (card) card.classList.toggle('spot', i === frontIdx)
+    })
+    lastFront = frontIdx
+  }
   els.forEach((el, i) => {
     if (!el) return
     const a = i * STEP + rot
@@ -457,14 +496,18 @@ function frame() {
     const sy = c * Rpx * tfCur
     const wave = Math.sin(r * 2 + 1) * 9
     const scale = (0.5 + 0.5 * depth) * (1 + Math.max(0, depth - 0.85) * 0.9)
-    el.style.transform =
+    const tStr =
       `translate(-50%,-50%) translate(${sx.toFixed(1)}px,${(sy + wave + cyo).toFixed(1)}px) scale(${scale.toFixed(3)})`
-    el.style.zIndex = Math.round(depth * 100)
-    el.style.opacity = (0.14 + 0.86 * depth).toFixed(3)
-    el.style.filter = `blur(${((1 - depth) * 3).toFixed(1)}px)`
-    // 高亮态
-    const card = el.querySelector('.card')
-    if (card) card.classList.toggle('spot', i === frontIdx)
+    const oStr = (0.14 + 0.86 * depth).toFixed(3)
+    // blur 按 1px 一档量化（0~3px），旋转期间 filter 重绘次数减半
+    const fStr = `blur(${Math.min(3, Math.round((1 - depth) * 3))}px)`
+    const z = Math.round(depth * 100)
+    let ca = slotCache.get(el)
+    if (!ca) { ca = {}; slotCache.set(el, ca) }
+    if (ca.t !== tStr) { el.style.transform = tStr; ca.t = tStr }
+    if (ca.o !== oStr) { el.style.opacity = oStr; ca.o = oStr }
+    if (ca.f !== fStr) { el.style.filter = fStr; ca.f = fStr }
+    if (ca.z !== z) { el.style.zIndex = z; ca.z = z }
   })
 }
 
@@ -478,6 +521,7 @@ function onMouseMove(e) {
 }
 
 function onThemeChange() {
+  if (!partsEnabled.value) return
   buildSprites()
   // 已有粒子迁移到新色板，避免引用失效的精灵
   parts.forEach(p => { p.col = SPRITE_COLORS[Math.floor(Math.random() * SPRITE_COLORS.length)] })
@@ -486,11 +530,13 @@ function onThemeChange() {
 onMounted(() => {
   tickClock()
   clockTimer = setInterval(tickClock, 1000)
-  buildSprites()
-  resizeCanvas()
-  cvCtx = partsCanvas.value.getContext('2d')
-  for (let i = 0; i < 80; i++) parts.push(new P())
-  loopParts()
+  if (partsEnabled.value) {
+    buildSprites()
+    resizeCanvas()
+    cvCtx = partsCanvas.value.getContext('2d')
+    syncPartCount()
+    if (!REDUCED_MOTION) requestAnimationFrame(loopParts)
+  }
   layoutRing()
   addEventListener('resize', onResize)
   addEventListener('keydown', onKey)
@@ -563,12 +609,16 @@ onBeforeUnmount(() => {
     radial-gradient(50% 45% at 85% 15%, color-mix(in srgb, var(--violet) 14%, transparent), transparent 60%),
     radial-gradient(55% 50% at 60% 90%, color-mix(in srgb, var(--pink) 10%, transparent), transparent 60%);
   filter: blur(30px);
+  /* 提示常驻合成层：blur 结果被缓存为纹理，动画期间仅做合成，不重复光栅化 */
+  will-change: transform;
   animation: auroraDrift 22s ease-in-out infinite alternate;
 }
+/* 关键：只做 translate 漂移，不参与 scale —— scale 会触发全屏 blur 层逐帧重新光栅化，
+   是首页最大的 GPU 消耗点；纯位移下模糊纹理仅计算一次，之后每帧只做合成 */
 @keyframes auroraDrift {
-  0%   { transform: translate3d(0,0,0) scale(1); }
-  50%  { transform: translate3d(2%,-2%,0) scale(1.06); }
-  100% { transform: translate3d(-2%,2%,0) scale(1.03); }
+  0%   { transform: translate3d(0,0,0); }
+  50%  { transform: translate3d(2%,-2%,0); }
+  100% { transform: translate3d(-2%,2%,0); }
 }
 .bg-grid {
   position: absolute;
@@ -579,6 +629,7 @@ onBeforeUnmount(() => {
   background-size: 64px 64px;
   mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 40%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 40%, transparent 100%);
+  will-change: transform;
   animation: gridScroll 30s linear infinite;
 }
 @keyframes gridScroll { to { transform: translate3d(64px, 64px, 0); } }
@@ -621,6 +672,7 @@ onBeforeUnmount(() => {
   pointer-events: none;
   opacity: .05;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+  will-change: transform;
   animation: grain .5s steps(4) infinite;
 }
 @keyframes grain {
@@ -947,10 +999,36 @@ h1 {
     inset 0 0 30px color-mix(in srgb, var(--ac) 10%, transparent) !important;
 }
 .card.spot .card-name {
-  animation: namePulse 1.8s ease infinite;
+  /* 原 namePulse 文字光晕呼吸动画（text-shadow 每帧重绘文字区域）改为静态加强光晕 */
+  text-shadow:
+    0 0 14px color-mix(in srgb, var(--ac, var(--cyan)) 50%, transparent),
+    0 0 26px color-mix(in srgb, var(--ac, var(--cyan)) 30%, transparent);
 }
-@keyframes namePulse {
-  50% { text-shadow: 0 0 22px var(--ac), 0 0 40px var(--ac); }
+
+/* ============ 低性能/无障碍：减少动态效果 ============ */
+/* 系统开启「减少动态效果」时停用全部装饰性动画（粒子已在 JS 中停用） */
+@media (prefers-reduced-motion: reduce) {
+  .bg-aurora,
+  .bg-grid,
+  .film-grain,
+  .beam,
+  .orbit-halo,
+  .logo-ring.r2 {
+    animation: none !important;
+  }
+}
+
+/* 性能开关：DECOR_ENABLED=false 时加 no-decor，停用全部背景装饰动画（本地 A/B 对照 GPU 占用） */
+.home-stage.no-decor {
+  .bg-aurora,
+  .bg-grid,
+  .film-grain,
+  .beam,
+  .orbit-halo,
+  .logo-ring.r2 {
+    animation: none !important;
+  }
+  .film-grain { opacity: 0; }
 }
 
 /* ============ 底栏 ============ */
