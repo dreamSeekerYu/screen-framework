@@ -60,6 +60,7 @@ import StatCardRow from '@/components/common/StatCardRow.vue'
 import SummaryBar from '@/components/common/SummaryBar.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import { loadSheet, loadData } from '@/utils/dataLoader.js'
+import { chartC, axisStyle, valueAxisStyle, tooltipStyle, legendStyle, gridStyle, barGradient, areaGradient } from '@/utils/chartTheme.js'
 
 // ============ 数据 ============
 const processList = ref([]) // 工序列表（来自 过程能力达标率.json）
@@ -306,13 +307,9 @@ const trendOption = computed(() => {
     //     color:''
     //   }
     // },
-    tooltip: {
+    tooltip: tooltipStyle({
       trigger: 'axis',
-      axisPointer: { type: 'cross', crossStyle: { color: 'var(--chart-text-muted)' } },
-      backgroundColor: 'var(--chart-tooltip-bg)',
-      borderColor: 'var(--chart-tooltip-border)',
-      textStyle: { color: 'var(--chart-tooltip-text)' },
-      padding: 12,
+      axisPointer: { type: 'cross', crossStyle: { color: chartC.textMuted } },
       formatter: (params) => {
         const idx = params[0].dataIndex
         const wk = weeks[idx]
@@ -329,32 +326,23 @@ const trendOption = computed(() => {
         }
         return html
       },
-    },
-    legend: {
-      data: ['达标率', '达标项目数'],
-      bottom: 0,
-      textStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 12 },
-      itemWidth: 14, itemHeight: 8, itemGap: 20,
-    },
-    grid: { left: 50, right: 55, top: 35, bottom: 40, containLabel: true },
+    }),
+    legend: legendStyle({ data: ['达标率', '达标项目数'], bottom: 0 }),
+    grid: gridStyle({ left: 45, right: 55, bottom: 40 }),
     xAxis: {
       type: 'category', data: weeks, boundaryGap: true,
-      axisLine: { lineStyle: { color: 'var(--color-border,#e2e8f0)' } },
-      axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
-      axisTick: { show: false },
+      ...axisStyle(),
     },
     yAxis: [
       {
         type: 'value', name: '达标率(%)', min: rMin, max: rMax,
-        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, formatter: '{value}%' },
-        splitLine: { lineStyle: { color: 'var(--color-border-light,#f1f5f9)', type: 'dashed' } },
-        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, padding: [0,0,0,-20] },
+        ...valueAxisStyle({ axisLabel: { color: chartC.textMuted, fontSize: 11, formatter: '{value}%' } }),
+        nameTextStyle: { color: chartC.textMuted, fontSize: 11, padding: [0,0,0,-20] },
       },
       {
         type: 'value', name: '项目数',
-        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
-        splitLine: { show: false },
-        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, padding: [0,-20,0,0] },
+        ...valueAxisStyle({ splitLine: { show: false } }),
+        nameTextStyle: { color: chartC.textMuted, fontSize: 11, padding: [0,-20,0,0] },
       },
     ],
     series: [
@@ -362,34 +350,24 @@ const trendOption = computed(() => {
         name: '达标率', type: 'line', yAxisIndex: 0, data: rates,
         smooth: true, connectNulls: true,
         symbol: 'circle', symbolSize: 7,
-        lineStyle: { width: 3, color: 'var(--color-success)' },
-        itemStyle: { color: 'var(--color-success)', borderWidth: 2, borderColor: 'var(--color-bg-card)' },
-        areaStyle: {
-          color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
-            { offset: 0, color: 'color-mix(in srgb, var(--color-success) 25%, transparent)' },
-            { offset: 1, color: 'color-mix(in srgb, var(--color-success) 2%, transparent)' },
-          ]},
-        },
+        lineStyle: { width: 2.5, color: chartC.success },
+        itemStyle: { color: chartC.success, borderWidth: 2, borderColor: chartC.cardBg },
+        areaStyle: { color: areaGradient(chartC.success, 25, 2) },
         label: {
-          show: true, position: 'top', color: 'var(--color-success)', fontSize: 10, fontWeight: 'bold',
+          show: true, position: 'top', color: chartC.success, fontSize: 10, fontWeight: 'bold',
           // 100% 满值标签隐藏，避免与目标线/相邻标签重叠拥挤
           formatter: p => (p.value != null && p.value < 100) ? p.value.toFixed(2) + '%' : '',
         },
         markLine: {
           silent: true,
           symbol: 'none',
-          lineStyle: { color: 'var(--color-danger)', type: 'dashed', width: 1 },
-          data: [{ yAxis: 100, label: { formatter: '目标100%', color: 'var(--color-danger)', fontSize: 10, position: 'end' } }],
+          lineStyle: { color: chartC.danger, type: 'dashed', width: 1 },
+          data: [{ yAxis: 100, label: { formatter: '目标100%', color: chartC.danger, fontSize: 10, position: 'end' } }],
         },
       },
       {
         name: '达标项目数', type: 'bar', yAxisIndex: 1, data: pass, barWidth: 18,
-        itemStyle: {
-          color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
-            { offset:0, color:'var(--color-primary-light)' }, { offset:1, color:'var(--color-primary)' }
-          ]},
-          borderRadius: [4,4,0,0],
-        },
+        itemStyle: { color: barGradient(chartC.primary), borderRadius: [3,3,0,0] },
       },
     ],
   }
@@ -404,12 +382,9 @@ const processBarOption = computed(() => {
   const rateArr = list.map(r => r.rate)
   const isNoData = list.map(r => r.status === '无数据')
   return {
-    tooltip: {
+    tooltip: tooltipStyle({
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      backgroundColor: 'var(--chart-tooltip-bg)',
-      borderColor: 'var(--chart-tooltip-border)',
-      textStyle: { color: 'var(--chart-tooltip-text)', fontSize: 12 },
       formatter: (params) => {
         const idx = params[0].dataIndex
         const d = list[idx]
@@ -433,35 +408,27 @@ const processBarOption = computed(() => {
         }
         return html
       },
-    },
-    legend: {
-      data: ['达标项目','未达标项目','达成率'],
-      bottom: 0,
-      textStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 12 },
-      itemWidth: 14, itemHeight: 8, itemGap: 18,
-    },
-    grid: { left: 45, right: 55, top: 35, bottom: 50, containLabel: true },
+    }),
+    legend: legendStyle({ data: ['达标项目','未达标项目','达成率'], bottom: 0 }),
+    grid: gridStyle({ left: 45, right: 55, bottom: 50 }),
     xAxis: {
       type: 'category', data: categories,
-      axisLine: { lineStyle: { color: 'var(--color-border,#e2e8f0)' } },
+      ...axisStyle(),
       axisLabel: {
-        color: 'var(--color-text-secondary,#64748b)', fontSize: 11, interval: 0,
+        ...axisStyle().axisLabel, interval: 0,
         formatter: v => v.replace('/', '\n'),
       },
-      axisTick: { show: false },
     },
     yAxis: [
       {
         type: 'value', name: '项目数',
-        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
-        splitLine: { lineStyle: { color: 'var(--color-border-light,#f1f5f9)', type: 'dashed' } },
-        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11 },
+        ...valueAxisStyle(),
+        nameTextStyle: { color: chartC.textMuted, fontSize: 11 },
       },
       {
         type: 'value', name: '达成率(%)', min: 0, max: 100,
-        axisLabel: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, formatter: '{value}%' },
-        splitLine: { show: false },
-        nameTextStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 11, padding: [0,-20,0,0] },
+        ...valueAxisStyle({ splitLine: { show: false }, axisLabel: { color: chartC.textMuted, fontSize: 11, formatter: '{value}%' } }),
+        nameTextStyle: { color: chartC.textMuted, fontSize: 11, padding: [0,-20,0,0] },
       },
     ],
     series: [
@@ -469,9 +436,7 @@ const processBarOption = computed(() => {
         name: '达标项目', type: 'bar', stack: 'total',
         data: passArr.map((v, i) => ({
           value: v,
-          itemStyle: { color: isNoData[i] ? 'var(--chart-empty)' : { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
-            { offset:0, color:'color-mix(in srgb, var(--color-success) 60%, #ffffff)' },{ offset:1, color:'var(--color-success)' }
-          ]}},
+          itemStyle: { color: isNoData[i] ? chartC.empty : barGradient(chartC.success) },
         })),
         barWidth: 26,
         label: {
@@ -483,12 +448,9 @@ const processBarOption = computed(() => {
         name: '未达标项目', type: 'bar', stack: 'total',
         data: failArr.map((v, i) => ({
           value: v,
-          itemStyle: { color: isNoData[i] ? 'var(--chart-empty)' : { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
-            { offset:0, color:'color-mix(in srgb, var(--color-warning) 60%, #ffffff)' },{ offset:1, color:'var(--color-warning)' }
-          ]}},
+          itemStyle: { color: isNoData[i] ? chartC.empty : barGradient(chartC.warning), borderRadius: [3,3,0,0] },
         })),
         barWidth: 26,
-        itemStyle: { borderRadius: [4,4,0,0] },
         label: {
           show:true, position:'inside', color:'#fff', fontSize:10, fontWeight:'bold',
           formatter: p => p.value > 0 ? p.value : '',
@@ -498,11 +460,11 @@ const processBarOption = computed(() => {
         name: '达成率', type: 'line', yAxisIndex: 1,
         data: rateArr,
         smooth: true, symbol: 'circle', symbolSize: 7,
-        lineStyle: { width: 2.5, color: 'var(--color-primary)' },
-        itemStyle: { color: 'var(--color-primary)', borderWidth: 2, borderColor:'var(--color-bg-card)' },
+        lineStyle: { width: 2.5, color: chartC.primary },
+        itemStyle: { color: chartC.primary, borderWidth: 2, borderColor: chartC.cardBg },
         connectNulls: false,
         label: {
-          show:true, position:'top', color:'var(--color-primary-dark)', fontSize:10, fontWeight:'bold',
+          show:true, position:'top', color: chartC.primary, fontSize:10, fontWeight:'bold',
           // 100% 满值标签隐藏，避免顶部拥挤重叠
           formatter: p => (p.value !== null && p.value !== undefined && p.value < 100) ? p.value?.toFixed(2) + '%' : '',
         },

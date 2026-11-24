@@ -167,6 +167,7 @@ import QualityIssueDetail from '@/components/common/QualityIssueDetail.vue'
 import { parseQualityCloseRate } from '@/utils/parseQualityCloseRate.js'
 import { parseQualityIssues } from '@/utils/parseQualityIssue.js'
 import { getCssVar } from '@/utils/color.js'
+import { chartC, tooltipStyle } from '@/utils/chartTheme.js'
 
 const loading = ref(true)
 const error = ref('')
@@ -278,23 +279,17 @@ const trendChartOption = computed(() => {
   if (!closeData.value) return {}
   const weeks = closeData.value.trendWeeks
   const COLOR = {
-    gray: 'var(--chart-axis-line)', grayDark: 'var(--chart-text-muted)',
-    green: 'var(--color-success)', greenDark: 'var(--color-success)', greenLight: 'color-mix(in srgb, var(--color-success) 55%, #ffffff)',
-    red: 'var(--color-danger)', text: 'var(--chart-text)', textLight: 'var(--color-text-secondary)', axis: 'var(--chart-axis-line)', split: 'var(--chart-empty)',
+    gray: chartC.axisLine, grayDark: chartC.textMuted,
+    green: chartC.success, greenDark: chartC.success, greenLight: 'color-mix(in srgb, var(--color-success) 55%, #ffffff)',
+    red: chartC.danger, text: chartC.text, textLight: 'var(--color-text-secondary)', axis: chartC.axisLine, split: chartC.splitLine,
   }
   return {
     animation: true,
     animationDuration: 1200,
     animationEasing: 'cubicOut',
-    tooltip: {
+    tooltip: tooltipStyle({
       trigger: 'axis',
-      backgroundColor: 'var(--chart-tooltip-bg)',
-      borderColor: 'var(--chart-tooltip-border)',
-      borderWidth: 1,
-      padding: [10, 14],
-      textStyle: { color: COLOR.text, fontSize: 12 },
-      axisPointer: { type: 'cross', crossStyle: { color: 'var(--color-primary)', opacity: 0.3, type: 'dashed' }, lineStyle: { color: 'var(--color-primary)', opacity: 0.3, type: 'dashed' } },
-      extraCssText: 'box-shadow:0 8px 24px color-mix(in srgb, var(--color-primary) 12%, transparent);border-radius:10px;backdrop-filter:blur(8px);',
+      axisPointer: { type: 'cross', crossStyle: { color: chartC.primary, opacity: 0.3, type: 'dashed' }, lineStyle: { color: chartC.primary, opacity: 0.3, type: 'dashed' } },
       formatter: (params) => {
         let html = `<div style="font-weight:700;margin-bottom:6px;color:var(--color-text-primary);font-size:13px">${params[0].axisValue}</div>`
         params.forEach((p) => {
@@ -307,7 +302,7 @@ const trendChartOption = computed(() => {
         })
         return html
       },
-    },
+    }),
     grid: { top: 30, right: 55, bottom: 28, left: 45, containLabel: false },
     xAxis: {
       type: 'category', data: weeks.map(w => w.label),
@@ -370,7 +365,7 @@ const trendChartOption = computed(() => {
         symbol: 'circle', symbolSize: 7,
         data: weeks.map(w => Math.round(w.rate)),
         lineStyle: { color: COLOR.red, width: 2.5, type: 'dashed' },
-        itemStyle: { color: COLOR.red, borderWidth: 2, borderColor: '#fff', shadowColor: 'color-mix(in srgb, var(--color-danger) 40%, transparent)', shadowBlur: 6 },
+        itemStyle: { color: COLOR.red, borderWidth: 2, borderColor: 'var(--color-bg-card)', shadowColor: 'color-mix(in srgb, var(--color-danger) 40%, transparent)', shadowBlur: 6 },
         label: { show: true, position: 'top', color: COLOR.red, fontSize: 10, fontWeight: 700, formatter: '{c}%', offsetY: -4 },
         z: 5,
       },
@@ -382,7 +377,8 @@ const typePieOption = computed(() => {
   if (!issueData.value) return {}
   const data = issueData.value.typeDistArr
   // 按类型固定颜色
-  const colorMap = { '装配类': ['color-mix(in srgb, var(--color-warning) 45%, #ffffff)', 'var(--color-warning)'], '焊接类': ['var(--color-primary-light)', 'var(--color-accent)'], '测试类': ['#a78bfa', '#8b5cf6'], '外观类': ['#f472b6', '#ec4899'], '其他': ['var(--chart-text-muted)', 'var(--color-text-secondary)'] }
+  // 按类型固定颜色（全部语义变量，随主题联动；color-mix 由 resolveCssVars 统一求值）
+  const colorMap = { '装配类': ['color-mix(in srgb, var(--color-warning) 45%, #ffffff)', 'var(--color-warning)'], '焊接类': ['color-mix(in srgb, var(--color-primary) 45%, #ffffff)', 'var(--color-primary)'], '测试类': ['color-mix(in srgb, var(--color-accent) 45%, #ffffff)', 'var(--color-accent)'], '外观类': ['color-mix(in srgb, var(--color-primary-light) 45%, #ffffff)', 'var(--color-primary-light)'], '其他': ['var(--chart-text-muted)', 'var(--color-text-secondary)'] }
   const pieData = data.map(d => {
     const [c1, c2] = colorMap[d.name] || ['var(--color-primary-light)', 'var(--color-primary)']
     return {
@@ -397,14 +393,7 @@ const typePieOption = computed(() => {
   const total = issueData.value.currentWeekItems.length
   return {
     animation: true, animationDuration: 1000, animationEasing: 'cubicOut',
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: 'var(--chart-tooltip-bg)',
-      borderColor: 'var(--chart-tooltip-border)',
-      textStyle: { color: 'var(--chart-text)', fontSize: 12 },
-      extraCssText: 'box-shadow:0 8px 24px color-mix(in srgb, var(--color-primary) 12%, transparent);border-radius:10px;',
-      formatter: '{b}<br/>{c}件 ({d}%)',
-    },
+    tooltip: tooltipStyle({ trigger: 'item', formatter: '{b}<br/>{c}件 ({d}%)' }),
     series: [
       {
         type: 'pie', radius: ['50%', '72%'], center: ['42%', '55%'],
@@ -445,19 +434,15 @@ const workshopBarOption = computed(() => {
   const maxVal = Math.max(...ws.map(w => w.due)) + 20
   return {
     animation: true, animationDuration: 1000, animationDelay: idx => idx * 80,
-    tooltip: {
+    tooltip: tooltipStyle({
       trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: 'color-mix(in srgb, var(--color-primary) 4%, transparent)' } },
-      backgroundColor: 'var(--chart-tooltip-bg)',
-      borderColor: 'var(--chart-tooltip-border)',
-      textStyle: { color: 'var(--chart-text)', fontSize: 12 },
-      extraCssText: 'box-shadow:0 8px 24px color-mix(in srgb, var(--color-primary) 12%, transparent);border-radius:10px;',
       formatter: (params) => {
         const d = params[0]
         const w = ws[d.dataIndex]
         return `<div style="font-weight:600;color:var(--color-text-primary);margin-bottom:4px">${names[d.dataIndex]}</div>
           <div>关闭 <strong style="color:var(--color-success)">${w.actual}件</strong>，达成率 <strong style="color:var(--color-success)">${w.rateText}</strong></div>`
       },
-    },
+    }),
     grid: { top: 8, right: 80, bottom: 5, left: 58 },
     xAxis: { type: 'value', show: false, max: maxVal },
     yAxis: {

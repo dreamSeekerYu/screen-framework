@@ -331,7 +331,8 @@ import * as echarts from 'echarts'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import { useThemeStore } from '@/stores/theme'
 import { loadPackData, PERIOD_FIELD } from '@/utils/parsePack.js'
-import { getCssVar } from '@/utils/color.js'
+import { getCssVar, resolveCssVars } from '@/utils/color.js'
+import { chartC, chartPalette, tooltipStyle, legendStyle, gridStyle, axisStyle, valueAxisStyle } from '@/utils/chartTheme.js'
 
 const loading = ref(true)
 const loadError = ref('')
@@ -379,6 +380,8 @@ const currentA = computed(() => {
   return a1.value
 })
 
+/* 本页直接 echarts.init（不经 BaseChart），setOption 前需把 CSS 变量解析为实色。
+ * 语义 token 全部对齐 utils/chartTheme.js 的统一定义（--chart-* 系列变量） */
 const color = {
   primary:  () => getCssVar('--color-primary', '#2f54eb'),
   primaryL: () => getCssVar('--color-primary-light', '#597ef7'),
@@ -387,39 +390,30 @@ const color = {
   warning:  () => getCssVar('--color-warning', '#d97706'),
   danger:   () => getCssVar('--color-danger', '#e5484d'),
   accent:   () => getCssVar('--color-accent', '#13c2c2'),
-  textM:    () => getCssVar('--text-main', '#1f2329'),
-  textS:    () => getCssVar('--text-sec', '#4e5969'),
-  border:   () => getCssVar('--border-color', 'rgba(15,34,87,0.12)'),
+  textM:    () => getCssVar('--chart-text', '#1f2329'),
+  textS:    () => getCssVar('--chart-text-muted', '#86909c'),
+  border:   () => getCssVar('--chart-axis-line', '#c9d2e3'),
   split:    () => getCssVar('--chart-split-line', 'rgba(84,105,141,0.14)'),
   axis:     () => getCssVar('--chart-axis-line', '#c9d2e3'),
   tooltipBg: () => getCssVar('--chart-tooltip-bg', 'rgba(255,255,255,0.96)'),
+  tooltipBd: () => getCssVar('--chart-tooltip-border', 'rgba(47,84,235,0.25)'),
+  tooltipTx: () => getCssVar('--chart-tooltip-text', '#1f2329'),
   cardBg:   () => getCssVar('--color-bg-card', '#ffffff'),
 }
 
+/* 通用主题底座：调色板/图例/tooltip/grid/轴 全部来自共享 chartTheme */
 function chartTheme() {
-  return {
-    color: [color.primary(), color.primaryL(), color.warning(), color.danger(), color.accent(), color.textS()],
+  return resolveCssVars({
+    color: chartPalette(),
     backgroundColor: 'transparent',
-    textStyle: { color: color.textS() },
-    title: { textStyle: { color: color.textM() } },
-    legend: { textStyle: { color: color.textS() } },
-    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-    tooltip: {
-      trigger: 'axis', backgroundColor: color.tooltipBg(),
-      borderColor: color.primary(), textStyle: { color: color.textM() }
-    },
-    xAxis: {
-      axisLine: { lineStyle: { color: color.axis() } },
-      axisLabel: { color: color.textS(), fontSize: 11 },
-      splitLine: { lineStyle: { color: color.split() } }
-    },
-    yAxis: {
-      axisLine: { lineStyle: { color: color.axis() } },
-      axisLabel: { color: color.textS(), fontSize: 11 },
-      splitLine: { lineStyle: { color: color.split() } }
-    },
-  }
+    textStyle: { color: chartC.textMuted },
+    legend: legendStyle(),
+    grid: gridStyle(),
+    tooltip: tooltipStyle({ trigger: 'axis' }),
+  })
 }
+/* 与 BaseChart 页面一致的 tooltip 容器（直连 echarts 时手动 resolve） */
+const tooltipJS = (extra = {}) => resolveCssVars(tooltipStyle({ trigger: 'axis', ...extra }))
 
 /* ========== KPI 行 ========== */
 const overviewKpis = computed(() => {
@@ -647,9 +641,9 @@ function renderOverviewCharts() {
   const m6App = pt(m6.value.metrics.ppmApp)
   initChart('overview0km', {
     ...chartTheme(),
-    legend: { data: ['A1','A2','M5-XP','M6-XM外观'], top: 0 },
-    xAxis: { type: 'category', data: labels },
-    yAxis: { type: 'value', name: 'PPM' },
+    legend: legendStyle({ data: ['A1','A2','M5-XP','M6-XM外观'], top: 0 }),
+    xAxis: { ...axisStyle(), type: 'category', data: labels },
+    yAxis: { ...valueAxisStyle(), type: 'value', name: 'PPM' },
     series: [
       { name: 'A1',       type: 'line', data: a1Series, smooth: true, symbol: 'circle', symbolSize: 6 },
       { name: 'A2',       type: 'line', data: a2Series, smooth: true, symbol: 'circle', symbolSize: 6 },
@@ -660,8 +654,8 @@ function renderOverviewCharts() {
   // 雷达图
   initChart('overviewRadar', {
     ...chartTheme(),
-    tooltip: { backgroundColor: color.tooltipBg(), borderColor: color.primary(), textStyle:{color: color.textM()} },
-    legend: { data: ['A1','A2','A3','A4'], top: 0 },
+    tooltip: tooltipJS({ trigger: 'item' }),
+    legend: legendStyle({ data: ['A1','A2','A3','A4'], top: 0 }),
     radar: {
       indicator: [
         { name:'0KM达标率',max:100},{name:'3MIS达标率',max:100},
@@ -697,12 +691,11 @@ function renderADetailCharts(cust) {
     const rotate = allLabels.length > 14 ? 45 : 0
     return {
       ...chartTheme(),
-      tooltip: { trigger:'axis', backgroundColor: color.tooltipBg(), borderColor: color.primary(), textStyle:{color:color.textM()} },
-      legend: { data:['供货数','故障数',f.label.replace('PPM','目标'),f.label.replace('PPM','实际')], top:0, textStyle:{fontSize:10, color: color.textS()} },
-      xAxis: { type:'category', data: allLabels, axisLabel:{ rotate, fontSize: 9 } },
+      legend: legendStyle({ data:['供货数','故障数',f.label.replace('PPM','目标'),f.label.replace('PPM','实际')], top:0 }),
+      xAxis: { ...axisStyle(), type:'category', data: allLabels, axisLabel: { ...axisStyle().axisLabel, rotate, fontSize: 9 } },
       yAxis: [
-        { type:'value', name:'供货数', position:'left' },
-        { type:'value', name:'PPM',   position:'right', max: yMax },
+        { ...valueAxisStyle(), type:'value', name:'供货数', position:'left' },
+        { ...valueAxisStyle(), type:'value', name:'PPM', position:'right', max: yMax },
       ],
       series: [
         { name:'供货数', type:'bar', data: supplyArr, yAxisIndex:0, itemStyle:{color: color.primary()} },
@@ -727,11 +720,11 @@ function renderM5Chart() {
   const get = (k) => periods.map(p => Number(mm[k]?.values[p] ?? 0))
   initChart('m5-0km', {
     ...chartTheme(),
-    legend:{ data:['供货数','故障数','0KM目标','0KM实际'], top:0 },
-    xAxis:{ type:'category', data: periods },
+    legend: legendStyle({ data:['供货数','故障数','0KM目标','0KM实际'], top:0 }),
+    xAxis: { ...axisStyle(), type:'category', data: periods },
     yAxis:[
-      { type:'value', name:'供货数', position:'left' },
-      { type:'value', name:'PPM', position:'right', max: 500 },
+      { ...valueAxisStyle(), type:'value', name:'供货数', position:'left' },
+      { ...valueAxisStyle(), type:'value', name:'PPM', position:'right', max: 500 },
     ],
     series:[
       { name:'供货数', type:'bar', data: get('supply'),    yAxisIndex:0, itemStyle:{color: color.primary()} },
@@ -748,11 +741,11 @@ function renderM6Chart() {
   const get = (k) => labels.map(l => Number(mm[k]?.values[l] ?? 0))
   initChart('m6-0km', {
     ...chartTheme(),
-    legend:{ data:['周交付','PPM-外观','PPM-性能','目标-外观','目标-性能'], top:0, textStyle:{fontSize:10, color:color.textS()} },
-    xAxis:{ type:'category', data: labels },
+    legend: legendStyle({ data:['周交付','PPM-外观','PPM-性能','目标-外观','目标-性能'], top:0 }),
+    xAxis: { ...axisStyle(), type:'category', data: labels },
     yAxis:[
-      { type:'value', name:'交付量', position:'left' },
-      { type:'value', name:'PPM', position:'right', max: 1500 },
+      { ...valueAxisStyle(), type:'value', name:'交付量', position:'left' },
+      { ...valueAxisStyle(), type:'value', name:'PPM', position:'right', max: 1500 },
     ],
     series:[
       { name:'周交付',  type:'bar', data: get('delivery'), yAxisIndex:0, itemStyle:{color: color.accent()} },
@@ -767,11 +760,11 @@ function renderM6Chart() {
 function renderIssueCharts() {
   initChart('issueType', {
     ...chartTheme(),
-    tooltip:{ trigger:'item', backgroundColor: color.tooltipBg(), borderColor: color.primary(), textStyle:{color: color.textM()} },
+    tooltip: tooltipJS({ trigger: 'item' }),
     series:[{
-      type:'pie', radius:['40%','70%'], avoidLabelOverlap:false,
-      itemStyle:{ borderRadius:8, borderColor: color.cardBg(), borderWidth:2 },
-      label:{ show:true, formatter:'{b}: {d}%' },
+      type:'pie', radius:['50%','72%'], avoidLabelOverlap:false,
+      itemStyle:{ borderRadius:6, borderColor: color.cardBg(), borderWidth:2 },
+      label:{ show:true, formatter:'{b}: {d}%', color: chartC.textMuted, fontSize: 11 },
       data:[
         { value:3, name:'0KM异常', itemStyle:{color: color.danger()} },
         { value:1, name:'MIS上升', itemStyle:{color: color.warning()} },
@@ -782,17 +775,17 @@ function renderIssueCharts() {
   })
   initChart('risk', {
     ...chartTheme(),
-    tooltip:{ backgroundColor: color.tooltipBg(), borderColor: color.primary(), textStyle:{color: color.textM()} },
+    tooltip: tooltipJS(),
     grid:{ left:'5%', right:'12%', bottom:'3%', top:'3%', containLabel:true },
-    xAxis:{ type:'value', max:100, axisLabel:{formatter:'{value}分'} },
-    yAxis:{ type:'category', data:['A3客户','A1客户','A4客户','A2客户'] },
+    xAxis:{ ...valueAxisStyle(), type:'value', max:100, axisLabel: { ...valueAxisStyle().axisLabel, formatter:'{value}分' } },
+    yAxis:{ ...axisStyle(), type:'category', data:['A3客户','A1客户','A4客户','A2客户'] },
     series:[{
       type:'bar', barWidth:20, label:{show:true, position:'right', formatter:'{c}分', color: color.textM()},
       data:[
-        { value:95, itemStyle:{color: color.primaryL()} },
-        { value:75, itemStyle:{color: color.warning()} },
-        { value:72, itemStyle:{color: color.warning()} },
-        { value:55, itemStyle:{color: color.danger()} },
+        { value:95, itemStyle:{color: color.primaryL(), borderRadius: [0, 3, 3, 0]} },
+        { value:75, itemStyle:{color: color.warning(), borderRadius: [0, 3, 3, 0]} },
+        { value:72, itemStyle:{color: color.warning(), borderRadius: [0, 3, 3, 0]} },
+        { value:55, itemStyle:{color: color.danger(), borderRadius: [0, 3, 3, 0]} },
       ]
     }]
   })

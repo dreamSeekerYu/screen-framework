@@ -115,6 +115,7 @@ import BaseChart from '@/components/chart/BaseChart.vue'
 import WeeklyPlanDetail from '@/components/common/WeeklyPlanDetail.vue'
 import { loadSheet } from '@/utils/dataLoader.js'
 import { parseWeeklyPlan, STATUS } from '@/utils/parseWeeklyPlan.js'
+import { chartC, axisStyle, valueAxisStyle, tooltipStyle, legendStyle, gridStyle, pieItemStyle } from '@/utils/chartTheme.js'
 
 const loading = ref(true)
 const loadError = ref('')
@@ -162,22 +163,17 @@ const barOption = computed(() => {
   const doing = names.map((n) => groups[n].doing)
   const todo = names.map((n) => groups[n].todo)
   const total = names.map((n) => groups[n].total)
-  const tooltipStyle = {
-    backgroundColor: 'var(--chart-tooltip-bg)',
-    borderColor: 'var(--chart-tooltip-border)',
-    textStyle: { color: 'var(--chart-tooltip-text)' },
-  }
   return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, ...tooltipStyle },
-    legend: { data: ['已完成', '推进中', '待启动'], textStyle: { color: 'var(--chart-text-muted)', fontSize: 11 }, top: 0 },
-    grid: { left: 40, right: 20, top: 30, bottom: 30 },
-    xAxis: { type: 'category', data: names, axisLine: { lineStyle: { color: 'var(--chart-axis-line)' } }, axisLabel: { color: 'var(--chart-text)' } },
-    yAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { color: 'var(--chart-split-line)' } }, axisLabel: { color: 'var(--chart-text-muted)' } },
+    tooltip: tooltipStyle({ trigger: 'axis', axisPointer: { type: 'shadow' } }),
+    legend: legendStyle({ data: ['已完成', '推进中', '待启动'], top: 0 }),
+    grid: gridStyle(),
+    xAxis: { type: 'category', data: names, ...axisStyle() },
+    yAxis: { type: 'value', ...valueAxisStyle() },
     series: [
-      { name: '已完成', type: 'bar', stack: 'a', data: done, itemStyle: { color: 'var(--color-success)' }, barWidth: 24 },
-      { name: '推进中', type: 'bar', stack: 'a', data: doing, itemStyle: { color: 'var(--color-warning)' } },
-      { name: '待启动', type: 'bar', stack: 'a', data: todo, itemStyle: { color: 'var(--chart-text-muted)' } },
-      { name: '总数', type: 'line', data: total, itemStyle: { color: 'var(--color-accent)' }, symbolSize: 6, lineStyle: { width: 2 } },
+      { name: '已完成', type: 'bar', stack: 'a', data: done, itemStyle: { color: chartC.success, borderRadius: [3, 3, 0, 0] }, barWidth: 24 },
+      { name: '推进中', type: 'bar', stack: 'a', data: doing, itemStyle: { color: chartC.warning } },
+      { name: '待启动', type: 'bar', stack: 'a', data: todo, itemStyle: { color: chartC.textMuted } },
+      { name: '总数', type: 'line', data: total, itemStyle: { color: chartC.accent }, symbolSize: 6, lineStyle: { width: 2 } },
     ],
   }
 })
@@ -186,17 +182,17 @@ const pieOption = computed(() => {
   if (!currentWeek.value) return {}
   const s = currentWeek.value.stats
   return {
-    tooltip: { trigger: 'item', formatter: '{b}: {c}项 ({d}%)', backgroundColor: 'var(--chart-tooltip-bg)', borderColor: 'var(--chart-tooltip-border)', textStyle: { color: 'var(--chart-tooltip-text)' } },
-    legend: { bottom: 0, textStyle: { color: 'var(--chart-text-muted)', fontSize: 11 } },
+    tooltip: tooltipStyle({ trigger: 'item', formatter: '{b}: {c}项 ({d}%)' }),
+    legend: legendStyle({ bottom: 0 }),
     series: [{
-      type: 'pie', radius: ['45%', '70%'], center: ['50%', '45%'],
+      type: 'pie', radius: ['50%', '72%'], center: ['50%', '45%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 4, borderColor: 'var(--color-bg-card)', borderWidth: 2 },
-      label: { show: true, color: 'var(--chart-text)', formatter: '{b}\n{d}%' },
+      itemStyle: pieItemStyle(),
+      label: { show: true, color: chartC.text, formatter: '{b}\n{d}%' },
       data: [
-        { value: s.done, name: '已完成', itemStyle: { color: 'var(--color-success)' } },
-        { value: s.doing, name: '推进中', itemStyle: { color: 'var(--color-warning)' } },
-        { value: s.todo, name: '待启动', itemStyle: { color: 'var(--chart-text-muted)' } },
+        { value: s.done, name: '已完成', itemStyle: { color: chartC.success } },
+        { value: s.doing, name: '推进中', itemStyle: { color: chartC.warning } },
+        { value: s.todo, name: '待启动', itemStyle: { color: chartC.textMuted } },
       ],
     }],
   }

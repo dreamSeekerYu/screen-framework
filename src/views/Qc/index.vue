@@ -194,6 +194,7 @@ import StatusTag from '@/components/common/StatusTag.vue'
 import Dialog from '@/components/common/Dialog.vue'
 import { parseQcData } from '@/utils/parseQc'
 import { parseQcTable } from '@/utils/parseQcTable'
+import { chartC, axisStyle, valueAxisStyle, tooltipStyle, legendStyle, gridStyle, pieItemStyle } from '@/utils/chartTheme.js'
 
 // ============ 数据状态 ============
 const qc = reactive({})
@@ -292,32 +293,23 @@ const gaugeOpt = computed(() => {
 const barOpt = computed(() => {
   const shops = qc.shops || []
   return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { top: 0, right: 10, textStyle: { color: 'var(--text-sub)', fontSize: 11 },
-              itemWidth: 12, itemHeight: 8 },
-    grid: { left: 40, right: 20, top: 36, bottom: 24, containLabel: false },
-    xAxis: {
-      type: 'category', data: shops.map(s => s.name + '车间'),
-      axisLine: { lineStyle: { color: 'var(--border-color)' } }, axisTick: { show: false },
-      axisLabel: { color: 'var(--text-sub)', fontSize: 11 },
-    },
-    yAxis: {
-      type: 'value', axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { lineStyle: { color: 'var(--border-color)', type: 'dashed' } },
-      axisLabel: { color: 'var(--text-sub)', fontSize: 11 },
-    },
+    tooltip: tooltipStyle({ trigger: 'axis', axisPointer: { type: 'shadow' } }),
+    legend: legendStyle({ top: 0, right: 10 }),
+    grid: gridStyle(),
+    xAxis: { type: 'category', data: shops.map(s => s.name + '车间'), ...axisStyle() },
+    yAxis: { type: 'value', ...valueAxisStyle() },
     series: [
       { name: '配置架构', type: 'bar', barWidth: 10,
-        itemStyle: { color: 'var(--color-primary)', borderRadius: [3, 3, 0, 0] },
+        itemStyle: { color: chartC.primary, borderRadius: [3, 3, 0, 0] },
         data: shops.map(s => s.config) },
       { name: '在职架构', type: 'bar', barWidth: 10,
-        itemStyle: { color: 'var(--color-secondary)', borderRadius: [3, 3, 0, 0] },
+        itemStyle: { color: chartC.primaryL, borderRadius: [3, 3, 0, 0] },
         data: shops.map(s => s.onjob) },
       { name: '实际人力', type: 'bar', barWidth: 10,
-        itemStyle: { color: 'var(--color-success)', borderRadius: [3, 3, 0, 0] },
+        itemStyle: { color: chartC.success, borderRadius: [3, 3, 0, 0] },
         data: shops.map(s => s.actual) },
       { name: '预计缺口', type: 'bar', barWidth: 10,
-        itemStyle: { color: 'var(--color-warning)', borderRadius: [3, 3, 0, 0] },
+        itemStyle: { color: chartC.warning, borderRadius: [3, 3, 0, 0] },
         data: shops.map(s => Math.max(0, -s.gapExpect)) },
     ],
   }
@@ -325,13 +317,14 @@ const barOpt = computed(() => {
 
 const pieOpt = computed(() => {
   const shops = qc.shops || []
-  const palette = ['var(--color-primary)', 'var(--color-danger)', 'var(--color-success)', 'var(--color-warning)', 'var(--color-accent)']
+  const palette = [chartC.primary, chartC.danger, chartC.success, chartC.warning, chartC.accent]
   return {
-    tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
-    legend: { bottom: 0, textStyle: { color: 'var(--text-sub)', fontSize: 11 }, itemWidth: 10, itemHeight: 10 },
+    tooltip: tooltipStyle({ trigger: 'item', formatter: '{b}: {c}人 ({d}%)' }),
+    legend: legendStyle({ bottom: 0 }),
     series: [{
-      type: 'pie', radius: ['40%', '65%'], center: ['50%', '42%'],
+      type: 'pie', radius: ['50%', '72%'], center: ['50%', '42%'],
       avoidLabelOverlap: false, label: { show: false }, labelLine: { show: false },
+      itemStyle: pieItemStyle(),
       data: shops.map((s, i) => ({
         name: s.name + '车间', value: s.actual,
         itemStyle: { color: palette[i % palette.length] },
@@ -343,26 +336,17 @@ const pieOpt = computed(() => {
 const compareOpt = computed(() => {
   const shops = qc.shops || []
   return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { top: 0, right: 10, textStyle: { color: 'var(--text-sub)', fontSize: 11 },
-              itemWidth: 12, itemHeight: 8 },
-    grid: { left: 40, right: 20, top: 36, bottom: 24 },
-    xAxis: {
-      type: 'category', data: shops.map(s => s.name),
-      axisLine: { lineStyle: { color: 'var(--border-color)' } }, axisTick: { show: false },
-      axisLabel: { color: 'var(--text-sub)', fontSize: 11 },
-    },
-    yAxis: {
-      type: 'value', axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { lineStyle: { color: 'var(--border-color)', type: 'dashed' } },
-      axisLabel: { color: 'var(--text-sub)', fontSize: 11, formatter: v => (v >= 0 ? v : -v) },
-    },
+    tooltip: tooltipStyle({ trigger: 'axis', axisPointer: { type: 'shadow' } }),
+    legend: legendStyle({ top: 0, right: 10 }),
+    grid: gridStyle(),
+    xAxis: { type: 'category', data: shops.map(s => s.name), ...axisStyle() },
+    yAxis: { type: 'value', ...valueAxisStyle({ axisLabel: { color: chartC.textMuted, fontSize: 11, formatter: v => (v >= 0 ? v : -v) } }) },
     series: [
       { name: '当前缺口', type: 'bar', barWidth: 12,
-        itemStyle: { color: 'var(--color-warning)', borderRadius: [3, 3, 0, 0] },
+        itemStyle: { color: chartC.warning, borderRadius: [3, 3, 0, 0] },
         data: shops.map(s => Math.max(0, -s.gapNow)) },
       { name: '预计缺口', type: 'bar', barWidth: 12,
-        itemStyle: { color: 'var(--color-danger)', borderRadius: [3, 3, 0, 0] },
+        itemStyle: { color: chartC.danger, borderRadius: [3, 3, 0, 0] },
         data: shops.map(s => Math.max(0, -s.gapExpect)) },
     ],
   }
@@ -371,13 +355,14 @@ const compareOpt = computed(() => {
 const leaveOpt = computed(() => {
   const dist = qc.leaveDist || []
   return {
-    tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
+    tooltip: tooltipStyle({ trigger: 'item', formatter: '{b}: {c}人 ({d}%)' }),
     series: [{
-      type: 'pie', radius: ['50%', '70%'], center: ['50%', '45%'],
+      type: 'pie', radius: ['50%', '72%'], center: ['50%', '45%'],
       label: { show: false }, labelLine: { show: false },
+      itemStyle: pieItemStyle(),
       data: dist.map(d => ({
         name: d.name + '车间', value: d.value,
-        itemStyle: { color: leaveColors[d.name] || 'var(--chart-text-muted)' },
+        itemStyle: { color: leaveColors[d.name] || chartC.textMuted },
       })),
     }],
   }

@@ -121,6 +121,7 @@ import NumberCounter from '@/components/data/NumberCounter.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
 import { buildDetailTable, judgeStatus, PERIOD_FIELD } from '@/utils/parsePack.js'
 import { getCssVar } from '@/utils/color.js'
+import { chartC, axisStyle, valueAxisStyle, tooltipStyle, legendStyle, gridStyle, areaGradient, lineStyle } from '@/utils/chartTheme.js'
 
 const props = defineProps({ customer: { type: Object, required: true } })
 const activeTab = ref('km0')
@@ -201,19 +202,16 @@ const chartOption = computed(() => {
     return (v === null || v === undefined) ? f.targetDefault : Number(v)
   })
   const cColor = getCssVar('--color-primary', '#2F7CFF')
-  const cDanger = getCssVar('--color-danger', '#FF4D4F')
-  const cText = getCssVar('--text-main', '#fff')
-  const cGrid = getCssVar('--chart-split-line', 'rgba(148,163,184,0.15)')
   return {
-    grid: { top: 24, left: 50, right: 20, bottom: 28 },
-    tooltip: { trigger: 'axis' },
-    legend: { textStyle: { color: cText, fontSize: 11 }, top: 0, right: 10 },
-    xAxis: { type: 'category', data: labels, axisLine: { lineStyle: { color: cGrid } }, axisLabel: { color: cText, fontSize: 10 } },
-    yAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { color: cGrid } }, axisLabel: { color: cText, fontSize: 10 } },
+    grid: gridStyle(),
+    tooltip: tooltipStyle({ trigger: 'axis' }),
+    legend: legendStyle({ top: 0, right: 10 }),
+    xAxis: { type: 'category', data: labels, ...axisStyle() },
+    yAxis: { type: 'value', ...valueAxisStyle() },
     series: [
-      { name: '实际PPM', type: 'line', smooth: true, data: actual, itemStyle: { color: cColor }, lineStyle: { width: 2.5 },
-        areaStyle: { color: { type: 'linear', x:0, y:0, x2:0, y2:1, colorStops: [{offset:0,color:cColor+'55'},{offset:1,color:cColor+'00'}] } } },
-      { name: '目标PPM', type: 'line', data: target, itemStyle: { color: cDanger }, lineStyle: { width: 1.5, type: 'dashed' }, symbol: 'none' },
+      { name: '实际PPM', type: 'line', smooth: true, data: actual, itemStyle: { color: chartC.primary }, lineStyle: lineStyle(chartC.primary),
+        areaStyle: { color: areaGradient(chartC.primary, 32, 0) } },
+      { name: '目标PPM', type: 'line', data: target, itemStyle: { color: chartC.danger }, lineStyle: lineStyle(chartC.danger, { width: 1.5, type: 'dashed' }), symbol: 'none' },
     ]
   }
 })
@@ -256,22 +254,17 @@ const m6ChartOption = computed(() => {
   const tApp = labels.map(l => Number((m.targetApp && m.targetApp.values[l]) || 300))
   const tPerf = labels.map(l => Number((m.targetPerf && m.targetPerf.values[l]) || 150))
   const cColor = getCssVar('--color-primary', '#2F7CFF')
-  const cPerf = getCssVar('--color-success', '#00C292')
-  const cDanger = getCssVar('--color-danger', '#FF4D4F')
-  const cWarn = getCssVar('--color-warning', '#FAAD14')
-  const cText = getCssVar('--text-main', '#fff')
-  const cGrid = getCssVar('--chart-split-line', 'rgba(148,163,184,0.15)')
   return {
-    grid: { top: 24, left: 50, right: 20, bottom: 28 },
-    tooltip: { trigger: 'axis' },
-    legend: { textStyle: { color: cText, fontSize: 11 }, top: 0, right: 10 },
-    xAxis: { type: 'category', data: labels, axisLine: { lineStyle: { color: cGrid } }, axisLabel: { color: cText, fontSize: 10 } },
-    yAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { color: cGrid } }, axisLabel: { color: cText, fontSize: 10 } },
+    grid: gridStyle(),
+    tooltip: tooltipStyle({ trigger: 'axis' }),
+    legend: legendStyle({ top: 0, right: 10 }),
+    xAxis: { type: 'category', data: labels, ...axisStyle() },
+    yAxis: { type: 'value', ...valueAxisStyle() },
     series: [
-      { name: '外观PPM', type: 'line', smooth: true, data: app, itemStyle: { color: cColor }, lineStyle: { width: 2.5 } },
-      { name: '性能PPM', type: 'line', smooth: true, data: perf, itemStyle: { color: cPerf }, lineStyle: { width: 2.5 } },
-      { name: '外观目标', type: 'line', data: tApp, itemStyle: { color: cDanger }, lineStyle: { width: 1.5, type: 'dashed' }, symbol: 'none' },
-      { name: '性能目标', type: 'line', data: tPerf, itemStyle: { color: cWarn }, lineStyle: { width: 1.5, type: 'dashed' }, symbol: 'none' },
+      { name: '外观PPM', type: 'line', smooth: true, data: app, itemStyle: { color: chartC.primary }, lineStyle: lineStyle(chartC.primary) },
+      { name: '性能PPM', type: 'line', smooth: true, data: perf, itemStyle: { color: chartC.success }, lineStyle: lineStyle(chartC.success) },
+      { name: '外观目标', type: 'line', data: tApp, itemStyle: { color: chartC.danger }, lineStyle: lineStyle(chartC.danger, { width: 1.5, type: 'dashed' }), symbol: 'none' },
+      { name: '性能目标', type: 'line', data: tPerf, itemStyle: { color: chartC.warning }, lineStyle: lineStyle(chartC.warning, { width: 1.5, type: 'dashed' }), symbol: 'none' },
     ]
   }
 })

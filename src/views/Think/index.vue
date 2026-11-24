@@ -195,6 +195,7 @@ import Tag from '@/components/common/Tag.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
 import ThinkTaskDetail from '@/components/common/ThinkTaskDetail.vue'
+import { chartC, tooltipStyle, legendStyle, pieItemStyle } from '@/utils/chartTheme.js'
 import { loadSheet } from '@/utils/dataLoader.js'
 import { parseWeeklyThink } from '@/utils/parseWeeklyThink.js'
 import { getCssVar } from '@/utils/color.js'
@@ -344,7 +345,6 @@ const RISK_TYPE_COLOR = {
 const pieOption = computed(() => {
   // 依赖主题，切换主题时重新取色
   const themeKey = themeStore.currentTheme
-  const textColor = cssVar('--color-text-secondary', '#909399')
   const fallbackColor = cssVar('--color-primary', '#409eff')
   const data = (activeStats.value.riskTypeDist || []).map((item) => ({
     name: item.name,
@@ -353,33 +353,20 @@ const pieOption = computed(() => {
   }))
 
   return {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c}个 ({d}%)',
-    },
-    legend: {
-      bottom: 0,
-      left: 'center',
-      itemWidth: 12,
-      itemHeight: 10,
-      textStyle: { color: textColor, fontSize: 12 },
-    },
+    tooltip: tooltipStyle({ trigger: 'item', formatter: '{b}: {c}个 ({d}%)' }),
+    legend: legendStyle({ bottom: 0, left: 'center' }),
     series: [
       {
         name: '风险类型',
         type: 'pie',
-        radius: ['42%', '68%'],
+        radius: ['50%', '72%'],
         center: ['50%', '45%'],
         avoidLabelOverlap: true,
-        itemStyle: {
-          borderRadius: 6,
-          borderColor: cssVar('--color-bg-card', '#ffffff'),
-          borderWidth: 2,
-        },
+        itemStyle: pieItemStyle(),
         label: {
           show: true,
           fontSize: 12,
-          color: textColor,
+          color: chartC.text,
           formatter: '{b}: {d}%',
         },
         labelLine: { length: 8, length2: 8 },
