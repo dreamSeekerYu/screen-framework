@@ -135,69 +135,47 @@
       </div> -->
     </div>
 
-    <!-- 查看明细弹窗（复用项目 Dialog 组件） -->
-    <Dialog v-model="detailVisible" title="各车间人力明细" :width="1550">
-      <div class="qc-detail">
-        <table class="qc-detail__table">
+    <!-- 查看明细弹窗：直接从 qc人力.json 还原 Excel 原始表格（行列动态适配） -->
+    <Dialog v-model="detailVisible" :title="excelTable.title || '各车间人力明细'" :width="1550">
+      <div class="qc-detail" v-if="excelTable.rows.length">
+        <table class="qc-detail__table qc-detail__table--excel">
+          <colgroup>
+            <col v-for="(p, i) in excelTable.colPercents" :key="i" :style="p ? { width: p + '%' } : {}" />
+          </colgroup>
           <thead>
             <tr>
-              <th>车间名称</th>
-              <th>配置架构</th>
-              <th>在职架构</th>
-              <th>代培</th>
-              <th>借调</th>
-              <th>外部支援</th>
-              <th>休假</th>
-              <th>实际人力</th>
-              <th>当前缺口</th>
-              <th>预离职</th>
-              <th>规划支援</th>
-              <th>预计缺口</th>
-              <th>状态</th>
-              <th>备注</th>
+              <template v-for="(col, i) in excelTable.cols" :key="col.col">
+                <th v-if="!col.head.skip"
+                    :rowspan="col.head.rowSpan" :colspan="col.head.colSpan"
+                    :style="col.head.css">
+                  <template v-if="col.head.runs">
+                    <span v-for="(r, ri) in col.head.runs" :key="ri" :style="r.css">{{ r.text }}</span>
+                  </template>
+                  <template v-else>{{ col.head.text }}</template>
+                </th>
+              </template>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="s in qc.shops" :key="s.name">
-              <td class="qc-detail__name">{{ s.name }}车间</td>
-              <td class="ar">{{ s.config }}</td>
-              <td class="ar">{{ s.onjob }}</td>
-              <td class="ar text-success">{{ s.train }}</td>
-              <td class="ar text-success">{{ s.supportIn }}</td>
-              <td class="ar text-success">{{ s.otherSupport }}</td>
-              <td class="ar text-success">{{ s.leaveDay }}</td>
-              <td class="ar">{{ s.actual }}</td>
-              <td class="ar" :class="s.gapNow < 0 ? 'text-danger' : 'text-success'">{{ formatGap(s.gapNow) }}</td>
-              <td class="ar" :class="s.preLeave > 0 ? 'text-warning' : ''">{{ s.preLeave }}</td>
-              <td class="ar text-success">{{ s.outSupport }}</td>
-              <td class="ar" :class="s.gapExpect < 0 ? 'text-danger' : 'text-success'">{{ formatGap(s.gapExpect) }}</td>
-              <td class="ac">
-                <StatusTag :text="shopStatusTag(s).text" :type="shopStatusTag(s).type" effect="light" size="small" round />
-              </td>
-              <td class="qc-detail__remark">{{ s.remark || remarkByGap(s) }}</td>
-            </tr>
-            <tr class="qc-detail__total">
-              <td>合计</td>
-              <td class="ar">{{ qc.total?.config }}</td>
-              <td class="ar">{{ qc.total?.onjob }}</td>
-              <td class="ar">{{ qc.total?.train }}</td>
-              <td class="ar">{{ qc.total?.supportIn }}</td>
-              <td class="ar">{{ qc.total?.otherSupport }}</td>
-              <td class="ar">{{ qc.total?.leaveDay }}</td>
-              <td class="ar">{{ qc.total?.actual }}</td>
-              <td class="ar">{{ qc.kpi?.gapNow }}</td>
-              <td class="ar text-warning">{{ formatGap(qc.total?.preLeave) }}</td>
-              <td class="ar text-danger">{{ qc.total?.outSupport }}</td>
-              <td class="ar text-danger">{{ formatGap(qc.total?.gapExpect) }}</td>
-              <td class="ac"><StatusTag text="总缺口" type="danger" effect="light" size="small" round /></td>
-              <td>整体充足率{{ qc.kpi?.fillRate }}%</td>
+            <tr v-for="row in excelTable.rows" :key="row.key" :class="{ 'is-total': row.isTotal }">
+              <template v-for="(c, ci) in row.cells" :key="ci">
+                <td v-if="!c.skip"
+                    :rowspan="c.rowSpan" :colspan="c.colSpan"
+                    :style="c.css">
+                  <template v-if="c.runs">
+                    <span v-for="(r, ri) in c.runs" :key="ri" :style="r.css">{{ r.text }}</span>
+                  </template>
+                  <template v-else>{{ c.empty ? '\u00A0' : c.text }}</template>
+                </td>
+              </template>
             </tr>
           </tbody>
         </table>
         <p class="qc-detail__note">
-          备注：当前缺口=实际人力−配置架构，负值表示缺人；预计缺口=当前缺口−预离职人数；内部支援来自 A1/A2 工厂跨车间支援；待外部支援 {{ qc.externalWait }} 人优先补充 A2 车间。
+          注：本表由 Excel 原始数据（qc人力.json）动态还原，行列与源表保持一致，源表增减行列后自动适配。
         </p>
       </div>
+      <div v-else class="qc-detail qc-detail--loading">明细数据加载中...</div>
     </Dialog>
   </div>
 </template>
@@ -214,29 +192,17 @@ import SummaryBar from '@/components/common/SummaryBar.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import Dialog from '@/components/common/Dialog.vue'
 import { parseQcData } from '@/utils/parseQc'
+import { parseQcTable } from '@/utils/parseQcTable'
 
 // ============ 数据状态 ============
 const qc = reactive({})
 const detailVisible = ref(false)
+// 从 qc人力.json 还原的 Excel 原始表格（行列动态适配）
+const excelTable = reactive({ title: '', cols: [], colPercents: [], rows: [] })
 const leaveColors = { A1: 'var(--color-primary)', A2: 'var(--color-danger)', A3: 'var(--color-success)', M5: 'var(--color-warning)', M6: 'var(--color-accent)' }
 
 // ============ 辅助函数 ============
-const formatGap = (v) => {
-  if (v === null || v === undefined) return '-'
-  return v >= 0 ? `+${v}` : `${v}`
-}
-const shopStatusTag = (s) => {
-  if (s.gapExpect <= -20) return { type: 'danger', text: '严重缺口' }
-  if (s.gapExpect < 0) return { type: 'danger', text: '缺口' }
-  if (s.preLeave > 0) return { type: 'warning', text: '预警' }
-  return { type: 'success', text: '充足' }
-}
-const remarkByGap = (s) => {
-  if (s.gapExpect <= -20) return `严重缺口，需外部支援${s.outSupport}人`
-  if (s.gapExpect < 0) return `充足率${Math.round((s.actual / s.config) * 100)}%，需补充`
-  if (s.preLeave > 0) return `预离职${s.preLeave}人，需提前储备`
-  return '人员充足'
-}
+// （明细弹窗已改为 Excel 原表动态还原，旧的 formatGap / shopStatusTag / remarkByGap 移除）
 
 // ============ 计算属性：KPI 卡片 ============
 const kpiCards = computed(() => {
@@ -422,6 +388,9 @@ onMounted(async () => {
     const data = await parseQcData()
     Object.assign(qc, data)
     console.log('QC 数据加载成功:', data)
+    // 同时还原 Excel 原始表格（详情弹窗用）
+    const table = await parseQcTable()
+    Object.assign(excelTable, table)
     // 等布局稳定后触发一次 resize，确保 flex/grid 高度变化后图表尺寸正确
     await nextTick()
     window.dispatchEvent(new Event('resize'))
@@ -567,23 +536,27 @@ onMounted(async () => {
 }
 
 /* 明细弹窗 */
-.qc-detail { font-size: $font-sm; color: var(--text-main); max-height: 60vh; overflow: auto; }
-.qc-detail__table {
+.qc-detail { font-size: $font-sm; color: var(--text-main); max-height: 62vh; overflow: auto; }
+.qc-detail--loading { padding: 48px 0; text-align: center; color: var(--text-sub); font-size: $font-sm; }
+
+/* Excel 原表还原表格：填充 / 字色 / 对齐 / 换行均来自 JSON 的 style 还原 */
+.qc-detail__table--excel {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   :deep(th), :deep(td) {
-    padding: 10px 8px;
-    border-bottom: 1px solid var(--border-color);
-    font-size: $font-xs;
-    text-align: left;
+    padding: 9px 8px;
+    border: 1px solid color-mix(in srgb, var(--text-main) 22%, transparent);
+    line-height: 1.45;
+    vertical-align: middle;
+    word-break: break-word;
+    /* Excel 换行符 / 表头两行文案正常折行展示 */
+    white-space: pre-line;
   }
-  :deep(th) { background: var(--bg-soft); color: var(--text-sub); font-weight: 600; }
-  .ar { text-align: right !important; font-variant-numeric: tabular-nums; }
-  .ac { text-align: center !important; }
 }
-.qc-detail__name { font-weight: 600; }
-.qc-detail__remark { color: var(--text-sub); font-size: $font-xs; }
-.qc-detail__total { background: var(--bg-soft); font-weight: 600; }
+.qc-detail__table--excel :deep(tr.is-total td) {
+  font-weight: 600;
+}
 .qc-detail__note { margin: $spacing-sm 0 0; font-size: $font-xs; color: var(--text-sub); line-height: 1.6; }
 
 /* 文字颜色工具类 */
