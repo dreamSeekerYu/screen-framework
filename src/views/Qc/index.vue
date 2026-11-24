@@ -135,8 +135,9 @@
       </div> -->
     </div>
 
-    <!-- 查看明细弹窗：直接从 qc人力.json 还原 Excel 原始表格（行列动态适配） -->
-    <Dialog v-model="detailVisible" :title="excelTable.title || '各车间人力明细'" :width="1550">
+    <!-- 查看明细弹窗：直接从 qc人力.json 还原 Excel 原始表格（含最左合并标题列，行列动态适配） -->
+    <Dialog v-model="detailVisible" :title="excelTable.title || '各车间人力明细'"
+            :width="'min(94vw, 1760px)'" top="3vh">
       <div class="qc-detail" v-if="excelTable.rows.length">
         <table class="qc-detail__table qc-detail__table--excel">
           <colgroup>
@@ -161,7 +162,7 @@
               <template v-for="(c, ci) in row.cells" :key="ci">
                 <td v-if="!c.skip"
                     :rowspan="c.rowSpan" :colspan="c.colSpan"
-                    :style="c.css">
+                    :style="c.css" :class="{ 'qc-detail__title-cell': c.rowSpan > 1 }">
                   <template v-if="c.runs">
                     <span v-for="(r, ri) in c.runs" :key="ri" :style="r.css">{{ r.text }}</span>
                   </template>
@@ -535,27 +536,40 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-/* 明细弹窗 */
-.qc-detail { font-size: $font-sm; color: var(--text-main); max-height: 62vh; overflow: auto; }
+/* 明细弹窗：尽量大化展示原始表格内容，滚动交给 Dialog body 处理 */
+.qc-detail { font-size: $font-sm; color: var(--text-main); }
 .qc-detail--loading { padding: 48px 0; text-align: center; color: var(--text-sub); font-size: $font-sm; }
 
-/* Excel 原表还原表格：填充 / 字色 / 对齐 / 换行均来自 JSON 的 style 还原 */
+/* Excel 原表还原表格：主体只还原「文本 + 字体颜色」，表头/合计/边框使用主题样式，
+   保证四套主题下均有良好表现 */
 .qc-detail__table--excel {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
   :deep(th), :deep(td) {
-    padding: 9px 8px;
-    border: 1px solid color-mix(in srgb, var(--text-main) 22%, transparent);
-    line-height: 1.45;
+    padding: 8px 8px;
+    border: 1px solid var(--border-color);
+    line-height: 1.4;
     vertical-align: middle;
     word-break: break-word;
     /* Excel 换行符 / 表头两行文案正常折行展示 */
     white-space: pre-line;
   }
-}
-.qc-detail__table--excel :deep(tr.is-total td) {
-  font-weight: 600;
+  /* 表头：主题化（不使用 Excel 蓝底白字） */
+  :deep(th) {
+    background: var(--bg-soft);
+    color: var(--text-sub);
+    font-weight: 600;
+    font-size: $font-xs;
+  }
+  /* 单元格默认正文色（Excel 还原的字体颜色以行内样式覆盖） */
+  :deep(td) { color: var(--text-main); }
+  /* 合计行：主题化强调 */
+  :deep(tr.is-total td) {
+    background: var(--bg-soft);
+    color: var(--text-main);
+    font-weight: 600;
+  }
 }
 .qc-detail__note { margin: $spacing-sm 0 0; font-size: $font-xs; color: var(--text-sub); line-height: 1.6; }
 

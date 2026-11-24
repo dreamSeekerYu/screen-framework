@@ -105,8 +105,11 @@ watch(() => props.fullscreen, v => { innerFullscreen.value = v })
 const dialogStyle = computed(() => {
   if (innerFullscreen.value) return { top: 0, left: 0, margin: 0, width: '100%', height: '100%', maxWidth: 'none', transform: 'none' }
   const width = typeof props.width === 'number' ? `${props.width}px` : props.width
+  // 显式传入非默认 width 时解除 size 类的 max-width 限制，保证大宽度弹窗生效
+  const unlockMax = props.width !== '60%'
   return {
     width,
+    maxWidth: unlockMax ? 'none' : undefined,
     top: props.top,
     transform: `translate(${dragOffset.value.x}px, ${dragOffset.value.y}px)`
   }
