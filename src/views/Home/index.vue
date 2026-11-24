@@ -334,16 +334,23 @@ const PART_FRAME_MS = 1000 / 30
 let lastPartsT = 0
 const REDUCED_MOTION = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/* 粒子动画开关（性能测试用）：设为 false 可完全关闭 canvas 粒子动画 */
-const PARTS_ENABLED = false
+/* ============ 性能配置（平衡档：效果全保留，开销已优化） ============
+ * 实测结论：GPU 大头在背景装饰动画（极光 blur+scale 已修复为纯位移），粒子约占 10%。
+ * 如需进一步降载，可按优先级调整：
+ *   1. PARTS_ENABLED = false        （关闭粒子，约 -10% GPU）
+ *   2. DECOR_ENABLED = false        （关闭全部装饰动画，收益最大）
+ *   3. 调低 PART_MAX / PART_AREA_DIV（减少粒子密度） */
+const PARTS_ENABLED = true
+const PART_MAX = 60          // 粒子数量上限（原 80）
+const PART_AREA_DIV = 34000  // 每个粒子占用的画布面积（原 26000，越大粒子越少）
 const partsEnabled = ref(PARTS_ENABLED)
 /* 背景装饰动画开关（性能测试用）：关闭极光漂移/网格滚动/噪点/扫光/光晕呼吸等 CSS 动画 */
-const DECOR_ENABLED = false
+const DECOR_ENABLED = true
 const decorEnabled = ref(DECOR_ENABLED)
 
 function targetPartCount() {
   const area = (W || 1920) * (H || 1080)
-  return REDUCED_MOTION ? 0 : Math.max(30, Math.min(80, Math.round(area / 26000)))
+  return REDUCED_MOTION ? 0 : Math.max(24, Math.min(PART_MAX, Math.round(area / PART_AREA_DIV)))
 }
 function syncPartCount() {
   const n = targetPartCount()
@@ -442,6 +449,9 @@ function loopParts(ts) {
 /* ============ 主循环 ============ */
 const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 
+// 景深模糊档位表（tier -> filter 值）
+const BLUR_TIER = { 1: 'none', 2: 'blur(1.5px)', 3: 'blur(4px)' }
+
 function frame() {
   rafId = requestAnimationFrame(frame)
   if (!started) return
@@ -499,14 +509,17 @@ function frame() {
     const tStr =
       `translate(-50%,-50%) translate(${sx.toFixed(1)}px,${(sy + wave + cyo).toFixed(1)}px) scale(${scale.toFixed(3)})`
     const oStr = (0.14 + 0.86 * depth).toFixed(3)
-    // blur 按 1px 一档量化（0~3px），旋转期间 filter 重绘次数减半
-    const fStr = `blur(${Math.min(3, Math.round((1 - depth) * 3))}px)`
+    // 景深模糊改为「档位制」：远(4px)/中(1.5px)/近(清晰) 三档，
+    // 连续变化 blur 会触发图层逐帧重新光栅化（旋转卡顿/GPU 高占用的根因）；
+    // 档位制下每张卡片整个旋转周期最多跨越 2 次档位，
+    // 档位切换的突兀感由 CSS transition(filter) 平滑，重绘仅发生在 0.25s 过渡内
+    const tier = depth < 0.22 ? 3 : depth < 0.45 ? 2 : 1
     const z = Math.round(depth * 100)
     let ca = slotCache.get(el)
     if (!ca) { ca = {}; slotCache.set(el, ca) }
     if (ca.t !== tStr) { el.style.transform = tStr; ca.t = tStr }
     if (ca.o !== oStr) { el.style.opacity = oStr; ca.o = oStr }
-    if (ca.f !== fStr) { el.style.filter = fStr; ca.f = fStr }
+    if (ca.f !== tier) { el.style.filter = BLUR_TIER[tier]; ca.f = tier }
     if (ca.z !== z) { el.style.zIndex = z; ca.z = z }
   })
 }
@@ -808,6 +821,8 @@ h1 {
   top: 50%;
   width: var(--cw);
   will-change: transform, opacity;
+  /* 景深模糊档位切换的平滑过渡（仅 filter，transform/opacity 由 JS 逐帧驱动不受影响） */
+  transition: filter .25s linear;
   cursor: pointer;
 }
 .orbit-line {
