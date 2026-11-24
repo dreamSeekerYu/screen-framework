@@ -159,7 +159,7 @@ function parseTrend(sheet) {
     weeks: recent.map(w => w.week.replace(/^CW/, 'WK')),
     total: recent.map(w => w.total),
     pass: recent.map(w => w.pass),
-    rates: recent.map(w => w.rate == null ? null : +w.rate.toFixed(1)),
+    rates: recent.map(w => w.rate == null ? null : +w.rate.toFixed(2)),
   }
 }
 
@@ -222,7 +222,7 @@ const kpiCards = computed(() => {
       status: rateStatus,
       title: '本周CPK达标率',
       subTitle: 'CPK≥1.33',
-      value: rateVal.toFixed(1),
+      value: rateVal.toFixed(2),
       unit: '%',
       trend: rateVal >= 100 ? '全部达标' : `${failProjects.value}项未达标`,
       trendType: rateVal >= 100 ? 'up' : 'down',
@@ -275,7 +275,7 @@ const summary = computed(() => {
     return {
       type: 'success',
       icon: 'success',
-      text: `本周过程能力达标率 <strong>${rate.toFixed(1)}%</strong>，所有已开线工序 CPK 均达标，整体质量稳定。`,
+      text: `本周过程能力达标率 <strong>${rate.toFixed(2)}%</strong>，所有已开线工序 CPK 均达标，整体质量稳定。`,
       tags: [{ text: '全部工序达标', type: 'success' }],
     }
   }
@@ -284,8 +284,8 @@ const summary = computed(() => {
   return {
     type: 'warning',
     icon: 'warning',
-    text: `本周过程能力达标率 <strong>${rate.toFixed(1)}%</strong>，整体质量基本稳定。未达标工序：${names}，需重点改善。${first.remark && first.remark !== '/' ? '其中 ' + first.workshop + '-' + first.process + ' 存在 CPK 偏低项目，已启动改善。' : ''}`,
-    tags: failList.map(f => ({ text: `${f.workshop}-${f.process} ${f.rate.toFixed(0)}%`, type: 'danger' })),
+    text: `本周过程能力达标率 <strong>${rate.toFixed(2)}%</strong>，整体质量基本稳定。未达标工序：${names}，需重点改善。${first.remark && first.remark !== '/' ? '其中 ' + first.workshop + '-' + first.process + ' 存在 CPK 偏低项目，已启动改善。' : ''}`,
+    tags: failList.map(f => ({ text: `${f.workshop}-${f.process} ${f.rate.toFixed(2)}%`, type: 'danger' })),
   }
 })
 
@@ -300,6 +300,12 @@ const trendOption = computed(() => {
   const rMin = validRates.length ? Math.max(90, Math.floor(Math.min(...validRates) - 1)) : 93
   const rMax = 100
   return {
+    // title:{
+    //   text:'集成CPK达标趋势',
+    //   textStyle:{
+    //     color:''
+    //   }
+    // },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross', crossStyle: { color: 'var(--chart-text-muted)' } },
@@ -316,7 +322,7 @@ const trendOption = computed(() => {
         let html = `<div style="font-weight:600;font-size:13px;margin-bottom:6px;">${wk}</div>`
         for (const it of params) {
           if (it.seriesName === '达标率' && rate != null) {
-            html += `<div style="margin:3px 0;">● ${it.seriesName}：<b>${rate.toFixed(1)}%</b></div>`
+            html += `<div style="margin:3px 0;">● ${it.seriesName}：<b>${rate.toFixed(2)}%</b></div>`
           } else if (it.seriesName === '达标项目数') {
             html += `<div style="margin:3px 0;">● ${it.seriesName}：<b>${p}</b> 项 / 共 ${tot} 项</div>`
           }
@@ -330,7 +336,7 @@ const trendOption = computed(() => {
       textStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 12 },
       itemWidth: 14, itemHeight: 8, itemGap: 20,
     },
-    grid: { left: 50, right: 55, top: 20, bottom: 40, containLabel: true },
+    grid: { left: 50, right: 55, top: 35, bottom: 40, containLabel: true },
     xAxis: {
       type: 'category', data: weeks, boundaryGap: true,
       axisLine: { lineStyle: { color: 'var(--color-border,#e2e8f0)' } },
@@ -367,7 +373,7 @@ const trendOption = computed(() => {
         label: {
           show: true, position: 'top', color: 'var(--color-success)', fontSize: 10, fontWeight: 'bold',
           // 100% 满值标签隐藏，避免与目标线/相邻标签重叠拥挤
-          formatter: p => (p.value != null && p.value < 100) ? p.value.toFixed(1) + '%' : '',
+          formatter: p => (p.value != null && p.value < 100) ? p.value.toFixed(2) + '%' : '',
         },
         markLine: {
           silent: true,
@@ -434,7 +440,7 @@ const processBarOption = computed(() => {
       textStyle: { color: 'var(--color-text-secondary,#64748b)', fontSize: 12 },
       itemWidth: 14, itemHeight: 8, itemGap: 18,
     },
-    grid: { left: 45, right: 55, top: 20, bottom: 50, containLabel: true },
+    grid: { left: 45, right: 55, top: 35, bottom: 50, containLabel: true },
     xAxis: {
       type: 'category', data: categories,
       axisLine: { lineStyle: { color: 'var(--color-border,#e2e8f0)' } },
@@ -498,7 +504,7 @@ const processBarOption = computed(() => {
         label: {
           show:true, position:'top', color:'var(--color-primary-dark)', fontSize:10, fontWeight:'bold',
           // 100% 满值标签隐藏，避免顶部拥挤重叠
-          formatter: p => (p.value !== null && p.value !== undefined && p.value < 100) ? p.value + '%' : '',
+          formatter: p => (p.value !== null && p.value !== undefined && p.value < 100) ? p.value?.toFixed(2) + '%' : '',
         },
       },
     ],

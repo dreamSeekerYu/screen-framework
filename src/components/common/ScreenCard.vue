@@ -22,12 +22,12 @@
     </div>
 
     <!-- 四个角装饰 -->
-    <template v-if="showCorners">
+    <!-- <template v-if="showCorners">
       <div class="corner corner-tl"></div>
       <div class="corner corner-tr"></div>
       <div class="corner corner-bl"></div>
       <div class="corner corner-br"></div>
-    </template>
+    </template> -->
   </div>
 </template>
 
