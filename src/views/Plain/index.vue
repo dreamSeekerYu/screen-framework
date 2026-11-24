@@ -40,7 +40,7 @@
       <!-- 核心内容 2x2 -->
       <div class="main-grid">
         <!-- 左上：各车间计划完成对比柱状图 -->
-        <ScreenCard title="各车间上周计划完成对比" class="grid-card">
+        <ScreenCard title="各车间上周计划完成统计" class="grid-card">
           <div class="chart-box" ref="barRef">
             <BaseChart v-if="barReady" ref="barChartRef" :option="barOption" @chart-ready="onChartReady" />
           </div>
@@ -116,6 +116,7 @@ import WeeklyPlanDetail from '@/components/common/WeeklyPlanDetail.vue'
 import { loadSheet } from '@/utils/dataLoader.js'
 import { parseWeeklyPlan, STATUS } from '@/utils/parseWeeklyPlan.js'
 import { chartC, axisStyle, valueAxisStyle, tooltipStyle, legendStyle, gridStyle, pieItemStyle } from '@/utils/chartTheme.js'
+import { showLabel } from '@/utils/chartOption.js'
 
 const loading = ref(true)
 const loadError = ref('')
@@ -170,10 +171,9 @@ const barOption = computed(() => {
     xAxis: { type: 'category', data: names, ...axisStyle() },
     yAxis: { type: 'value', ...valueAxisStyle() },
     series: [
-      { name: '已完成', type: 'bar', stack: 'a', data: done, itemStyle: { color: chartC.success, borderRadius: [3, 3, 0, 0] }, barWidth: 24 },
-      { name: '推进中', type: 'bar', stack: 'a', data: doing, itemStyle: { color: chartC.warning } },
-      { name: '待启动', type: 'bar', stack: 'a', data: todo, itemStyle: { color: chartC.textMuted } },
-      { name: '总数', type: 'line', data: total, itemStyle: { color: chartC.accent }, symbolSize: 6, lineStyle: { width: 2 } },
+      {...showLabel, name: '已完成', type: 'bar', stack: 'a', data: done, itemStyle: { color: chartC.success, borderRadius: [3, 3, 0, 0] }, barWidth: 24 },
+      {...showLabel, name: '推进中', type: 'bar', stack: 'a', data: doing, itemStyle: { color: chartC.warning } },
+      {...showLabel, name: '待启动', type: 'bar', stack: 'a', data: todo, itemStyle: { color: chartC.textMuted } },
     ],
   }
 })
