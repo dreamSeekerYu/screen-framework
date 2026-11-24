@@ -213,10 +213,10 @@
         <TabPane label="数据" name="data">
           <div class="tab-pane-content">
             <div class="row gap-md" style="flex-wrap: wrap;">
-              <StatCard label="问题总数" :value="26" unit="条" trend="down" trend-value="12%" />
+              <!-- <StatCard label="问题总数" :value="26" unit="条" trend="down" trend-value="12%" />
               <StatCard label="已整改" :value="22" unit="条" trend="up" trend-value="8%" />
               <StatCard label="整改中" :value="4" unit="条" trend="down" trend-value="3%" />
-              <StatCard label="整改率" :value="84.6" unit="%" trend="up" trend-value="5.2%" />
+              <StatCard label="整改率" :value="84.6" unit="%" trend="up" trend-value="5.2%" /> -->
             </div>
           </div>
         </TabPane>
@@ -275,7 +275,7 @@ import TabPane from '@/components/common/TabPane.vue'
 import Image from '@/components/common/Image.vue'
 import ImagePreviewGroup from '@/components/common/ImagePreviewGroup.vue'
 import Dialog from '@/components/common/Dialog.vue'
-import StatCard from '@/components/common/StatCard.vue'
+// import StatCard from '@/components/common/StatCard.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import { previewImage } from '@/utils/imagePreview'
 
