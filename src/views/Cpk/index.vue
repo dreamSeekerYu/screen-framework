@@ -5,7 +5,7 @@
 
     <!-- KPI 卡片区：4 张等宽 -->
     <StatCardRow style="margin-bottom: 16px;" :gap="16" :min-card-width="200" :max-card-width="520">
-      <StatCard
+      <NewStatCard
         v-for="(item, idx) in kpiCards"
         :key="idx"
         :theme="item.theme"
@@ -55,7 +55,7 @@ import { ref, computed, onMounted } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
-import StatCard from '@/components/common/NewStatCard.vue'
+import NewStatCard from '@/components/common/NewStatCard.vue'
 import StatCardRow from '@/components/common/StatCardRow.vue'
 import SummaryBar from '@/components/common/SummaryBar.vue'
 import StatusTag from '@/components/common/StatusTag.vue'

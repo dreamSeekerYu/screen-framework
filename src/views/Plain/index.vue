@@ -26,7 +26,7 @@
     <template v-else-if="currentWeek">
       <!-- KPI 指标栏 -->
       <div class="kpi-row">
-        <StatCard
+        <NewStatCard
           v-for="k in kpiCards"
           :key="k.title"
           :theme="k.theme"
@@ -110,7 +110,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
-import StatCard from '@/components/common/StatCard.vue'
+import NewStatCard from '@/components/common/NewStatCard.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
 import WeeklyPlanDetail from '@/components/common/WeeklyPlanDetail.vue'
 import { loadSheet } from '@/utils/dataLoader.js'
@@ -147,10 +147,10 @@ const kpiCards = computed(() => {
     (it) => it.status === STATUS.TODO || (it.status === STATUS.DOING && it.percent < 0.5),
   ).length
   return [
-    { title: '本周总计划', value: s.total, unit: '项', theme: 'primary', status: 'normal' },
-    { title: '上周计划完成率', value: Math.round(lastRate * 100), unit: '%', theme: 'success', status: lastRate >= 0.8 ? 'up' : 'down' },
-    { title: '涉及车间', value: Object.keys(s.groups).length, unit: '个', theme: 'info', status: 'normal' },
-    { title: '重点风险管控项', value: riskCount, unit: '项', theme: 'warning', status: riskCount > 0 ? 'down' : 'up' },
+    { title: '本周总计划', value: s.total, unit: '项',theme: 'kpi-side', status: 'primary', trendType: 'normal' },
+    { title: '上周计划完成率', value: Math.round(lastRate * 100), unit: '%',theme: 'kpi-side', status: 'success', trendType: lastRate >= 0.8 ? 'up' : 'down' },
+    { title: '涉及车间', value: Object.keys(s.groups).length, unit: '个',theme: 'kpi-side', status: 'info', trendType: 'normal' },
+    { title: '重点风险管控项', value: riskCount, unit: '项',theme: 'kpi-side', status: 'warning', trendType: riskCount > 0 ? 'down' : 'up' },
   ]
 })
 
