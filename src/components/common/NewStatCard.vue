@@ -122,7 +122,7 @@
                     <slot name="right-extra"></slot>
                 </div>
                 <!-- 右上角 badge -->
-                <span v-if="badge" class="kpi-side__badge" :style="badgeStyle">{{ badge }}</span>
+                <!-- <span v-if="badge" class="kpi-side__badge" :style="badgeStyle">{{ badge }}</span> -->
                 <slot name="action"></slot>
             </div>
 
