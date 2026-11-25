@@ -29,7 +29,7 @@
       style="margin-bottom: 16px; flex-shrink: 0;"
     >
       <template #tags>
-        <StatusTag v-for="(tag, i) in summary.tags" :key="i" :text="tag.text" :type="tag.type" effect="dark" round />
+        <StatusTag v-for="(tag, i) in summary.tags" :key="i" :text="tag.text" :type="tag.type" effect="plain" round />
       </template>
     </SummaryBar>
 
@@ -272,6 +272,7 @@ const kpiCards = computed(() => {
 const summary = computed(() => {
   const rate = overallRate.value
   const failList = failProcesses.value
+  // console.log('failList....',failList)
   if (failList.length === 0) {
     return {
       type: 'success',
@@ -292,6 +293,7 @@ const summary = computed(() => {
 
 // ============ 左图：集成CPK达标趋势（真实周度数据：达标率折线 + 达标项目柱） ============
 const trendOption = computed(() => {
+  // console.log('trend....',trend)
   const t = trend.value
   const weeks = t.weeks || []
   const rates = t.rates || []
@@ -379,6 +381,7 @@ const processBarOption = computed(() => {
   const categories = list.map(r => `${r.workshop}/${r.process}`)
   const passArr = list.map(r => r.pass === '-' ? 0 : r.pass)
   const failArr = list.map(r => (r.total !== '-' ? (r.total - r.pass) : 0))
+  // console.log('categories....',categories,'passArr.....',passArr,'failArr....',failArr)
   const rateArr = list.map(r => r.rate)
   const isNoData = list.map(r => r.status === '无数据')
   return {
