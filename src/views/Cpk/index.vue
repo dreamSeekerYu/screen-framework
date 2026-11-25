@@ -189,25 +189,10 @@ const failProjects = computed(() => totalProjects.value - passProjects.value)
 const overallRate = computed(() => totalProjects.value ? (passProjects.value / totalProjects.value * 100) : 0)
 const passCount = computed(() => processList.value.filter(r => r.status === '达标').length)
 const failCount = computed(() => processList.value.filter(r => r.status === '未达标').length)
-const noDataCount = computed(() => processList.value.filter(r => r.status === '无数据').length)
 
 // 未达标工序
 const failProcesses = computed(() => processList.value.filter(r => r.status === '未达标'))
 
-// 车间维度汇总（给左图用）
-const workshopStats = computed(() => {
-  const map = {}
-  for (const r of validList.value) {
-    if (!map[r.workshop]) map[r.workshop] = { workshop: r.workshop, total: 0, pass: 0 }
-    map[r.workshop].total += r.total
-    map[r.workshop].pass += r.pass
-  }
-  return Object.values(map).map(w => ({
-    ...w,
-    fail: w.total - w.pass,
-    rate: w.total ? (w.pass / w.total * 100) : 0,
-  }))
-})
 
 // ============ KPI 卡片 ============
 const kpiCards = computed(() => {

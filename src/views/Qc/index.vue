@@ -18,7 +18,7 @@
       <StatCardRow :gap="12" :min-card-width="220" :max-card-width="520">
         <NewStatCard v-for="(c, i) in kpiCards" :key="i"
                      :theme="c.theme" :title="c.title" :value="c.value" :unit="c.unit"
-                     :subTitle="c.explain + c.subTitle" :trend="c.trend" :trend-type="c.trendType">
+                     :subTitle="(c.explain?c.explain:'') + (c.subTitle?c.subTitle:'')" :trend="c.trend" :trend-type="c.trendType">
           <template v-if="c.extra" #left-extra>
             <div class="kpi-extra">{{ c.extra }}</div>
           </template>
@@ -209,16 +209,17 @@ const leaveColors = { A1: 'var(--color-primary)', A2: 'var(--color-danger)', A3:
 // ============ 计算属性：KPI 卡片 ============
 const kpiCards = computed(() => {
   const k = qc.kpi
+  console.log('kpiCards.....',k)
   if (!k) return []
   return [
     {
       theme: 'kpi-side', title: '总配置人力', value: k.totalConfig, unit: '人',
-      explain: `在职${k.onjob}人`,
+      explain: `在职${k.onjob}人，`,
       subTitle: `架构配置完成率 ${k.configRate.toFixed(1)}%`,
     },
     {
       theme: 'kpi-side', title: '当前实际人力', value: k.actual, unit: '人',
-      explain: '含内部/其他工厂支援',
+      explain: '含内部/其他工厂支援，',
       subTitle: `实际配置率 ${k.onjobFillRate.toFixed(1)}%`,
     },
     {
