@@ -42,22 +42,8 @@
       <div class="qc-main">
         <!-- 左列：风险预警 + 人员充足率 -->
         <div class="qc-col qc-col--left">
-          <ScreenCard title="风险预警" class="qc-risk">
-            <template #header-extra>
-              <StatusTag v-if="qc.highRiskCount" :text="qc.highRiskCount + '个高风险'" type="danger" effect="light" round />
-              <StatusTag v-else text="无高风险" type="success" effect="light" round />
-            </template>
-            <div class="risk-list">
-              <div v-for="r in topRisks" :key="r.name" class="risk-item" :class="'risk-item--' + r.level">
-                <div class="risk-item__top">
-                  <span class="risk-item__name">{{ r.name }}车间</span>
-                  <StatusTag :text="'缺口' + r.gapText" :type="r.level === 'danger' ? 'danger' : 'warning'"
-                             effect="light" size="small" round />
-                </div>
-                <p class="risk-item__msg">{{ r.msg }}</p>
-              </div>
-              <div v-if="topRisks.length === 0" class="risk-empty">各车间人力充足，无明显风险</div>
-            </div>
+          <ScreenCard title="人力分布结构" class="qc-pie">
+              <BaseChart :option="pieOpt" class="qc-chart-full" />
           </ScreenCard>
 
           <ScreenCard title="人员充足率" class="qc-gauge">
@@ -80,42 +66,14 @@
           <ScreenCard title="各车间人力配置对比" class="qc-bar">
             <BaseChart :option="barOpt" class="qc-chart-full" />
           </ScreenCard>
-          <div class="qc-mid-bottom">
-            <ScreenCard title="人力分布结构" class="qc-pie">
-              <BaseChart :option="pieOpt" class="qc-chart-full" />
-            </ScreenCard>
-            <ScreenCard title="当前vs预计缺口" class="qc-compare">
-              <BaseChart :option="compareOpt" class="qc-chart-full" />
-            </ScreenCard>
-          </div>
+          <ScreenCard title="各车间人力配置对比" class="qc-bar">
+            <BaseChart :option="barOpt" class="qc-chart-full" />
+          </ScreenCard>
         </div>
 
         <!-- 右列：支援人员来源 + 预离职人员分布 -->
         <div class="qc-col qc-col--right">
-          <ScreenCard title="支援人员来源" class="qc-support">
-            <div class="support-list">
-              <div v-for="s in qc.supportSources" :key="s.name" class="support-item">
-                <div class="support-item__top">
-                  <span class="support-item__name">{{ s.name }}</span>
-                  <span class="support-item__num">{{ s.count }}人</span>
-                </div>
-                <div class="support-bar">
-                  <div class="support-bar__fill"
-                       :style="{ width: (qc.maxSupport ? s.count / qc.maxSupport * 100 : 0) + '%' }"></div>
-                </div>
-                <p class="support-item__desc">{{ s.desc }}</p>
-              </div>
-              <div class="support-item support-item--ext" v-if="qc.externalWait > 0">
-                <div class="support-item__top">
-                  <span class="support-item__name">待外部支援</span>
-                  <span class="support-item__num text-warning">{{ qc.externalWait }}人</span>
-                </div>
-                <p class="support-item__desc">A2车间缺口最大，优先补充</p>
-              </div>
-            </div>
-          </ScreenCard>
-
-          <ScreenCard title="预离职人员分布" class="qc-leave">
+           <ScreenCard title="预离职人员分布" class="qc-leave">
             <BaseChart :option="leaveOpt" class="qc-leave__chart" />
             <div class="leave-legend">
               <div v-for="l in qc.leaveDist" :key="l.name" class="leave-legend__row">
@@ -124,6 +82,26 @@
                 </span>
                 <span class="leave-legend__num">{{ l.value }}人 ({{ l.percent }}%)</span>
               </div>
+            </div>
+          </ScreenCard>
+           <ScreenCard title="当前vs预计缺口" class="qc-compare">
+              <BaseChart :option="compareOpt" class="qc-chart-full" />
+            </ScreenCard>
+          <ScreenCard title="风险预警" class="qc-risk">
+            <template #header-extra>
+              <StatusTag v-if="qc.highRiskCount" :text="qc.highRiskCount + '个高风险'" type="danger" effect="light" round />
+              <StatusTag v-else text="无高风险" type="success" effect="light" round />
+            </template>
+            <div class="risk-list">
+              <div v-for="r in topRisks" :key="r.name" class="risk-item" :class="'risk-item--' + r.level">
+                <div class="risk-item__top">
+                  <span class="risk-item__name">{{ r.name }}车间</span>
+                  <StatusTag :text="'缺口' + r.gapText" :type="r.level === 'danger' ? 'danger' : 'warning'"
+                            effect="light" size="small" round />
+                </div>
+                <p class="risk-item__msg">{{ r.msg }}</p>
+              </div>
+              <div v-if="topRisks.length === 0" class="risk-empty">各车间人力充足，无明显风险</div>
             </div>
           </ScreenCard>
         </div>
