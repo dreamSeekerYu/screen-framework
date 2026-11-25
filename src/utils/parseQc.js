@@ -16,6 +16,11 @@ function toNum(v) {
   return isNaN(n) ? 0 : n
 }
 
+/** 是否为有效数字（排除 null / '#DIV/0!' / 非数字文本） */
+function isValidNum(v) {
+  return typeof v === 'number' && isFinite(v)
+}
+
 /**
  * 从 A1..Bn.. 引用中提取列号（1-based）
  */
@@ -61,6 +66,62 @@ const COL = {
   outSupport: 12, // 外部支援(预计)
   gapExpect: 13,  // 缺口（预计）
   remark: 14,     // 备注
+}
+
+/**
+ * 解析 data.json 中「离职率分析（文员）」区块，返回最近 N 周的离职率推移数据
+ * Excel 结构（动态定位，兼容行列增删）：
+ *   - 标题行 A列 = 「九、离职率分析（文员）」
+ *   - 标题行+1：周次（CW36…）
+ *   - +2：总人数  +3：离职人数  +4：离职率（小数）  +5：目标（小数）
+ * 无数据周（总人数/离职率缺失或 #DIV/0!）自动剔除，只取最近 limit 周
+ */
+export async function parseLeaveRateTrend(limit = 10) {
+  const json = await loadData('data')
+  const cells = json.sheets?.[0]?.cells || {}
+
+  // 1) 动态定位标题行
+  let titleRow = 0
+  for (const [ref, cell] of Object.entries(cells)) {
+    if (String(cell.value || '').includes('离职率分析')) {
+      titleRow = rowOf(ref)
+      break
+    }
+  }
+  if (!titleRow) return null
+
+  // 2) 按列号归集 5 行数据
+  const rowStart = titleRow + 1
+  const byCol = new Map() // col -> { week, total, leave, rate, target }
+  for (const [ref, cell] of Object.entries(cells)) {
+    const r = rowOf(ref)
+    if (r < rowStart || r > rowStart + 4) continue
+    const c = colOf(ref)
+    if (c < 4) continue // D 列起才是数据
+    const o = byCol.get(c) || {}
+    if (r === rowStart) o.week = String(cell.value || '').trim()
+    else if (r === rowStart + 1) o.total = cell.value
+    else if (r === rowStart + 2) o.leave = cell.value
+    else if (r === rowStart + 3) o.rate = cell.value
+    else if (r === rowStart + 4) o.target = cell.value
+    byCol.set(c, o)
+  }
+
+  // 3) 过滤有效周（周次合法 + 总人数与离职率均为数字），并按周次升序
+  const valid = [...byCol.values()]
+    .filter(o => /^CW\d+$/i.test(o.week) && isValidNum(o.total) && isValidNum(o.rate))
+    .sort((a, b) => parseInt(a.week.slice(2), 10) - parseInt(b.week.slice(2), 10))
+
+  const recent = valid.slice(-limit)
+  if (!recent.length) return null
+
+  return {
+    weeks: recent.map(o => o.week),
+    total: recent.map(o => o.total),
+    leave: recent.map(o => o.leave),
+    rate: recent.map(o => +(o.rate * 100).toFixed(2)),        // 百分比数值
+    target: recent.length ? +(recent[recent.length - 1].target || 0) * 100 : 5,
+  }
 }
 
 export async function parseQcData() {

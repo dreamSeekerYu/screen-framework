@@ -61,10 +61,13 @@
           </ScreenCard>
         </div>
 
-        <!-- 中列：各车间人力配置对比（大）+ 下方两小图 -->
+        <!-- 中列：周度离职率推移 + 各车间人力配置对比 -->
         <div class="qc-col qc-col--mid">
-          <ScreenCard title="各车间人力配置对比" class="qc-bar">
-            <BaseChart :option="barOpt" class="qc-chart-full" />
+          <ScreenCard title="周度离职率" class="qc-trend">
+            <template #header-extra>
+              <StatusTag :text="`目标 ≤ ${leaveTrend.target}%`" type="success" effect="light" round />
+            </template>
+            <BaseChart :option="leaveRateOpt" class="qc-chart-full" />
           </ScreenCard>
           <ScreenCard title="各车间人力配置对比" class="qc-bar">
             <BaseChart :option="barOpt" class="qc-chart-full" />
@@ -170,12 +173,14 @@ import StatCardRow from '@/components/common/StatCardRow.vue'
 import SummaryBar from '@/components/common/SummaryBar.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import Dialog from '@/components/common/Dialog.vue'
-import { parseQcData } from '@/utils/parseQc'
+import { parseQcData, parseLeaveRateTrend } from '@/utils/parseQc'
 import { parseQcTable } from '@/utils/parseQcTable'
-import { chartC, axisStyle, valueAxisStyle, tooltipStyle, legendStyle, gridStyle, pieItemStyle } from '@/utils/chartTheme.js'
+import { chartC, axisStyle, valueAxisStyle, tooltipStyle, legendStyle, gridStyle, pieItemStyle, areaGradient, lineStyle } from '@/utils/chartTheme.js'
 
 // ============ 数据状态 ============
 const qc = reactive({})
+// 周度离职率推移（来自 data.json「九、离职率分析」区块，最近十周）
+const leaveTrend = reactive({ weeks: [], total: [], leave: [], rate: [], target: 5 })
 const detailVisible = ref(false)
 // 从 qc人力.json 还原的 Excel 原始表格（行列动态适配）
 const excelTable = reactive({ title: '', cols: [], colPercents: [], rows: [] })
@@ -347,11 +352,63 @@ const leaveOpt = computed(() => {
   }
 })
 
+/** 周度离职率推移折线（含 5% 目标参考线），全部走主题变量 */
+const leaveRateOpt = computed(() => {
+  if (!leaveTrend.weeks.length) return {}
+  const peak = Math.max(leaveTrend.target, ...leaveTrend.rate, 1)
+  const yMax = Math.ceil(peak * 1.25 * 2) / 2 // 留出标签空间，0.5 步进取整
+  return {
+    tooltip: tooltipStyle({
+      trigger: 'axis',
+      formatter: (ps) => {
+        const i = ps[0].dataIndex
+        return `<b>${leaveTrend.weeks[i]}</b><br/>` +
+          ps.map(p => `${p.marker}${p.seriesName}：<b>${p.value}%</b>`).join('<br/>') +
+          `<br/>总人数：${leaveTrend.total[i]} 人　离职：${leaveTrend.leave[i]} 人`
+      },
+    }),
+    legend: legendStyle({ top: 0, right: 8, data: ['离职率', '目标'] }),
+    grid: gridStyle({ top: 34 }),
+    xAxis: { type: 'category', data: leaveTrend.weeks, boundaryGap: false, ...axisStyle() },
+    yAxis: {
+      type: 'value', min: 0, max: yMax,
+      ...valueAxisStyle({ axisLabel: { color: chartC.textMuted, fontSize: 11, formatter: '{value}%' } }),
+    },
+    series: [
+      {
+        name: '离职率', type: 'line', smooth: true,
+        symbol: 'circle', symbolSize: 7,
+        data: leaveTrend.rate,
+        lineStyle: lineStyle('var(--color-primary)'),
+        itemStyle: { color: 'var(--color-primary)', borderWidth: 2, borderColor: chartC.cardBg },
+        areaStyle: { color: areaGradient('var(--color-primary)', 14, 2) },
+        label: {
+          show: true, position: 'top', fontSize: 10, fontWeight: 700,
+          color: chartC.text, formatter: p => p.value + '%',
+        },
+        z: 3,
+      },
+      {
+        name: '目标', type: 'line', silent: true,
+        data: leaveTrend.weeks.map(() => leaveTrend.target),
+        symbol: 'none', smooth: false, step: 'end',
+        lineStyle: { color: chartC.danger, width: 1.5, type: 'dashed' },
+        itemStyle: { color: chartC.danger },
+        z: 1,
+      },
+    ],
+  }
+})
+
 // ============ 生命周期 ============
 onMounted(async () => {
   try {
     const data = await parseQcData()
     Object.assign(qc, data)
+    // 周度离职率推移（data.json「九、离职率分析」），加载失败不阻塞页面
+    parseLeaveRateTrend(10)
+      .then(t => t && Object.assign(leaveTrend, t))
+      .catch(e => console.warn('离职率趋势加载失败:', e))
     console.log('QC 数据加载成功:', data)
     // 同时还原 Excel 原始表格（详情弹窗用）
     const table = await parseQcTable()
@@ -439,8 +496,9 @@ onMounted(async () => {
 .qc-chart-full { flex: 1; min-height: 120px; width: 100%; }
 
 /* 左列 */
+.qc-pie { flex: 0.85; display: flex; flex-direction: column; min-height: 150px; }
 .qc-risk { flex-shrink: 0; }
-.qc-gauge { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.qc-gauge { flex: 1.3; display: flex; flex-direction: column; min-height: 0; }
 .qc-gauge__chart { flex: 1; min-height: 160px; }
 .gauge-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: $spacing-xs; margin-top: $spacing-xs; }
 .gauge-cell {
@@ -463,28 +521,15 @@ onMounted(async () => {
 .risk-item__msg { margin: 4px 0 0; font-size: $font-xs; color: var(--text-sub); line-height: 1.5; }
 .risk-empty { padding: 16px; text-align: center; color: var(--text-sub); font-size: $font-sm; }
 
-/* 中列 */
-.qc-bar { flex: 1.4; display: flex; flex-direction: column; min-height: 0; }
-.qc-mid-bottom { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: $spacing-sm; min-height: 0; }
-.qc-pie, .qc-compare { display: flex; flex-direction: column; min-height: 0; }
+/* 中列：周度离职率（折线）+ 各车间人力配置对比 */
+.qc-trend { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.qc-bar { flex: 1.3; display: flex; flex-direction: column; min-height: 0; }
+.qc-compare { display: flex; flex-direction: column; min-height: 0; }
 
-/* 右列 */
-.qc-leave { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+/* 右列：预离职人员分布 + 当前vs预计缺口 + 风险预警 */
+.qc-leave { flex: 1.1; display: flex; flex-direction: column; min-height: 0; }
 .qc-leave__chart { flex: 1; min-height: 140px; }
-
-.support-list { display: flex; flex-direction: column; gap: $spacing-sm; }
-.support-item__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-.support-item__name { font-size: $font-xs; font-weight: 500; color: var(--text-main); }
-.support-item__num { font-size: $font-xs; font-weight: 700; color: var(--color-primary); font-variant-numeric: tabular-nums; }
-.support-bar { height: 6px; background: var(--bg-soft); border-radius: 3px; overflow: hidden; }
-.support-bar__fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
-  border-radius: 3px;
-  transition: width 1s ease;
-}
-.support-item__desc { margin: 2px 0 0; font-size: $font-xs; color: var(--text-sub); }
-.support-item--ext { padding-top: $spacing-xs; border-top: 1px solid var(--border-color); }
+.qc-col--right .qc-compare { flex: 1; }
 
 .leave-legend { display: flex; flex-direction: column; gap: 4px; margin-top: $spacing-xs; }
 .leave-legend__row { display: flex; align-items: center; justify-content: space-between; font-size: $font-xs; }
