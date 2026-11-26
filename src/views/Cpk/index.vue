@@ -283,6 +283,7 @@ const trendOption = computed(() => {
   const weeks = t.weeks || []
   const rates = t.rates || []
   const pass = t.pass || []
+  const fail = t.pass.map((r,i)=>t.total[i]-r) || []
   // 计算达标率 Y 轴 min/max，自适应
   const validRates = rates.filter(v => v != null)
   const rMin = validRates.length ? Math.max(90, Math.floor(Math.min(...validRates) - 1)) : 93
@@ -353,8 +354,12 @@ const trendOption = computed(() => {
         },
       },
       {
-        name: '达标项目数', type: 'bar', yAxisIndex: 1, data: pass, barWidth: 18,
+        name: '达标项目数', type: 'bar', stack: 'total', yAxisIndex: 1, data: pass, barWidth: 18,
         itemStyle: { color: barGradient(chartC.primary), borderRadius: [3,3,0,0] },
+      },
+      {
+        name: '达标项目数', type: 'bar', stack: 'total', yAxisIndex: 1, data: fail, barWidth: 18,
+        itemStyle: { color: barGradient(chartC.warning), borderRadius: [3,3,0,0] },
       },
     ],
   }
