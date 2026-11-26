@@ -358,6 +358,18 @@ async function convertFile(xlsxPath, dataDirFull, imgDirFull, outNameOverride) {
   const imgDirFull = path.resolve(imgDir);
   fs.mkdirSync(dataDirFull, { recursive: true });
   fs.mkdirSync(imgDirFull, { recursive: true });
+
+  // ---------- 清空输出目录：data 和 img 里的旧内容全部删除，保证结果全新 ----------
+  const clearDir = d => {
+    let n = 0;
+    for (const it of fs.readdirSync(d, { withFileTypes: true })) {
+      fs.rmSync(path.join(d, it.name), { recursive: true, force: true });
+      n++;
+    }
+    return n;
+  };
+  log('清空 data 目录: 删除旧内容 ' + clearDir(dataDirFull) + ' 项');
+  log('清空 img 目录: 删除旧内容 ' + clearDir(imgDirFull) + ' 项');
   log('输出目录就绪: ' + dataDirFull);
   log('输出目录就绪: ' + imgDirFull);
 
