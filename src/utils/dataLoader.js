@@ -14,9 +14,9 @@ const DATA_BASE = `${BASE}/data`
 
 // 文件名 → 别名（给业务代码用短名）
 const FILE_MAP = {
-  main: 'data.json',
-  data: 'data.json',
-  lpa: 'dataLPA.json',
+  main: '周报源数据.json',
+  data: '周报源数据.json',
+  lpa: 'LPA审核问题闭环.json',
   pack: 'pack客户表现.json',
   plan: '周度工作计划.json',
   think: '周度思考.json',

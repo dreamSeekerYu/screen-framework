@@ -165,7 +165,7 @@ export function cellOfRow(sheet, row, colName) {
 //     const pics = cellOfRow(sheet, row, '问题图片');
 //     // 该列图片
 //     picsEl.innerHTML = pics.images.map(img => `<img src="${img.src}" style="max-width:120px">`).join('');
-//     // src 是相对路径，与 data.json 同级即可直接显示
+//     // src 是相对路径，与 周报源数据.json 同级即可直接显示
 // });
 
 // 当同一格有多段颜色（如"焊房内有胶" + 红色"带残留"）时： 

@@ -179,7 +179,7 @@ import { chartC, axisStyle, valueAxisStyle, tooltipStyle, legendStyle, gridStyle
 
 // ============ 数据状态 ============
 const qc = reactive({})
-// 周度离职率推移（来自 data.json「九、离职率分析」区块，最近十周）
+// 周度离职率推移（来自 周报源数据.json「九、离职率分析」区块，最近十周）
 const leaveTrend = reactive({ weeks: [], total: [], leave: [], rate: [], target: 5 })
 const detailVisible = ref(false)
 // 从 qc人力.json 还原的 Excel 原始表格（行列动态适配）
@@ -405,7 +405,7 @@ onMounted(async () => {
   try {
     const data = await parseQcData()
     Object.assign(qc, data)
-    // 周度离职率推移（data.json「九、离职率分析」），加载失败不阻塞页面
+    // 周度离职率推移（周报源数据.json「九、离职率分析」），加载失败不阻塞页面
     parseLeaveRateTrend(10)
       .then(t => t && Object.assign(leaveTrend, t))
       .catch(e => console.warn('离职率趋势加载失败:', e))

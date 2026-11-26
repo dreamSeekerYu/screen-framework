@@ -1,6 +1,6 @@
 /**
  * 重大质量异常闭环率 - 重要问题闭环率区域解析
- * 数据源：public/data/data.json → sheet[0] 「四、重要问题闭环率」块
+ * 数据源：public/data/周报源数据.json → sheet[0] 「四、重要问题闭环率」块
  */
 import { loadSheet } from './dataLoader.js'
 

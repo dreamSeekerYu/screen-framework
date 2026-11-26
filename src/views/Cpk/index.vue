@@ -64,7 +64,7 @@ import { chartC, axisStyle, valueAxisStyle, tooltipStyle, legendStyle, gridStyle
 
 // ============ 数据 ============
 const processList = ref([]) // 工序列表（来自 过程能力达标率.json）
-const trend = ref({ weeks: [], rates: [], total: [], pass: [] }) // 周度达标趋势（来自 data.json 合计行）
+const trend = ref({ weeks: [], rates: [], total: [], pass: [] }) // 周度达标趋势（来自 周报源数据.json 合计行）
 
 // 解析 process 行
 function normalizeRows(rows) {
