@@ -61,7 +61,7 @@
           </ScreenCard>
         </div>
 
-        <!-- 中列：周度离职率推移 + 各车间人力配置对比 -->
+        <!-- 中列：周度离职率推移 + 各车间人力对比 -->
         <div class="qc-col qc-col--mid">
           <ScreenCard title="周度离职率" class="qc-trend">
             <template #header-extra>
@@ -69,7 +69,7 @@
             </template>
             <BaseChart :option="leaveRateOpt" class="qc-chart-full" />
           </ScreenCard>
-          <ScreenCard title="各车间人力配置对比" class="qc-bar">
+          <ScreenCard title="各车间人力对比" class="qc-bar">
             <BaseChart :option="barOpt" class="qc-chart-full" />
           </ScreenCard>
         </div>
@@ -496,7 +496,7 @@ onMounted(async () => {
 .qc-chart-full { flex: 1; min-height: 120px; width: 100%; }
 
 /* 左列 */
-.qc-pie { flex: 0.85; display: flex; flex-direction: column; min-height: 150px; }
+.qc-pie { flex: 1; display: flex; flex-direction: column; min-height: 150px; }
 .qc-risk { flex-shrink: 0; }
 .qc-gauge { flex: 1.3; display: flex; flex-direction: column; min-height: 0; }
 .qc-gauge__chart { flex: 1; min-height: 160px; }
