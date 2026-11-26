@@ -19,6 +19,8 @@
   </div>
   <!-- 全局动态导航器：Ctrl+K 唤起 -->
   <DynamicNavigator />
+  <!-- 移动端 / 平板：右下角常驻【下一页】翻页箭头（桌面端自动不渲染） -->
+  <PagePager />
 </template>
 
 
@@ -27,6 +29,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import ScreenContainer from '@/components/layout/ScreenContainer.vue'
 import DynamicNavigator from '@/components/common/DynamicNavigator.vue'
+import PagePager from '@/components/common/PagePager.vue'
 import router from '@/router'
 import { RouterLink } from "vue-router";
 import { loadData, loadSheet, preloadAll } from '@/utils/dataLoader.js'

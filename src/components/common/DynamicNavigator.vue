@@ -125,17 +125,9 @@ function initParticles() {
   }
 }
 
-// 大屏业务页白名单：按展示顺序排列，不在名单中的页面（组件演示页等）不出现在导航器里
-const NAV_ROUTES = [
-  { path: '/',      key: 'Home',     title: '大屏首页',   subtitle: 'Dashboard' },
-  { path: '/pack',  key: 'Pack',     title: '客户表现',   subtitle: 'PACK' },
-  { path: '/question', key: 'Question', title: '异常闭环', subtitle: 'Question' },
-  { path: '/cpk',   key: 'Cpk',      title: '过程能力',   subtitle: 'CPK' },
-  { path: '/qc',    key: 'Qc',       title: '人力规划',   subtitle: 'QC HR' },
-  { path: '/plain', key: 'Plain',    title: '工作计划',   subtitle: 'Plan' },
-  { path: '/think', key: 'Think',    title: '周度思考',   subtitle: 'Thinking' },
-  // { path: '/LPA',   key: 'LPA',      title: '过程审核',   subtitle: 'LPA' },
-]
+// 大屏业务页白名单：与右下角翻页器（PagePager）共用 config/navPages.js，
+// 数组顺序即导航器顺序 = 翻页顺序，新增页面只需改这一处
+import { NAV_PAGES as NAV_ROUTES, navigateByStep } from '@/config/navPages'
 
 function getRoutes() {
   // 以白名单为准，只有真实存在的路由才显示（避免页面未开发时出现空链接）
@@ -724,20 +716,17 @@ function onKeyDown(e) {
     e.preventDefault(); e.stopPropagation()
     openNav(); return
   }
+  // Alt+[ / Alt+]：与移动端右下角翻页器共用 navigateByStep，两处行为完全等效
   if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === '[') {
     if (e.repeat) return
     e.preventDefault(); e.stopPropagation()
-    const routes = getRoutes(); const n = routes.length; const ci = currentIndex(routes)
-    const next = (ci - 1 + n) % n
-    if (routes[next]) router.push(routes[next].path)
+    navigateByStep(router, route.path, -1)
     return
   }
   if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === ']') {
     if (e.repeat) return
     e.preventDefault(); e.stopPropagation()
-    const routes = getRoutes(); const n = routes.length; const ci = currentIndex(routes)
-    const next = (ci + 1) % n
-    if (routes[next]) router.push(routes[next].path)
+    navigateByStep(router, route.path, 1)
     return
   }
   if (!visible.value) return
