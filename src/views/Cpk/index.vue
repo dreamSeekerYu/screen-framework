@@ -315,7 +315,18 @@ const trendOption = computed(() => {
         return html
       },
     }),
-    legend: legendStyle({ data: ['达标率', '达标项目数'], bottom: 0 }),
+    legend: legendStyle({ data: [
+      {
+      name:'达标率',
+      itemStyle: { color: chartC.success },
+    },{
+      name:'未达标项目数',
+      itemStyle: { color: chartC.warning },
+    },{
+      name:'达标项目数',
+      itemStyle: { color: chartC.primary },
+    }
+    ], bottom: 0 }),
     grid: gridStyle({ left: 45, right: 55, bottom: 40 }),
     xAxis: {
       type: 'category', data: weeks, boundaryGap: true,
@@ -358,8 +369,12 @@ const trendOption = computed(() => {
         itemStyle: { color: barGradient(chartC.primary), borderRadius: [3,3,0,0] },
       },
       {
-        name: '达标项目数', type: 'bar', stack: 'total', yAxisIndex: 1, data: fail, barWidth: 18,
+        name: '未达标项目数', type: 'bar', stack: 'total', yAxisIndex: 1, data: fail, barWidth: 18,
         itemStyle: { color: barGradient(chartC.warning), borderRadius: [3,3,0,0] },
+        label: {
+          show:true, position:'top', color:chartC.warning, fontSize:10, fontWeight:'bold',
+          formatter: p => p.value > 0 ? p.value : '',
+        },
       },
     ],
   }
@@ -402,7 +417,16 @@ const processBarOption = computed(() => {
         return html
       },
     }),
-    legend: legendStyle({ data: ['达标项目','未达标项目','达成率'], bottom: 0 }),
+    legend: legendStyle({ data: [{
+      name:'达标项目',
+      itemStyle: { color: chartC.success },
+    },{
+      name:'未达标项目',
+      itemStyle: { color: chartC.warning },
+    },{
+      name:'达成率',
+      itemStyle: { color: chartC.primary },
+    }], bottom: 0 }),
     grid: gridStyle({ left: 45, right: 55, bottom: 50 }),
     xAxis: {
       type: 'category', data: categories,
