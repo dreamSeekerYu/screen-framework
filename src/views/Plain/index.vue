@@ -138,7 +138,7 @@ const currentWeek = computed(() => weeks.value[defaultWeek.value] || null)
 const lastWeek = computed(() => weeks.value[defaultWeek.value + 1] || null)
 
 const headerTitle = computed(() =>
-  currentWeek.value ? `${currentWeek.value.title}` : '本周工作计划',
+  currentWeek.value ? `${currentWeek.value.title}周度工作计划&进度` : '本周工作计划&进度',
 )
 
 const kpiCards = computed(() => {
