@@ -57,10 +57,7 @@ if not defined SHARE (
 )
 
 echo [1/3] Pulling xlsx from: !SHARE!
-rem Clear excal first for a FRESH pull (old pulled files are removed)
-if exist excal rd /s /q excal
-mkdir excal
-echo [%date% %time%] excal cleared for fresh pull >> run_log.txt
+if not exist excal mkdir excal
 
 if "%MODE%"=="file" copy /y "!SHARE!" excal\ >nul
 if "%MODE%"=="file" if errorlevel 1 (
