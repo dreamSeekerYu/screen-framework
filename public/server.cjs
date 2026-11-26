@@ -22,6 +22,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const child = require('child_process');
 
 const ROOT = process.cwd();
 const PORT = parseInt(process.argv[2], 10) || 8080;
@@ -174,6 +175,59 @@ function localIPs() {
   return out;
 }
 
+// 自动打开浏览器（IE 除外）：先查系统默认浏览器，若默认是 IE
+// 则依次尝试 Edge / Chrome / Firefox；都找不到才退回默认浏览器
+function openBrowser(url) {
+  try {
+    if (process.platform !== 'win32') {
+      child.exec('xdg-open "' + url + '"', { stdio: 'ignore' });
+      return;
+    }
+    // 读取 Windows 默认浏览器的 ProgId（如 ChromeHTML / MSEdgeHTM / IE.HTTP）
+    let progId = '';
+    try {
+      const out = child.execSync(
+        'reg query "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice" /v ProgId',
+        { encoding: 'utf8' });
+      const m = out.match(/ProgId\s+REG_SZ\s+(\S+)/);
+      if (m) progId = m[1];
+    } catch (e) {}
+    const isIE = /(^|\b)IE\.HTTP/i.test(progId) || /IEXPLORE/i.test(progId);
+    if (progId && !isIE) {
+      child.exec('start "" "' + url + '"', { stdio: 'ignore' });
+      slog('已打开系统默认浏览器: ' + url);
+      return;
+    }
+    // 默认是 IE（或无法识别）：依次尝试常见安装路径的现代浏览器
+    const pf = process.env.ProgramFiles || 'C:\\Program Files';
+    const pf86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+    const lad = process.env.LOCALAPPDATA || '';
+    const candidates = [
+      pf86 + '\\Microsoft\\Edge\\Application\\msedge.exe',
+      pf + '\\Microsoft\\Edge\\Application\\msedge.exe',
+      pf86 + '\\Google\\Chrome\\Application\\chrome.exe',
+      pf + '\\Google\\Chrome\\Application\\chrome.exe',
+      lad + '\\Google\\Chrome\\Application\\chrome.exe',
+      pf + '\\Mozilla Firefox\\firefox.exe',
+      pf86 + '\\Mozilla Firefox\\firefox.exe'
+    ];
+    for (const p of candidates) {
+      if (p && fs.existsSync(p)) {
+        child.exec('"' + p + '" "' + url + '"', { stdio: 'ignore' });
+        slog('默认浏览器是 IE，已改用现代浏览器打开: ' + url);
+        slog('（使用: ' + p + '）');
+        return;
+      }
+    }
+    // 实在找不到现代浏览器，退回系统默认（IE 总比打不开强）
+    child.exec('start "" "' + url + '"', { stdio: 'ignore' });
+    slog('未找到 Edge/Chrome/Firefox，已用系统默认浏览器打开: ' + url);
+  } catch (e) {
+    slog('自动打开浏览器失败（不影响服务）: ' + e.message);
+    slog('请手动访问: ' + url);
+  }
+}
+
 server.listen(PORT, () => {
   ensureIndexHtml();
   slog('==============================================');
@@ -186,6 +240,7 @@ server.listen(PORT, () => {
   }
   slog('按 Ctrl+C 停止服务');
   slog('==============================================');
+  openBrowser('http://localhost:' + PORT + '/');
 }).on('error', e => {
   if (e.code === 'EADDRINUSE') {
     slog('[错误] 端口 ' + PORT + ' 已被占用。解决方法：');
