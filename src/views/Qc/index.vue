@@ -78,14 +78,14 @@
         <div class="qc-col qc-col--right">
            <ScreenCard title="预离职人员分布" class="qc-leave">
             <BaseChart :option="leaveOpt" class="qc-leave__chart" />
-            <div class="leave-legend">
+            <!-- <div class="leave-legend">
               <div v-for="l in qc.leaveDist" :key="l.name" class="leave-legend__row">
                 <span class="leave-legend__name">
                   <i class="leave-dot" :style="{ background: leaveColors[l.name] }"></i>{{ l.name }}车间
                 </span>
                 <span class="leave-legend__num">{{ l.value }}人 ({{ l.percent }}%)</span>
               </div>
-            </div>
+            </div> -->
           </ScreenCard>
            <ScreenCard title="当前vs预计缺口" class="qc-compare">
               <BaseChart :option="compareOpt" class="qc-chart-full" />
@@ -304,10 +304,10 @@ const pieOpt = computed(() => {
   const palette = [chartC.primary, chartC.danger, chartC.success, chartC.warning, chartC.accent]
   return {
     tooltip: tooltipStyle({ trigger: 'item', formatter: '{b}: {c}人 ({d}%)' }),
-    legend: legendStyle({ bottom: 0 }),
+    // legend: legendStyle({ bottom: 0 }),
     series: [{
       type: 'pie', radius: ['50%', '72%'], center: ['50%', '42%'],
-      avoidLabelOverlap: false, label: { show: false }, labelLine: { show: false },
+      avoidLabelOverlap: false, label: { show: true }, labelLine: { show: true },
       itemStyle: pieItemStyle(),
       data: shops.map((s, i) => ({
         name: s.name + '车间', value: s.actual,
@@ -340,9 +340,10 @@ const leaveOpt = computed(() => {
   const dist = qc.leaveDist || []
   return {
     tooltip: tooltipStyle({ trigger: 'item', formatter: '{b}: {c}人 ({d}%)' }),
+    // legend: legendStyle({ bottom: 0 }),
     series: [{
       type: 'pie', radius: ['50%', '72%'], center: ['50%', '45%'],
-      label: { show: false }, labelLine: { show: false },
+      label: { show: true }, labelLine: { show: true },
       itemStyle: pieItemStyle(),
       data: dist.map(d => ({
         name: d.name + '车间', value: d.value,
