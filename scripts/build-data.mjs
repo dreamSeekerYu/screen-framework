@@ -9,8 +9,13 @@
  *
  * 压缩策略：
  *   - 样式去重：单元格完整 style 抽到 sheet.styles[]，cell 只保留 styleId 索引
+ *   - 弃用字段剥离（默认开启）：styles / rowHeights / columnWidths / styleId
+ *     解析层（utils/parse*.js）只读 cells[*].value，这些字段不影响页面；
+ *     实测「仅样式/行高变化」的重新导出会让 JSON 膨胀 3%~13%，剥离后可避免。
+ *     需要保留时用 `KEEP_STYLES=1 npm run data`
  *   - 去空字段：值为 null/undefined/空数组的键删除
  *   - 紧凑输出：无缩进、无换行
+ *   - 自动处理 data-source/ 下全部 *.json（无需维护文件清单）
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -21,10 +26,15 @@ const ROOT = path.resolve(__dirname, '..')
 const SRC_DIR = path.join(ROOT, 'data-source')
 const DST_DIR = path.join(ROOT, 'public', 'data')
 
-const FILES = ['data.json', 'dataLPA.json', 'pack客户表现.json', '周度工作计划.json']
+const KEEP_STYLES = process.env.KEEP_STYLES === '1'
 
 if (!fs.existsSync(SRC_DIR)) fs.mkdirSync(SRC_DIR, { recursive: true })
 if (!fs.existsSync(DST_DIR)) fs.mkdirSync(DST_DIR, { recursive: true })
+
+// 自动枚举数据源文件（替代手工清单，新 JSON 放进来即生效）
+const FILES = fs.existsSync(SRC_DIR)
+  ? fs.readdirSync(SRC_DIR).filter(f => f.endsWith('.json')).sort()
+  : []
 
 function compressSheet(sheet) {
   const styleMap = new Map()
@@ -58,11 +68,17 @@ function compressSheet(sheet) {
     newCells[ref] = c
   }
 
-  return {
-    ...sheet,
-    cells: newCells,
-    styles,
+  const out = { ...sheet, cells: newCells }
+  if (KEEP_STYLES) {
+    out.styles = styles
+  } else {
+    // 剥离解析层用不到的格式字段（styles/styleId/行高列宽）
+    for (const [ref, c] of Object.entries(newCells)) delete c.styleId
+    delete out.styles
+    delete out.rowHeights
+    delete out.columnWidths
   }
+  return out
 }
 
 let totalOrig = 0, totalNew = 0

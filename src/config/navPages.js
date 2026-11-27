@@ -1,22 +1,22 @@
 /**
  * 大屏业务页白名单
  *
- * 数组中顺序即「展示顺序 = 翻页顺序」，是以下功能的唯一数据源：
+ * 数据源已收敛到「页面注册中心」src/config/pages.js（NAVIGABLE_PAGES），
+ * 本文件只负责派生白名单并保留翻页器/导航器的工具函数。
+ *
  *   1. 右下角翻页器（移动端 / 平板）PagePager.vue
  *   2. 全局导航器（Alt+K）及 Alt+[ / Alt+] 快捷翻页 DynamicNavigator.vue
  *
  * 不在名单内的页面（组件演示页 / 未完成的 LPA 等）不会出现在翻页链路里。
  */
-export const NAV_PAGES = [
-  { path: '/',          key: 'Home',     title: '大屏首页', subtitle: 'Dashboard' },
-  { path: '/pack',      key: 'Pack',     title: '客户表现', subtitle: 'PACK' },
-  { path: '/question',  key: 'Question', title: '异常闭环', subtitle: 'Question' },
-  { path: '/cpk',       key: 'Cpk',      title: '过程能力', subtitle: 'CPK' },
-  { path: '/qc',        key: 'Qc',       title: '人力规划', subtitle: 'QC HR' },
-  { path: '/plain',     key: 'Plain',    title: '工作计划', subtitle: 'Plan' },
-  { path: '/think',     key: 'Think',    title: '周度思考', subtitle: 'Thinking' },
-  // { path: '/LPA',    key: 'LPA',      title: '过程审核', subtitle: 'LPA' },
-]
+import { NAVIGABLE_PAGES } from './pages.js'
+
+export const NAV_PAGES = NAVIGABLE_PAGES.map(p => ({
+  path: p.path,
+  key: p.key,
+  title: p.title,
+  subtitle: p.subtitle,
+}))
 
 /** 过滤出路由表中真实存在的页面（避免页面未开发时翻到空白页） */
 export function resolveNavPages(router) {

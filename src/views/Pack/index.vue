@@ -380,7 +380,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useCarousel } from '@/composables/useCarousel.js'
+import { useTimeWindow } from '@/composables/useTimeWindow.js'
+import { useMarkPointLink } from '@/composables/useMarkPointLink.js'
+import { usePageOverflowGuard } from '@/composables/usePageOverflowGuard.js'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
@@ -416,23 +420,36 @@ const A_PERIODS = [
   { key: 'km12', title: '集成12MIS表现' },
 ]
 
-/* ========== 第二阶段：时间窗口 / 投屏轮播 / 问题联动高亮 ========== */
-/** 详情图表时间窗口：w4/w12 = 周粒度最近 N 个有数据周；month = 月粒度聚合；all = 月+全周 */
-const timeWindow = ref('w12')
-const WINDOW_TABS = [
-  { key: 'w4',    label: '近4周' },
-  { key: 'w12',   label: '近12周' },
-  { key: 'month', label: '月度' },
-  { key: 'all',   label: '全部' },
-]
+/* ========== 第二阶段：时间窗口 / 投屏轮播 / 问题联动高亮（已下沉为公共 composables） ========== */
+const { timeWindow, WINDOW_TABS, windowLabels } = useTimeWindow()
 
 /** 投屏轮播：总览 → 客户详情（逐客户）→ 问题分析 循环，手动操作自动重新计时 */
-const rotateOn = ref(false)
-const ROTATE_MS = 12000
-let rotateTimer = null
+function rotateTick() {
+  if (mainTab.value === 'detail') {
+    // 详情 Tab：逐客户轮换，轮完进入问题分析
+    const idx = CLIENT_TABS.findIndex(t => t.key === activeClient.value)
+    if (idx >= CLIENT_TABS.length - 1) mainTab.value = 'issues'
+    else activeClient.value = CLIENT_TABS[idx + 1].key
+  } else if (mainTab.value === 'overview') {
+    mainTab.value = 'detail'
+  } else {
+    // 问题分析 → 总览，并重置客户游标，保证下一轮详情从 A1 开始
+    mainTab.value = 'overview'
+    activeClient.value = CLIENT_TABS[0].key
+  }
+}
+const { on: rotateOn, toggle: toggleRotate, touch: touchRotate } =
+  useCarousel({ interval: 12000, tick: rotateTick })
 
 /** 问题联动高亮：{ custKey, periodKey, week } → 详情图表 markPoint 定位超标点 */
-const highlight = ref(null)
+const { highlight, set: setHighlight, clear: clearHighlight, markOf: _markOf } = useMarkPointLink()
+/** Pack 便捷封装：pin 数值统一走 fmtNum */
+function highlightMark(custKey, periodKey, labels, values) {
+  return _markOf(custKey, periodKey, labels, values, { fmt })
+}
+
+// dev 模式下守卫 1080 一屏约束
+usePageOverflowGuard()
 
 const a1 = computed(() => packData.customers.find(c => c.key === 'A1'))
 const a2 = computed(() => packData.customers.find(c => c.key === 'A2'))
@@ -658,20 +675,6 @@ const overviewRadarOption = computed(() => {
 })
 
 /* ========== A 型详情：四周期图表（时间窗口可切换，纵轴上限由数据计算） ========== */
-/** 问题联动：命中高亮时在「实际」曲线上 markPoint 定位峰值周 */
-function highlightMark(custKey, periodKey, labels, values) {
-  const h = highlight.value
-  if (!h || h.custKey !== custKey || h.periodKey !== periodKey) return undefined
-  const idx = labels.indexOf(h.week)
-  if (idx < 0 || !(values[idx] > 0)) return undefined
-  return {
-    symbol: 'pin',
-    symbolSize: 44,
-    itemStyle: { color: 'var(--color-danger)' },
-    label: { show: true, formatter: `${fmt(values[idx])}`, color: '#fff', fontSize: 10 },
-    data: [{ coord: [h.week, values[idx]] }],
-  }
-}
 
 function periodOption(cust, pKey) {
   const f = PERIOD_FIELD[pKey]
@@ -890,7 +893,7 @@ const riskScoreOption = computed(() => {
 
 /* ========== 交互：Tab/客户/窗口切换（手动操作时轮播重新计时） ========== */
 function selectTab(key) { mainTab.value = key; touchRotate() }
-function selectClient(key) { activeClient.value = key; highlight.value = null; touchRotate() }
+function selectClient(key) { activeClient.value = key; clearHighlight(); touchRotate() }
 function selectWindow(key) { timeWindow.value = key; touchRotate() }
 function jumpToDetail(clientKey) {
   activeClient.value = clientKey
@@ -901,53 +904,8 @@ function jumpToDetail(clientKey) {
 /** 点击问题条目 → 跳转对应客户详情，并 markPoint 高亮该周期峰值点 */
 function locateIssue(it) {
   if (!it.custKey) return
-  highlight.value = { custKey: it.custKey, periodKey: it.periodKey, week: it.week || it.period }
+  setHighlight({ custKey: it.custKey, periodKey: it.periodKey, week: it.week || it.period })
   jumpToDetail(it.custKey)
-}
-
-/* ========== 投屏轮播 ========== */
-function toggleRotate() {
-  rotateOn.value = !rotateOn.value
-  if (rotateOn.value) scheduleRotate()
-  else stopRotate()
-}
-function scheduleRotate() {
-  stopRotate()
-  rotateTimer = setTimeout(rotateTick, ROTATE_MS)
-}
-function stopRotate() {
-  if (rotateTimer) { clearTimeout(rotateTimer); rotateTimer = null }
-}
-function touchRotate() {
-  if (!rotateOn.value) return
-  stopRotate()
-  rotateTimer = setTimeout(rotateTick, ROTATE_MS)
-}
-function rotateTick() {
-  if (mainTab.value === 'detail') {
-    // 详情 Tab：逐客户轮换，轮完进入问题分析
-    const idx = CLIENT_TABS.findIndex(t => t.key === activeClient.value)
-    if (idx >= CLIENT_TABS.length - 1) mainTab.value = 'issues'
-    else activeClient.value = CLIENT_TABS[idx + 1].key
-  } else if (mainTab.value === 'overview') {
-    mainTab.value = 'detail'
-  } else {
-    // 问题分析 → 总览，并重置客户游标，保证下一轮详情从 A1 开始
-    mainTab.value = 'overview'
-    activeClient.value = CLIENT_TABS[0].key
-  }
-  if (rotateOn.value) rotateTimer = setTimeout(rotateTick, ROTATE_MS)
-}
-onUnmounted(stopRotate)
-
-/* ========== 时间窗口：w4/w12 取最近 N 个自然周（parsePack 已裁掉尾部无数据周，时间轴真实连续） ========== */
-function windowLabels(cust, w) {
-  if (!cust) return []
-  const wk = (cust.weeks || []).filter(x => /WK\d+/.test(x))
-  if (w === 'month') return [...(cust.months || [])]
-  if (w === 'all') return [...(cust.months || []), ...wk]
-  const n = w === 'w4' ? 4 : 12
-  return wk.slice(-n)
 }
 
 /* ========== 加载 ========== */
@@ -989,8 +947,8 @@ onMounted(async () => {
   border-radius: $radius-lg;
   font-weight: 600;
   background: var(--color-bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--text-body);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
   cursor: pointer;
   transition: all .25s;
   box-shadow: var(--shadow-card);
@@ -1050,7 +1008,7 @@ onMounted(async () => {
   }
 }
 @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform: translateY(0);} }
-.p-loading { padding: 40px; text-align: center; color: var(--text-sec); }
+.p-loading { padding: 40px; text-align: center; color: var(--color-text-secondary); }
 
 /* ============ KPI 行 ============ */
 .pack-kpi-row :deep(.stat-card) {
@@ -1072,7 +1030,7 @@ onMounted(async () => {
 }
 .pack-client-card {
   background: var(--color-bg-card);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-border);
   border-radius: $radius-lg;
   padding: $spacing-md $spacing-lg;
   cursor: pointer;
@@ -1082,7 +1040,7 @@ onMounted(async () => {
   &.selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 15%, transparent); }
 }
 .cc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: $spacing-md; }
-.cc-name { font-size: $font-lg; font-weight: 700; color: var(--text-main); margin: 0; }
+.cc-name { font-size: $font-lg; font-weight: 700; color: var(--color-text-primary); margin: 0; }
 .cc-body {
   display: flex;
   justify-content: space-between;
@@ -1091,7 +1049,7 @@ onMounted(async () => {
 }
 .cc-metrics { display: flex; flex-direction: column; gap: $spacing-xs; flex: 1; min-width: 0; }
 .cc-row { display: flex; justify-content: space-between; font-size: $font-sm; }
-.cc-label { color: var(--text-sec); }
+.cc-label { color: var(--color-text-secondary); }
 .cc-val { font-weight: 600; }
 /* 达标率环形（conic-gradient 由 ringStyle() 内联注入，颜色随风险等级） */
 .cc-ring {
@@ -1115,7 +1073,7 @@ onMounted(async () => {
   justify-content: center;
   transform: rotate(90deg);
 }
-.cc-ring-num { font-size: 13px; font-weight: 700; line-height: 1.1; color: var(--text-main); }
+.cc-ring-num { font-size: 13px; font-weight: 700; line-height: 1.1; color: var(--color-text-primary); }
 .cc-ring-label { font-size: 9px; color: var(--text-muted); line-height: 1.2; }
 /* 0KM PPM sparkline 迷你趋势 */
 .cc-spark { margin-top: $spacing-sm; }
@@ -1139,7 +1097,7 @@ onMounted(async () => {
 .chart-title {
   font-size: $font-md;
   font-weight: 700;
-  color: var(--text-main);
+  color: var(--color-text-primary);
   display: flex; align-items: center; gap: $spacing-sm;
 }
 .chart-sub { font-size: $font-xs; color: var(--text-muted); font-weight: 400; }
@@ -1158,8 +1116,8 @@ onMounted(async () => {
   border-radius: $radius-lg;
   font-weight: 600;
   background: var(--color-bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--text-body);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
   cursor: pointer;
   transition: all .25s;
   font-family: inherit;
@@ -1183,8 +1141,8 @@ onMounted(async () => {
   border-radius: $radius-md;
   font-size: $font-sm;
   background: var(--color-bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--text-body);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
   cursor: pointer;
   transition: all .2s;
   font-family: inherit;
@@ -1197,21 +1155,21 @@ onMounted(async () => {
 }
 .pack-detail-card {
   background: var(--color-bg-card);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-border);
   border-radius: $radius-lg;
   padding: $spacing-md $spacing-lg;
   margin-bottom: $spacing-md;
   box-shadow: var(--shadow-card);
 }
 .detail-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: $spacing-md; }
-.detail-title { font-size: $font-lg; font-weight: 700; color: var(--text-main); margin: 0; }
+.detail-title { font-size: $font-lg; font-weight: 700; color: var(--color-text-primary); margin: 0; }
 .detail-chart-grid {
   display: grid; grid-template-columns: repeat(2,1fr); gap: $spacing-md;
 }
 .detail-chart-grid--wide { display: grid; grid-template-columns: 1fr; gap: $spacing-md; }
 .detail-chart-block {
   background: var(--color-bg-card);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-border);
   border-radius: $radius-lg;
   padding: $spacing-sm $spacing-md;
   box-shadow: var(--shadow-card);
@@ -1224,11 +1182,11 @@ onMounted(async () => {
 .detail-table-wrap { margin-top: $spacing-md; overflow: auto; max-height: 186px; border-radius: $radius-md; }
 .pack-data-table {
   width: 100%; border-collapse: collapse;
-  th { position: sticky; top: 0; z-index: 1; background: var(--color-bg-soft); padding: 10px 8px; text-align: center; font-weight: 600; font-size: $font-sm; color: var(--color-text-primary); border-bottom: 1px solid var(--border-color); }
-  td { padding: 8px; text-align: center; font-size: $font-sm; color: var(--text-body); border-bottom: 1px solid var(--color-border-light); }
+  th { position: sticky; top: 0; z-index: 1; background: var(--color-bg-soft); padding: 10px 8px; text-align: center; font-weight: 600; font-size: $font-sm; color: var(--color-text-primary); border-bottom: 1px solid var(--color-border); }
+  td { padding: 8px; text-align: center; font-size: $font-sm; color: var(--color-text-primary); border-bottom: 1px solid var(--color-border-light); }
   tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--color-primary) 3%, transparent); }
   tr:hover td { background: var(--color-bg-hover); }
-  td.tl { text-align: left; color: var(--text-main); font-weight: 600; }
+  td.tl { text-align: left; color: var(--color-text-primary); font-weight: 600; }
 }
 /* 状态胶囊（达标/超标/统计） */
 .cc-status {
@@ -1247,9 +1205,9 @@ onMounted(async () => {
 /* M6 指标块 */
 .m6-metrics { display: flex; flex-direction: column; gap: $spacing-md; padding-top: $spacing-sm; }
 .m6-metric-item {
-  padding: $spacing-md; background: var(--color-bg-soft); border: 1px solid var(--border-color); border-radius: $radius-md;
+  padding: $spacing-md; background: var(--color-bg-soft); border: 1px solid var(--color-border); border-radius: $radius-md;
 }
-.m6-m-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: $spacing-xs; color: var(--text-body); font-size: $font-sm; }
+.m6-m-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: $spacing-xs; color: var(--color-text-primary); font-size: $font-sm; }
 .m6-val { font-weight: 700; font-size: $font-xl; }
 .m6-bar { height: 8px; background: var(--color-bg-soft); border-radius: 99px; overflow: hidden; }
 .m6-bar-fill { height: 100%; border-radius: 99px;
@@ -1268,7 +1226,7 @@ onMounted(async () => {
   &.note-yellow { background: var(--color-warning-bg);  border-color: var(--color-warning);  h4 { color: var(--color-warning); } }
   &.note-green  { background: var(--color-success-bg); border-color: var(--color-success); h4 { color: var(--color-success); } }
   h4 { font-weight: 700; margin: 0 0 $spacing-xs 0; font-size: $font-md; }
-  p, li { color: var(--text-body); font-size: $font-sm; line-height: 1.6; margin: 0 0 $spacing-xs 0; }
+  p, li { color: var(--color-text-primary); font-size: $font-sm; line-height: 1.6; margin: 0 0 $spacing-xs 0; }
   ul { padding-left: $spacing-md; margin: 0; }
 }
 
@@ -1284,7 +1242,7 @@ onMounted(async () => {
 /* 问题汇总卡占满左栏剩余高度，条目列表内部滚动（ScreenCard body overflow:hidden 需要显式高度链） */
 .issues-left > .pack-chart-card:first-child { flex: 1 1 auto; min-height: 0; }
 .issues-left > .pack-chart-card:first-child .issue-list { overflow-y: auto; }
-.section-title { font-size: $font-lg; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: $spacing-sm;
+.section-title { font-size: $font-lg; font-weight: 700; color: var(--color-text-primary); margin: 0; display: flex; align-items: center; gap: $spacing-sm;
   &.sm { font-size: $font-md; }
 }
 .issue-list { display: flex; flex-direction: column; gap: $spacing-sm; }
@@ -1322,15 +1280,15 @@ onMounted(async () => {
 }
 .issue-empty { padding: $spacing-lg 0; text-align: center; color: var(--text-muted); font-size: $font-sm; }
 .issue-head { display: flex; align-items: center; gap: $spacing-sm; margin-bottom: $spacing-xs; }
-.issue-head h4 { margin: 0; font-weight: 700; color: var(--text-main); font-size: $font-md; }
-.issue-desc { color: var(--text-body); font-size: $font-sm; margin: 0 0 $spacing-xs 0; line-height: 1.5; }
+.issue-head h4 { margin: 0; font-weight: 700; color: var(--color-text-primary); font-size: $font-md; }
+.issue-desc { color: var(--color-text-primary); font-size: $font-sm; margin: 0 0 $spacing-xs 0; line-height: 1.5; }
 .issue-meta { color: var(--text-muted); font-size: $font-xs; margin: 0; }
 
 .conclude-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: $spacing-md; }
 .conclude-card {
   padding: $spacing-md; border-radius: $radius-md; background: var(--color-bg-soft); border-left: 4px solid;
   h4 { font-weight: 700; margin: 0 0 $spacing-xs 0; font-size: $font-md; display: flex; align-items: center; gap: $spacing-sm; }
-  p { color: var(--text-body); font-size: $font-sm; margin: 0; line-height: 1.5; }
+  p { color: var(--color-text-primary); font-size: $font-sm; margin: 0; line-height: 1.5; }
   &.border-green  { border-left-color: var(--color-success); h4 { color: var(--color-success); } }
   &.border-orange { border-left-color: var(--color-warning); h4 { color: var(--color-warning); } }
   &.border-red    { border-left-color: var(--color-danger); h4 { color: var(--color-danger); } }
@@ -1340,7 +1298,7 @@ onMounted(async () => {
 
 .issues-right .pack-chart-card.mb { margin-bottom: $spacing-sm; }
 .suggest-list { display: flex; flex-direction: column; gap: $spacing-xs; }
-.suggest-item { display: flex; gap: $spacing-sm; align-items: flex-start; font-size: $font-sm; color: var(--text-body); }
+.suggest-item { display: flex; gap: $spacing-sm; align-items: flex-start; font-size: $font-sm; color: var(--color-text-primary); }
 .suggest-no {
   width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 700; font-size: $font-sm;
   &.no-red    { background: var(--color-danger-bg); color: var(--color-danger); }

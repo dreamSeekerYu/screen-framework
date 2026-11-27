@@ -31,11 +31,11 @@ function colName(i) {
 
 /* ---------------- 客户元信息（json 中不含，按业务定义） ---------------- */
 const CUSTOMER_META = {
-  A1: { name: 'A1客户', fullName: '广汽埃安 A1', status: 'attention', statusText: '关注',
+  A1: { name: 'A1客户', fullName: '东风 A1', status: 'attention', statusText: '关注',
         remark: '整体达标率 85%，需关注0KM异常', risk: '⚡ 0KM PPM 峰值偏高，需关注' },
-  A2: { name: 'A2客户', fullName: '广汽埃安 A2', status: 'warning', statusText: '预警',
+  A2: { name: 'A2客户', fullName: '小鹏 A2', status: 'warning', statusText: '预警',
         remark: '整体达标率 60%，12MIS需重点关注', risk: '⚠️ 12MIS 长期趋势需关注' },
-  A3: { name: 'A3客户', fullName: '广汽埃安 A3', status: 'success', statusText: '达标',
+  A3: { name: 'A3客户', fullName: '小鹏 A3', status: 'success', statusText: '达标',
         remark: '整体达标率 95%，质量表现优秀', risk: '✓ 各周期均达标' },
   M5: { name: 'M5客户', fullName: '小鹏 M5-XP', status: 'primary', statusText: '关注',
         remark: 'M5集成需持续监控', risk: '✓ 整体达标，爬坡期需关注' },

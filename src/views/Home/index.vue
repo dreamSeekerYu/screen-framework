@@ -102,28 +102,15 @@ import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCssVar } from '@/utils/color.js'
 import ThemeSwitch from '@/components/common/ThemeSwitch.vue'
+import { NAVIGABLE_PAGES, PAGE_ICONS } from '@/config/pages.js'
 
 const router = useRouter()
 
-/* ============ 大屏路由：过滤出大屏首页效果展示的页面（与导航器白名单一致） ============ */
-const ALL_ROUTES = router.options.routes.filter(r => {
-  if (r.meta?.noScale) return false
-  // LPA 暂未完成，也不进首页环
-  if (r.path === '/LPA') return false
-  return true
-})
-// 首页作为中心 logo，卡片为其他大屏路由
-const RING_ROUTES = ALL_ROUTES.filter(r => r.path !== '/')
+/* ============ 首页环形卡片：数据源 = 页面注册中心（与导航器白名单一致） ============ */
+// 注册中心 nav:true 的页面即首页环形卡片；Home 自身作为中心 logo
+const RING_ROUTES = NAVIGABLE_PAGES
 
-const ICONS = {
-  pack: '<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19M8 5v14M16 5v14"/>',
-  question: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.9.5-1 1-1 1.7M12 17h.01"/>',
-  cpk: '<path d="M3 20V8M9 20V4M15 20v-9M21 20v-5"/>',
-  qc: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 5a3.5 3.5 0 0 1 0 7"/>',
-  plain: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/>',
-  think: '<path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.8V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3.2c1.8-1.3 3-3.4 3-5.8a7 7 0 0 0-7-7z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/>',
-  default: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18"/>'
-}
+const ICONS = PAGE_ICONS
 // 卡片主题色：引用全局主题变量，随主题切换自动换色
 const COLORS = [
   'var(--color-accent)',
@@ -133,30 +120,13 @@ const COLORS = [
   'var(--color-warning)',
   'var(--color-success)'
 ]
-const BADGE_MAP = {
-  Pack: 'PACK · 客户',
-  Question: '异常 · 闭环',
-  Cpk: '过程 · 能力',
-  Qc: '人力 · 规划',
-  Plain: '工作 · 计划',
-  Think: '周度 · 思考'
-}
-const DESC_MAP = {
-  Pack: '5 大客户交付质量表现，月度/周度趋势分析',
-  Question: '重大质量异常闭环率、根因对策、进度追踪',
-  Cpk: '关键工序过程能力指数 Cpk 达标率与趋势',
-  Qc: 'QC 人力配置、缺口分析、离职率与支援来源',
-  Plain: '本周重点工作计划与节点跟进',
-  Think: '周度思考沉淀与改进方向'
-}
 
-function buildCardForRoute(route, idx) {
-  const key = route.name?.toLowerCase() || 'default'
+function buildCardForRoute(p, idx) {
   return {
-    name: route.meta?.title || route.name,
-    badge: BADGE_MAP[route.name] || route.name?.toUpperCase() || 'PAGE',
-    desc: DESC_MAP[route.name] || '点击进入该页面',
-    icon: ICONS[key] || ICONS.default,
+    name: p.title,
+    badge: p.badge || p.key?.toUpperCase() || 'PAGE',
+    desc: p.desc || '点击进入该页面',
+    icon: ICONS[p.icon] || ICONS.default,
     color: COLORS[idx % COLORS.length]
   }
 }
@@ -172,7 +142,7 @@ const mod = (x, n) => ((x % n) + n) % n
 
 // slots 固定顺序（按路由顺序排列）
 const slots = reactive(ACTIVE_ROUTES.map((r, i) => ({
-  key: r.name + '-' + i,
+  key: r.key + '-' + i,
   route: r,
   card: buildCardForRoute(r, i)
 })))
@@ -919,7 +889,7 @@ h1 {
   overflow: hidden;
   height: 100%;
   background: var(--card-glass);
-  border: 1px solid var(--line);
+  border: 1px solid var(--color-border-light);
   display: flex;
   flex-direction: column;
   justify-content: space-between;

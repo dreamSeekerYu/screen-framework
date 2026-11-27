@@ -1,7 +1,7 @@
 <template>
   <div class="cpk-screen">
     <!-- 顶部标题栏 -->
-    <ScreenHeader title="过程能力达标率" subtitle="过程能力指数（CPK）≥1.33 项目达标率统计" />
+    <ScreenHeader title="过程能力达标率" :subtitle="CPK_RULES.headerSubtitle" />
 
     <!-- KPI 卡片区：4 张等宽 -->
     <StatCardRow style="margin-bottom: 16px;" :gap="16" :min-card-width="200" :max-card-width="520">
@@ -60,6 +60,7 @@ import StatCardRow from '@/components/common/StatCardRow.vue'
 import SummaryBar from '@/components/common/SummaryBar.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 import { loadSheet, loadData } from '@/utils/dataLoader.js'
+import { CPK_RULES } from '@/config/businessRules.js'
 import { chartC, axisStyle, valueAxisStyle, tooltipStyle, legendStyle, gridStyle, barGradient, areaGradient } from '@/utils/chartTheme.js'
 
 // ============ 数据 ============
@@ -207,7 +208,7 @@ const kpiCards = computed(() => {
       theme: 'kpi-side',
       status: rateStatus,
       title: '本周CPK达标率',
-      subTitle: 'CPK≥1.33',
+      subTitle: CPK_RULES.label,
       value: rateVal.toFixed(2),
       unit: '%',
       trend: rateVal >= 100 ? '全部达标' : `${failProjects.value}项未达标`,
@@ -230,7 +231,7 @@ const kpiCards = computed(() => {
       theme: 'kpi-side',
       status: 'success',
       title: '达标项目',
-      subTitle: 'CPK≥1.33',
+      subTitle: CPK_RULES.label,
       value: passProjects.value,
       unit: '项',
       trend: `${passCount.value} 个工序达标`,

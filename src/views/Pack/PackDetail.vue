@@ -275,7 +275,7 @@ const m6ChartOption = computed(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--text-main, #fff);
+  color: var(--color-text-primary, #fff);
 }
 .pd-body {
   flex:1;
@@ -299,7 +299,7 @@ const m6ChartOption = computed(() => {
   flex-direction: column;
   gap: 6px;
 }
-.pd-kpi__label { font-size: 12px; color: var(--text-sub); }
+.pd-kpi__label { font-size: 12px; color: var(--color-text-secondary); }
 .pd-kpi__value {
   font-size: 24px; font-weight: 700;
   display: flex; align-items: baseline; gap: 4px;
@@ -307,7 +307,7 @@ const m6ChartOption = computed(() => {
 .pd-kpi__value.is-danger { color: var(--color-danger); }
 .pd-kpi__value.is-warning { color: var(--color-warning); }
 .pd-kpi__value.is-success { color: var(--color-success); }
-.pd-kpi__unit { font-size: 12px; color: var(--text-sub); font-weight: 400; }
+.pd-kpi__unit { font-size: 12px; color: var(--color-text-secondary); font-weight: 400; }
 
 .pd-chart-card :deep(.screen-card__body),
 .pd-table-card :deep(.screen-card__body),
@@ -326,24 +326,24 @@ const m6ChartOption = computed(() => {
 }
 .pd-table th {
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  color: var(--text-main, #fff);
+  color: var(--color-text-primary, #fff);
   font-weight: 500;
   font-size: 11px;
 }
-.pd-table__name { text-align: left; color: var(--text-sub); font-weight: 500; }
+.pd-table__name { text-align: left; color: var(--color-text-secondary); font-weight: 500; }
 .pd-table td.is-target { color: var(--color-warning); }
 .pd-table td.is-danger { color: var(--color-danger); font-weight: 600; }
-.pd-table td.is-zero { color: var(--text-sub); }
+.pd-table td.is-zero { color: var(--color-text-secondary); }
 
 .pd-conclusion__text {
   font-size: 13px;
   line-height: 1.7;
-  color: var(--text-main, #fff);
+  color: var(--color-text-primary, #fff);
   white-space: pre-wrap;
   padding: 4px 0 8px;
 }
 .pd-models { margin-top: 8px; }
-.pd-models__title { font-size: 12px; color: var(--text-sub); margin-bottom: 6px; }
+.pd-models__title { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 6px; }
 .pd-models__list { display: flex; flex-wrap: wrap; gap: 6px; }
 .pd-model-tag {
   background: color-mix(in srgb, var(--color-primary) 15%, transparent);
@@ -356,5 +356,5 @@ const m6ChartOption = computed(() => {
   gap: 4px;
   align-items: center;
 }
-.pd-model-tag small { color: var(--text-sub); font-size: 10px; }
+.pd-model-tag small { color: var(--color-text-secondary); font-size: 10px; }
 </style>

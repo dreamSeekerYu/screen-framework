@@ -164,7 +164,6 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import * as echarts from 'echarts'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
@@ -253,10 +252,14 @@ const gaugeOpt = computed(() => {
       progress: {
         show: true, width: 14, roundCap: true,
         itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-            { offset: 0, color: 'var(--color-primary)' },
-            { offset: 1, color: 'var(--color-success)' },
-          ]),
+          color: {
+            // ECharts 原生支持普通对象形式的渐变，无需 new echarts.graphic.LinearGradient（避免全量引入 echarts）
+            type: 'linear', x: 0, y: 0, x2: 1, y2: 0,
+            colorStops: [
+              { offset: 0, color: 'var(--color-primary)' },
+              { offset: 1, color: 'var(--color-success)' },
+            ],
+          },
         },
       },
       axisLine: { lineStyle: { width: 14, color: [[1, 'color-mix(in srgb, var(--color-text-muted) 20%, transparent)']] } },
@@ -266,7 +269,7 @@ const gaugeOpt = computed(() => {
       detail: {
         valueAnimation: true, offsetCenter: [0, '5%'],
         formatter: v => v.toFixed(1) + '%',
-        color: 'var(--text-main)', fontSize: 24, fontWeight: 'bold',
+        color: 'var(--color-text-primary)', fontSize: 24, fontWeight: 'bold',
         offsetCenter:[0,'35%'],
       },
       data: [{ value: fill }],
@@ -465,7 +468,7 @@ onMounted(async () => {
 .kpi-extra {
   margin-top: 6px;
   font-size: $font-xs;
-  color: var(--text-sub);
+  color: var(--color-text-secondary);
 }
 .kpi-progress {
   margin-top: 8px;
@@ -506,7 +509,7 @@ onMounted(async () => {
   text-align: center; padding: 6px;
   background: var(--bg-soft); border-radius: $radius-sm;
 }
-.gauge-cell__label { margin: 0; font-size: $font-xs; color: var(--text-sub); }
+.gauge-cell__label { margin: 0; font-size: $font-xs; color: var(--color-text-secondary); }
 .gauge-cell__num { margin: 2px 0 0; font-size: $font-md; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .risk-list { display: flex; flex-direction: column; gap: 6px; }
@@ -518,9 +521,9 @@ onMounted(async () => {
   &--warning { background: var(--color-warning-bg); border-color: var(--color-warning); }
 }
 .risk-item__top { display: flex; align-items: center; justify-content: space-between; }
-.risk-item__name { font-size: $font-sm; font-weight: 600; color: var(--text-main); }
-.risk-item__msg { margin: 4px 0 0; font-size: $font-xs; color: var(--text-sub); line-height: 1.5; }
-.risk-empty { padding: 16px; text-align: center; color: var(--text-sub); font-size: $font-sm; }
+.risk-item__name { font-size: $font-sm; font-weight: 600; color: var(--color-text-primary); }
+.risk-item__msg { margin: 4px 0 0; font-size: $font-xs; color: var(--color-text-secondary); line-height: 1.5; }
+.risk-empty { padding: 16px; text-align: center; color: var(--color-text-secondary); font-size: $font-sm; }
 
 /* 中列：周度离职率（折线）+ 各车间人力配置对比 */
 .qc-trend { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -534,21 +537,21 @@ onMounted(async () => {
 
 .leave-legend { display: flex; flex-direction: column; gap: 4px; margin-top: $spacing-xs; }
 .leave-legend__row { display: flex; align-items: center; justify-content: space-between; font-size: $font-xs; }
-.leave-legend__name { display: inline-flex; align-items: center; gap: 6px; color: var(--text-sub); }
+.leave-legend__name { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); }
 .leave-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.leave-legend__num { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text-main); }
+.leave-legend__num { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--color-text-primary); }
 
 /* 页脚 */
 .qc-footer {
   text-align: center;
   font-size: $font-xs;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   flex-shrink: 0;
 }
 
 /* 明细弹窗：尽量大化展示原始表格内容，滚动交给 Dialog body 处理 */
-.qc-detail { font-size: $font-sm; color: var(--text-main); }
-.qc-detail--loading { padding: 48px 0; text-align: center; color: var(--text-sub); font-size: $font-sm; }
+.qc-detail { font-size: $font-sm; color: var(--color-text-primary); }
+.qc-detail--loading { padding: 48px 0; text-align: center; color: var(--color-text-secondary); font-size: $font-sm; }
 
 /* Excel 原表还原表格：主体只还原「文本 + 字体颜色」，表头/合计/边框使用主题样式，
    保证四套主题下均有良好表现 */
@@ -558,7 +561,7 @@ onMounted(async () => {
   table-layout: fixed;
   :deep(th), :deep(td) {
     padding: 8px 8px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
     line-height: 1.4;
     vertical-align: middle;
     word-break: break-word;
@@ -568,20 +571,20 @@ onMounted(async () => {
   /* 表头：主题化（不使用 Excel 蓝底白字） */
   :deep(th) {
     background: var(--bg-soft);
-    color: var(--text-sub);
+    color: var(--color-text-secondary);
     font-weight: 600;
     font-size: $font-xs;
   }
   /* 单元格默认正文色（Excel 还原的字体颜色以行内样式覆盖） */
-  :deep(td) { color: var(--text-main); }
+  :deep(td) { color: var(--color-text-primary); }
   /* 合计行：主题化强调 */
   :deep(tr.is-total td) {
     background: var(--bg-soft);
-    color: var(--text-main);
+    color: var(--color-text-primary);
     font-weight: 600;
   }
 }
-.qc-detail__note { margin: $spacing-sm 0 0; font-size: $font-xs; color: var(--text-sub); line-height: 1.6; }
+.qc-detail__note { margin: $spacing-sm 0 0; font-size: $font-xs; color: var(--color-text-secondary); line-height: 1.6; }
 
 /* 文字颜色工具类 */
 .text-primary { color: var(--color-primary) !important; }

@@ -154,7 +154,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
 import NewStatCard from '@/components/common/NewStatCard.vue'
@@ -174,8 +175,18 @@ const error = ref('')
 const closeData = ref(null)
 const issueData = ref(null)
 const detailVisible = ref(false)
+const route = useRoute()
+const router = useRouter()
+// URL 直达：/?...#/question?detail=1 直接打开明细弹窗，弹窗开关同步到地址栏（投屏排查可分享定位）
+watch(detailVisible, (v) => {
+  const q = { ...route.query }
+  if (v) q.detail = '1'; else delete q.detail
+  router.replace({ query: q }).catch(() => {})
+}, { immediate: false })
 
 onMounted(async () => {
+  // 支持 URL 参数直达弹窗（外部链接/收藏夹打开时）
+  if (route.query.detail === '1') detailVisible.value = true
   try {
     const [close, issues] = await Promise.all([
       parseQualityCloseRate(),
