@@ -191,7 +191,12 @@ function buildCustomer(key, sheet) {
 
 /* ---------------- 指标汇总 ---------------- */
 
-/** 取最近 N 个有数据的周（按时间升序） */
+/** 取最近 N 个有数据的周（按时间升序）—— 供风险规则引擎等外部使用 */
+export function takeRecentOf(metric, weeks, n = 12, predicate) {
+  return takeRecent(metric, weeks, n, predicate)
+}
+
+/** 取最近 N 个有数据的周（按时间升序，内部实现） */
 function takeRecent(metric, weeks, n = 12, predicate) {
   const out = []
   for (let i = weeks.length - 1; i >= 0 && out.length < n; i--) {
@@ -425,7 +430,7 @@ export const PERIOD_FIELD = {
  */
 export function buildDetailTable(cust) {
   if (cust.isM6) {
-    // M6 详情由 PackDetail.vue 自行渲染（外观/性能专用视图），返回空骨架避免报错
+    // M6 详情由 Pack/index.vue 内联渲染（外观/性能专用视图），返回空骨架避免报错
     return { recentWeeks: [], rows: [] }
   }
   const { metrics, weeks } = cust

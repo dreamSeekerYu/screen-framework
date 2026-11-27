@@ -2,7 +2,7 @@
 import * as echarts from 'echarts/core'
 
 // 引入图表类型
-import { BarChart, LineChart, PieChart, GaugeChart, MapChart, ScatterChart } from 'echarts/charts'
+import { BarChart, LineChart, PieChart, GaugeChart, MapChart, ScatterChart, RadarChart } from 'echarts/charts'
 
 // 引入组件
 import {
@@ -29,6 +29,7 @@ echarts.use([
   GaugeChart,
   MapChart,
   ScatterChart,
+  RadarChart,
   // 组件
   TitleComponent,
   TooltipComponent,
