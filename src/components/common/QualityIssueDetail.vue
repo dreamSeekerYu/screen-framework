@@ -32,8 +32,9 @@
           <div ref="tableWrapRef" class="ldg-table-wrap">
             <table class="ldg-table">
               <colgroup>
+                <col style="width: 4%" />
                 <col style="width: 5%" />
-                <col style="width: 6%" />
+                <col style="width: 5%" />
                 <col style="width: 5%" />
                 <col style="width: 24%" />
                 <col style="width: 9%" />
@@ -47,6 +48,7 @@
               <thead>
                 <tr>
                   <th>序号</th>
+                  <th>周期</th>
                   <th>工厂</th>
                   <th>线别</th>
                   <th class="is-left">异常问题</th>
@@ -68,6 +70,7 @@
                   @click="selectRow(i)"
                 >
                   <td class="is-idx">{{ i + 1 }}</td>
+                  <td>{{ it.cwLabel }}</td>
                   <td>{{ factoryName(it) }}</td>
                   <td>{{ it.line || '—' }}</td>
                   <td class="is-left">{{ it.title }}</td>

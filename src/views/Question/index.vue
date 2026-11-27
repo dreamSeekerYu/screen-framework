@@ -183,6 +183,7 @@ onMounted(async () => {
     ])
     closeData.value = close
     issueData.value = issues
+    // console.log('issueData.............',issueData);
   } catch (e) {
     console.error(e)
     error.value = e.message || String(e)

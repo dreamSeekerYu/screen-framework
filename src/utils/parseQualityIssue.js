@@ -168,7 +168,7 @@ export async function parseQualityIssues() {
       permanentAction: get('permanentAction'),
       tags, categories,
       images: [...imgUrls, ...proofUrls].filter(Boolean),
-      imgSlots: imgUrls.map((url, i) => ({ url, label: `现场图片${i + 1}` })),
+      imgSlots: imgUrls.filter(url=>!!url).map((url, i) => ({ url, label: `现场图片${i + 1}` })),
       proofSlots: proofUrls.map((url, i) => ({ url, label: `整改凭证${i + 1}` })),
       remark: get('remark'),
       status,
