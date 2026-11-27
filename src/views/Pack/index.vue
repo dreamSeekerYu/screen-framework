@@ -13,9 +13,17 @@
           :key="t.key"
           class="pack-tab-btn"
           :class="{ active: mainTab === t.key }"
-          @click="mainTab = t.key"
+          @click="selectTab(t.key)"
         >
           <span class="icon">{{ t.icon }}</span>{{ t.label }}
+        </button>
+        <button
+          class="pack-tab-btn rotate-btn"
+          :class="{ active: rotateOn }"
+          :title="rotateOn ? '轮播中：总览 → 客户详情（逐客户）→ 问题分析 自动循环，点击关闭' : '开启投屏轮播（每 12 秒自动切换，手动操作自动重新计时）'"
+          @click="toggleRotate"
+        >
+          <span class="icon">{{ rotateOn ? '⏸' : '📺' }}</span>{{ rotateOn ? '轮播中' : '投屏轮播' }}
         </button>
       </div>
 
@@ -39,7 +47,7 @@
             />
           </StatCardRow>
 
-          <!-- 客户概览卡片（风险等级由规则引擎评分生成，达标条宽度来自真实 passRate） -->
+          <!-- 客户健康度矩阵：风险标签 + 达标率环形 + 0KM PPM sparkline 迷你趋势 -->
           <div class="pack-client-grid">
             <div
               v-for="c in overviewCards"
@@ -52,14 +60,28 @@
                 <h3 class="cc-name">{{ c.name }}</h3>
                 <StatusTag :type="c.riskLevel" effect="light" size="small" :text="c.riskText" />
               </div>
-              <div class="cc-metrics">
-                <div v-for="m in c.metrics" :key="m.label" class="cc-row">
-                  <span class="cc-label">{{ m.label }}</span>
-                  <span class="cc-val" :class="m.colorClass">{{ m.value }}</span>
+              <div class="cc-body">
+                <div class="cc-metrics">
+                  <div v-for="m in c.metrics" :key="m.label" class="cc-row">
+                    <span class="cc-label">{{ m.label }}</span>
+                    <span class="cc-val" :class="m.colorClass">{{ m.value }}</span>
+                  </div>
+                </div>
+                <div class="cc-ring" :style="ringStyle(c)">
+                  <div class="cc-ring-hole">
+                    <span class="cc-ring-num">{{ c.passRate }}%</span>
+                    <span class="cc-ring-label">达标率</span>
+                  </div>
                 </div>
               </div>
-              <div class="cc-bar">
-                <div class="cc-bar-fill" :class="c.barClass" :style="{ width: c.passRate + '%' }"></div>
+              <div class="cc-spark">
+                <svg viewBox="0 0 100 26" preserveAspectRatio="none" class="cc-spark-svg">
+                  <polygon :points="`0,26 ${c.sparkPoints} 100,26`"
+                    :fill="`var(--color-${c.sparkColor}-bg)`" opacity="0.5" />
+                  <polyline :points="c.sparkPoints" fill="none" stroke-width="1.6"
+                    :stroke="`var(--color-${c.sparkColor})`" vector-effect="non-scaling-stroke" />
+                </svg>
+                <span class="cc-spark-label">0KM PPM 走势</span>
               </div>
               <div class="cc-remark">{{ c.remark }}</div>
             </div>
@@ -91,15 +113,25 @@
 
         <!-- ========== 客户详情分析 ========== -->
         <div v-if="mainTab === 'detail'" class="pack-tab-panel">
-          <!-- 客户选择器 -->
+          <!-- 客户选择器 + 时间窗口切换（消灭 60+ 周挤一图的内滚动问题） -->
           <div class="pack-client-tabs">
             <button
               v-for="t in CLIENT_TABS"
               :key="t.key"
               class="client-tab-btn"
               :class="{ active: activeClient === t.key }"
-              @click="activeClient = t.key"
+              @click="selectClient(t.key)"
             >{{ t.label }}</button>
+            <div class="pack-window-tabs">
+              <span class="window-label">时间窗口</span>
+              <button
+                v-for="w in WINDOW_TABS"
+                :key="w.key"
+                class="window-tab-btn"
+                :class="{ active: timeWindow === w.key }"
+                @click="selectWindow(w.key)"
+              >{{ w.label }}</button>
+            </div>
           </div>
 
           <!-- A1/A2/A3/M5 详情：通用A型布局 -->
@@ -114,7 +146,7 @@
                 <template #title>
                   <div class="detail-sub-title">{{ p.title }}</div>
                 </template>
-                <div class="chart-box-h280">
+                <div class="chart-box-h240">
                   <BaseChart :option="periodOption(currentA, p.key)" />
                 </div>
               </ScreenCard>
@@ -275,13 +307,23 @@
                   <div class="chart-sub">由各客户各周期 PPM 实际值 vs 目标值自动扫描生成</div>
                 </template>
                 <div class="issue-list">
-                  <div v-for="it in issueItems" :key="it.title" class="issue-item" :class="`issue-item--${it.severity}`">
+                  <div
+                    v-for="it in issueItems"
+                    :key="it.title"
+                    class="issue-item issue-item--click"
+                    :class="`issue-item--${it.severity}`"
+                    :title="`点击查看 ${it.custKey || ''} 详情并定位该周期`"
+                    @click="locateIssue(it)"
+                  >
                     <div class="issue-head">
                       <StatusTag :type="it.statusType === 'fail' ? 'danger' : (it.severity === 'info' ? 'info' : 'warning')" effect="light" size="small" :text="it.statusText" />
                       <h4>{{ it.title }}</h4>
                     </div>
                     <p class="issue-desc"><strong>问题描述：</strong>{{ it.desc }}</p>
-                    <p class="issue-meta">影响周期：{{ it.period }} | 涉及产品：{{ it.product }}</p>
+                    <p class="issue-meta">
+                      影响周期：{{ it.period }} | 涉及产品：{{ it.product }}
+                      <span v-if="it.custKey" class="issue-locate">🔍 查看详情 →</span>
+                    </p>
                   </div>
                   <div v-if="!issueItems.length" class="issue-empty">当前窗口内未扫描到超标或趋势预警事件，各客户指标均在目标范围内。</div>
                 </div>
@@ -340,7 +382,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
@@ -375,6 +417,24 @@ const A_PERIODS = [
   { key: 'km6',  title: '集成6MIS表现' },
   { key: 'km12', title: '集成12MIS表现' },
 ]
+
+/* ========== 第二阶段：时间窗口 / 投屏轮播 / 问题联动高亮 ========== */
+/** 详情图表时间窗口：w4/w12 = 周粒度最近 N 个有数据周；month = 月粒度聚合；all = 月+全周 */
+const timeWindow = ref('w12')
+const WINDOW_TABS = [
+  { key: 'w4',    label: '近4周' },
+  { key: 'w12',   label: '近12周' },
+  { key: 'month', label: '月度' },
+  { key: 'all',   label: '全部' },
+]
+
+/** 投屏轮播：总览 → 客户详情（逐客户）→ 问题分析 循环，手动操作自动重新计时 */
+const rotateOn = ref(false)
+const ROTATE_MS = 12000
+let rotateTimer = null
+
+/** 问题联动高亮：{ custKey, periodKey, week } → 详情图表 markPoint 定位超标点 */
+const highlight = ref(null)
 
 const a1 = computed(() => packData.customers.find(c => c.key === 'A1'))
 const a2 = computed(() => packData.customers.find(c => c.key === 'A2'))
@@ -443,8 +503,26 @@ const overviewKpis = computed(() => {
   ]
 })
 
-/* ========== 客户概览卡片 ========== */
+/* ========== 客户概览卡片（健康度矩阵） ========== */
 const statusColor = (s) => s === 'success' ? 'text-green' : (s === 'warning' ? 'text-orange' : (s === 'danger' ? 'text-red' : 'text-blue'))
+
+/** 0KM PPM sparkline（SVG 折线，归一化到 100×26 视口） */
+function sparkOf(cust) {
+  if (!cust) return { points: '0,24 100,24', color: 'success' }
+  const field = cust.isM6 ? 'ppmApp' : 'actual0km'
+  const labels = [...(cust.months || []), ...(cust.weeks || []).filter(w => /WK\d+/.test(w))]
+  const m = cust.metrics[field]
+  const vals = labels.map(l => Number(m?.values?.[l] ?? 0))
+  const max = Math.max(...vals, 1)
+  const n = vals.length
+  const pts = n === 0
+    ? '0,24 100,24'
+    : vals.map((v, i) => `${n === 1 ? 50 : (i / (n - 1)) * 100},${24 - (v / max) * 20}`).join(' ')
+  const target = cust.kpi.km0.target || 0
+  const last = vals[vals.length - 1] || 0
+  const color = target && last > target ? 'danger' : (target && last > target * 0.5 ? 'warning' : 'success')
+  return { points: pts, color }
+}
 
 function buildACard(c, barClass) {
   const k = c.kpi
@@ -460,15 +538,17 @@ function buildACard(c, barClass) {
       : `${fmt(item.ppm)}${item.peakWeek ? ' (' + item.peakWeek + ')' : ''}${!over ? ' 达标' : ''}`
     return { label: lbl, value, colorClass: over ? 'text-red' : statusColor(item.status) }
   })
-  const barClassByLevel = { success: 'bar-green-green', warning: 'bar-green-orange', danger: 'bar-orange-red' }
+  const spark = sparkOf(c)
   return {
     key: c.key,
     name: c.meta.name,
     riskLevel: risk.level,
     riskText: `${risk.text} · ${risk.score}分`,
     metrics,
-    barClass: barClassByLevel[risk.level] || barClass,
     passRate: c.passRate,
+    ringColor: risk.level,
+    sparkPoints: spark.points,
+    sparkColor: spark.color,
     remark: `${c.passRate}% 周期达标${risk.level !== 'success' ? '，存在超标周期需关注' : '，整体表现稳定'}`,
   }
 }
@@ -489,18 +569,24 @@ const overviewCards = computed(() => {
       name: 'A4客户',
       riskLevel: lv.level,
       riskText: `${lv.text} · ${avg}分`,
+      ringColor: lv.level,
       metrics: [
         { label: 'M5 0KM PPM峰值', value: `${fmt(m5.value.kpi.km0.ppm)}${m5.value.kpi.km0.peakWeek ? ' (' + m5.value.kpi.km0.peakWeek + ')' : ''}`, colorClass: m5.value.kpi.km0.status === 'success' ? 'text-green' : 'text-orange' },
         { label: 'M6 外观PPM峰值', value: `${fmt(m6.value.kpi.km0.ppm)}${m6.value.kpi.km0.peakWeek ? ' (' + m6.value.kpi.km0.peakWeek + ')' : ''}`, colorClass: m6.value.kpi.km0.status === 'success' ? 'text-green' : 'text-red' },
         { label: 'M6 性能PPM峰值', value: `${fmt(m6.value.kpi.km3.ppm)}${m6.value.kpi.km3.status === 'success' ? ' 达标' : ''}`, colorClass: m6.value.kpi.km3.status === 'success' ? 'text-green' : 'text-red' },
       ],
-      barClass: lv.level === 'success' ? 'bar-green-green' : 'bar-orange-red',
       passRate,
       remark: `M5达标率${m5.value.passRate}% · M6达标率${m6.value.passRate}%（合并均值${passRate}%）`,
     })
   }
   return cards
 })
+
+/** 达标率环形（conic-gradient，颜色随风险等级） */
+function ringStyle(c) {
+  const color = `var(--color-${c.ringColor === 'danger' ? 'danger' : c.ringColor})`
+  return { background: `conic-gradient(${color} ${c.passRate}%, var(--color-bg-soft) 0)` }
+}
 
 const m6PeakDelivery = computed(() => {
   if (!m6.value) return { value: 0, week: '' }
@@ -572,10 +658,25 @@ const overviewRadarOption = computed(() => {
   }
 })
 
-/* ========== A 型详情：四周期图表（纵轴上限由数据计算） ========== */
+/* ========== A 型详情：四周期图表（时间窗口可切换，纵轴上限由数据计算） ========== */
+/** 问题联动：命中高亮时在「实际」曲线上 markPoint 定位峰值周 */
+function highlightMark(custKey, periodKey, labels, values) {
+  const h = highlight.value
+  if (!h || h.custKey !== custKey || h.periodKey !== periodKey) return undefined
+  const idx = labels.indexOf(h.week)
+  if (idx < 0 || !(values[idx] > 0)) return undefined
+  return {
+    symbol: 'pin',
+    symbolSize: 44,
+    itemStyle: { color: 'var(--color-danger)' },
+    label: { show: true, formatter: `${fmt(values[idx])}`, color: '#fff', fontSize: 10 },
+    data: [{ coord: [h.week, values[idx]] }],
+  }
+}
+
 function periodOption(cust, pKey) {
   const f = PERIOD_FIELD[pKey]
-  const allLabels = [...(cust.months || []), ...(cust.weeks || [])]
+  const allLabels = windowLabels(cust, timeWindow.value)
   const get = (field) => allLabels.map(l => Number(cust.metrics[field]?.values[l] ?? 0))
   const supplyArr = get(f.supply)
   const failArr = get(f.fail)
@@ -595,7 +696,8 @@ function periodOption(cust, pKey) {
       { name: '供货数', type: 'bar', data: supplyArr, yAxisIndex: 0, itemStyle: { color: chartC.primary } },
       { name: '故障数', type: 'bar', data: failArr, yAxisIndex: 0, itemStyle: { color: chartC.danger } },
       { name: `${f.label}目标`, type: 'line', data: targetArr, yAxisIndex: 1, lineStyle: { color: chartC.primaryL, width: 2 }, symbol: 'none' },
-      { name: `${f.label}实际`, type: 'line', data: actualArr, yAxisIndex: 1, lineStyle: { color: chartC.danger, width: 2 }, symbolSize: 6 },
+      { name: `${f.label}实际`, type: 'line', data: actualArr, yAxisIndex: 1, lineStyle: { color: chartC.danger, width: 2 }, symbolSize: 6,
+        markPoint: highlightMark(cust.key, pKey, allLabels, actualArr) },
     ],
   }
 }
@@ -630,7 +732,7 @@ const m5ChartOption = computed(() => {
   if (!m5.value) return {}
   const mm = m5.value.metrics
   const target = m5.value.kpi.km0.target || 15
-  const periods = [...(m5.value.months || []), ...takeRecentWeeks(m5.value, 5)]
+  const periods = windowLabels(m5.value, timeWindow.value)
   const get = (k) => periods.map(p => Number(mm[k]?.values[p] ?? 0))
   const peak = Math.max(...get('actual0km'), target, 1)
   return {
@@ -645,7 +747,8 @@ const m5ChartOption = computed(() => {
       { name: '供货数', type: 'bar', data: get('supply'), yAxisIndex: 0, itemStyle: { color: chartC.primary } },
       { name: '故障数', type: 'bar', data: get('fail'), yAxisIndex: 0, itemStyle: { color: chartC.danger } },
       { name: '0KM目标', type: 'line', data: periods.map(() => target), yAxisIndex: 1, lineStyle: { color: chartC.primaryL, width: 2 }, symbol: 'none' },
-      { name: '0KM实际', type: 'line', data: get('actual0km'), yAxisIndex: 1, lineStyle: { color: chartC.danger, width: 2 }, symbolSize: 8 },
+      { name: '0KM实际', type: 'line', data: get('actual0km'), yAxisIndex: 1, lineStyle: { color: chartC.danger, width: 2 }, symbolSize: 8,
+        markPoint: highlightMark('M5', 'km0', periods, get('actual0km')) },
     ],
   }
 })
@@ -677,7 +780,7 @@ const m5Rows = computed(() => {
 /* ========== M6 详情 ========== */
 const m6ChartOption = computed(() => {
   if (!m6.value) return {}
-  const labels = [...(m6.value.months || []), ...(m6.value.weeks || [])]
+  const labels = windowLabels(m6.value, timeWindow.value)
   const mm = m6.value.metrics
   const get = (k) => labels.map(l => Number(mm[k]?.values[l] ?? 0))
   const tApp = m6.value.kpi.km0.target || 300
@@ -693,8 +796,10 @@ const m6ChartOption = computed(() => {
     ],
     series: [
       { name: '周交付', type: 'bar', data: get('delivery'), yAxisIndex: 0, itemStyle: { color: chartC.accent || 'var(--color-accent)' } },
-      { name: 'PPM-外观', type: 'line', data: get('ppmApp'), yAxisIndex: 1, lineStyle: { color: chartC.danger, width: 2 }, symbolSize: 8 },
-      { name: 'PPM-性能', type: 'line', data: get('ppmPerf'), yAxisIndex: 1, lineStyle: { color: chartC.warning, width: 2 }, symbolSize: 8 },
+      { name: 'PPM-外观', type: 'line', data: get('ppmApp'), yAxisIndex: 1, lineStyle: { color: chartC.danger, width: 2 }, symbolSize: 8,
+        markPoint: highlightMark('M6', 'km0', labels, get('ppmApp')) },
+      { name: 'PPM-性能', type: 'line', data: get('ppmPerf'), yAxisIndex: 1, lineStyle: { color: chartC.warning, width: 2 }, symbolSize: 8,
+        markPoint: highlightMark('M6', 'km3', labels, get('ppmPerf')) },
       { name: '目标-外观', type: 'line', data: labels.map(() => tApp), yAxisIndex: 1, lineStyle: { color: chartC.danger, width: 1, type: 'dashed' }, symbol: 'none' },
       { name: '目标-性能', type: 'line', data: labels.map(() => tPerf), yAxisIndex: 1, lineStyle: { color: chartC.warning, width: 1, type: 'dashed' }, symbol: 'none' },
     ],
@@ -765,10 +870,70 @@ const riskScoreOption = computed(() => {
   }
 })
 
-/* ========== 交互 ========== */
+/* ========== 交互：Tab/客户/窗口切换（手动操作时轮播重新计时） ========== */
+function selectTab(key) { mainTab.value = key; touchRotate() }
+function selectClient(key) { activeClient.value = key; highlight.value = null; touchRotate() }
+function selectWindow(key) { timeWindow.value = key; touchRotate() }
 function jumpToDetail(clientKey) {
   activeClient.value = clientKey
   mainTab.value = 'detail'
+  touchRotate()
+}
+
+/** 点击问题条目 → 跳转对应客户详情，并 markPoint 高亮该周期峰值点 */
+function locateIssue(it) {
+  if (!it.custKey) return
+  highlight.value = { custKey: it.custKey, periodKey: it.periodKey, week: it.week || it.period }
+  jumpToDetail(it.custKey)
+}
+
+/* ========== 投屏轮播 ========== */
+function toggleRotate() {
+  rotateOn.value = !rotateOn.value
+  if (rotateOn.value) scheduleRotate()
+  else stopRotate()
+}
+function scheduleRotate() {
+  stopRotate()
+  rotateTimer = setTimeout(rotateTick, ROTATE_MS)
+}
+function stopRotate() {
+  if (rotateTimer) { clearTimeout(rotateTimer); rotateTimer = null }
+}
+function touchRotate() {
+  if (!rotateOn.value) return
+  stopRotate()
+  rotateTimer = setTimeout(rotateTick, ROTATE_MS)
+}
+function rotateTick() {
+  if (mainTab.value === 'detail') {
+    // 详情 Tab：逐客户轮换，轮完进入问题分析
+    const idx = CLIENT_TABS.findIndex(t => t.key === activeClient.value)
+    if (idx >= CLIENT_TABS.length - 1) mainTab.value = 'issues'
+    else activeClient.value = CLIENT_TABS[idx + 1].key
+  } else if (mainTab.value === 'overview') {
+    mainTab.value = 'detail'
+  } else {
+    mainTab.value = 'overview'
+  }
+  if (rotateOn.value) rotateTimer = setTimeout(rotateTick, ROTATE_MS)
+}
+onUnmounted(stopRotate)
+
+/* ========== 时间窗口：按窗口取图表标签（有数据周优先，消除空周） ========== */
+function activeWeeks(cust) {
+  const wk = (cust.weeks || []).filter(w => /WK\d+/.test(w))
+  const m = cust.metrics
+  return wk.filter(w =>
+    ['actual0km', 'actual3m', 'actual6m', 'actual12m', 'ppmApp', 'ppmPerf']
+      .some(k => m[k] && Number(m[k].values[w] ?? 0) > 0))
+}
+function windowLabels(cust, w) {
+  if (!cust) return []
+  if (w === 'month') return [...(cust.months || [])]
+  if (w === 'all') return [...(cust.months || []), ...(cust.weeks || []).filter(x => /WK\d+/.test(x))]
+  const n = w === 'w4' ? 4 : 12
+  return activeWeeks(cust).slice(-n)
 }
 
 /* ========== 加载 ========== */
@@ -823,6 +988,16 @@ onMounted(async () => {
     color: #fff;
     border-color: transparent;
   }
+}
+.rotate-btn {
+  margin-left: auto;
+  &.active {
+    animation: rotatePulse 2s ease-in-out infinite;
+  }
+}
+@keyframes rotatePulse {
+  0%, 100% { box-shadow: var(--shadow-card); }
+  50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent); }
 }
 .pack-content { min-height: 0; flex: 1; display: flex; flex-direction: column; }
 .pack-tab-panel { animation: fadeIn .4s ease; }
@@ -894,16 +1069,44 @@ onMounted(async () => {
 }
 .cc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: $spacing-md; }
 .cc-name { font-size: $font-lg; font-weight: 700; color: var(--text-main); margin: 0; }
-.cc-metrics { display: flex; flex-direction: column; gap: $spacing-xs; }
+.cc-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: $spacing-md;
+}
+.cc-metrics { display: flex; flex-direction: column; gap: $spacing-xs; flex: 1; min-width: 0; }
 .cc-row { display: flex; justify-content: space-between; font-size: $font-sm; }
 .cc-label { color: var(--text-sec); }
 .cc-val { font-weight: 600; }
-.cc-bar { height: 4px; background: var(--color-bg-soft); border-radius: 99px; overflow: hidden; margin-top: $spacing-md; }
-.cc-bar-fill { height: 100%; border-radius: 99px;
-  &.bar-green-orange { background: linear-gradient(90deg,var(--color-accent),var(--color-primary)); }
-  &.bar-orange-red    { background: linear-gradient(90deg,var(--color-warning),var(--color-danger)); }
-  &.bar-green-green   { background: linear-gradient(90deg,color-mix(in srgb, var(--color-success) 60%, #ffffff),var(--color-success)); }
+/* 达标率环形（conic-gradient 由 ringStyle() 内联注入，颜色随风险等级） */
+.cc-ring {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
 }
+.cc-ring-hole {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-bg-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(90deg);
+}
+.cc-ring-num { font-size: 13px; font-weight: 700; line-height: 1.1; color: var(--text-main); }
+.cc-ring-label { font-size: 9px; color: var(--text-muted); line-height: 1.2; }
+/* 0KM PPM sparkline 迷你趋势 */
+.cc-spark { margin-top: $spacing-sm; }
+.cc-spark-svg { width: 100%; height: 26px; display: block; }
+.cc-spark-label { font-size: $font-xs; color: var(--text-muted); margin-top: 2px; display: block; }
 .cc-remark { font-size: $font-xs; color: var(--text-muted); margin-top: $spacing-xs; }
 
 /* ============ 图表卡片 ============ */
@@ -930,10 +1133,11 @@ onMounted(async () => {
 .chart-box-h300 { height: 300px; }
 .chart-box-h280 { height: 280px; }
 .chart-box-h250 { height: 250px; }
+.chart-box-h240 { height: 240px; }
 
 /* ============ 客户详情Tab ============ */
 .pack-client-tabs {
-  display: flex; gap: $spacing-sm; margin-bottom: $spacing-md; flex-wrap: wrap;
+  display: flex; gap: $spacing-sm; margin-bottom: $spacing-md; flex-wrap: wrap; align-items: center;
 }
 .client-tab-btn {
   padding: $spacing-sm $spacing-lg;
@@ -948,6 +1152,31 @@ onMounted(async () => {
   &:hover { background: var(--color-bg-hover); }
   &.active {
     background: linear-gradient(90deg,var(--color-primary),var(--color-accent));
+    color: #fff;
+    border-color: transparent;
+  }
+}
+/* 时间窗口切换（近4周/近12周/月度/全部） */
+.pack-window-tabs {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+.window-label { font-size: $font-xs; color: var(--text-muted); margin-right: 4px; }
+.window-tab-btn {
+  padding: 4px 12px;
+  border-radius: $radius-md;
+  font-size: $font-sm;
+  background: var(--color-bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-body);
+  cursor: pointer;
+  transition: all .2s;
+  font-family: inherit;
+  &:hover { background: var(--color-bg-hover); }
+  &.active {
+    background: var(--color-primary);
     color: #fff;
     border-color: transparent;
   }
@@ -978,7 +1207,7 @@ onMounted(async () => {
   font-size: $font-md; font-weight: 600; color: var(--color-primary);
   margin: 0;
 }
-.detail-table-wrap { margin-top: $spacing-lg; overflow-x: auto; }
+.detail-table-wrap { margin-top: $spacing-lg; overflow: auto; max-height: 230px; }
 .pack-data-table {
   width: 100%; border-collapse: collapse;
   th { background: var(--color-bg-soft); padding: 10px 8px; text-align: center; font-weight: 600; font-size: $font-sm; color: var(--color-text-primary); border-bottom: 1px solid var(--border-color); }
@@ -1029,6 +1258,19 @@ onMounted(async () => {
   &:hover { background: var(--color-bg-hover); }
   &--danger { border-left-color: var(--color-danger); }
   &--info   { border-left-color: var(--color-info, var(--color-primary)); }
+  &--click { cursor: pointer; }
+  &--click:hover {
+    background: var(--color-bg-hover);
+    transform: translateX(4px);
+    .issue-locate { opacity: 1; }
+  }
+}
+.issue-locate {
+  color: var(--color-primary);
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity .2s;
+  margin-left: $spacing-sm;
 }
 .issue-empty { padding: $spacing-lg 0; text-align: center; color: var(--text-muted); font-size: $font-sm; }
 .issue-head { display: flex; align-items: center; gap: $spacing-sm; margin-bottom: $spacing-xs; }

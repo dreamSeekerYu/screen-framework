@@ -161,6 +161,10 @@ function eventToIssue(e) {
     desc,
     period: e.week || e.period,
     product: e.custKey,
+    // 联动定位字段：点击问题条目 → 跳转客户详情并在图表 markPoint 高亮该周期
+    custKey: e.custKey,
+    periodKey: e.periodKey,
+    week: e.week,
     type: e.type,
   }
 }

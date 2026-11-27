@@ -14,7 +14,10 @@ import {
   VisualMapComponent,
   GeoComponent,
   ToolboxComponent,
-  GraphicComponent
+  GraphicComponent,
+  MarkPointComponent,
+  MarkLineComponent,
+  MarkAreaComponent
 } from 'echarts/components'
 
 // 引入渲染器
@@ -40,6 +43,9 @@ echarts.use([
   GeoComponent,
   ToolboxComponent,
   GraphicComponent,
+  MarkPointComponent,
+  MarkLineComponent,
+  MarkAreaComponent,
   // 渲染器
   CanvasRenderer
 ])
