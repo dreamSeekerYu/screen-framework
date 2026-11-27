@@ -29,7 +29,7 @@
           <TabPane
             v-for="w in parsed.weeks"
             :key="w.week"
-            :label="`${w.shortText} ${w.week}`"
+            :label="`${w.roleText}`"
             :name="w.week"
             :badge="w.stats.total ? String(w.stats.total) : ''"
           />
