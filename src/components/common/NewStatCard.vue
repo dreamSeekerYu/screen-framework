@@ -756,7 +756,7 @@ defineExpose({ statusColors, hexToRgba })
  * 二、kpi-side 主题（stat1 风格：玻璃拟态 + 左侧色条 + 图标块）
  * ========================================================= */
 .stat-card--theme-kpi-side {
-    background: linear-gradient(90deg, var(--accent-bg) 0%, var(--color-bg-card) 60%);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 12%, transparent) 0%, var(--color-bg-card) 60%);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--color-border-light);
@@ -903,7 +903,7 @@ defineExpose({ statusColors, hexToRgba })
     font-family: 'DIN Alternate', 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.5px;
-    color: var(--accent-text);
+    color: var(--color-accent);
 }
 
 .stat-card--theme-kpi-side.stat-card--small .kpi-side__value {
@@ -918,7 +918,7 @@ defineExpose({ statusColors, hexToRgba })
     font-size: 16px;
     font-weight: 500;
     margin-left: 3px;
-    color: var(--accent-text);
+    color: var(--color-accent);
     line-height: 1;
 }
 
@@ -985,8 +985,8 @@ defineExpose({ statusColors, hexToRgba })
 
 /* 强调渐变背景（第一张卡风格） */
 .stat-card--theme-kpi-top.stat-card--accent {
-    background: var(--accent-card-bg);
-    border-color: var(--accent-border);
+    background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
 }
 
 .stat-card--theme-kpi-top .stat-card__top-bar {
@@ -1083,8 +1083,8 @@ defineExpose({ statusColors, hexToRgba })
     min-width: 0;
     font-variant-numeric: tabular-nums;
     letter-spacing: -1px;
-    color: var(--accent-text);
-    text-shadow: 0 2px 12px var(--accent-halo);
+    color: var(--color-accent);
+    text-shadow: 0 2px 12px color-mix(in srgb, var(--color-accent) 20%, transparent);
     font-family: 'DIN Alternate', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
     transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1105,7 +1105,7 @@ defineExpose({ statusColors, hexToRgba })
     font-size: 16px;
     font-weight: 600;
     margin-left: 2px;
-    color: var(--accent-text);
+    color: var(--color-accent);
     line-height: 1;
     transition: opacity 0.4s ease 0.3s;
 }
@@ -1154,8 +1154,8 @@ defineExpose({ statusColors, hexToRgba })
     padding: 12px 8px;
     border-radius: 8px;
     text-align: center;
-    background: var(--accent-bg);
-    border: 1px solid var(--accent-border);
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
     display: block;
 }
 
@@ -1171,7 +1171,7 @@ defineExpose({ statusColors, hexToRgba })
 .mini-stat__value {
     font-size: 20px;
     font-weight: 700;
-    color: var(--accent-text-soft);
+    color: color-mix(in srgb, var(--color-accent) 70%, var(--color-text-primary));
     font-family: 'DIN Alternate', 'PingFang SC', sans-serif;
     font-variant-numeric: tabular-nums;
     line-height: 1.2;

@@ -118,14 +118,8 @@ let LPAData = null
   ; (async () => {
     const lpaJson = await loadData('lpa')
     LPAData = indexSheet(lpaJson.sheets[0]);
-    console.log('LPAData....', LPAData)
-    console.log(getCell(LPAData, 8, 10))
-    // console.log(getRange(LPAData, 6, 4, 10, 20))
-    console.log(LPAData.colByName['日期'])
-    console.log(LPAData.colByName['问题图片'])
-    // 获取图片真实地址
-    console.log(getImgPath(LPAData, LPAData.colByName['问题图片'][1]?.[0]))
-    console.log(getImgPath(LPAData, 'img_9'))
+    // 获取图片真实地址（调试输出已清理）
+    getImgPath(LPAData, 'img_9')
 
     // ============ 指标数据 ============
     img_src.value = getImgPath(LPAData, LPAData.colByName['问题图片'][1]?.[0])

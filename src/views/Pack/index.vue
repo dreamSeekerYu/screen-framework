@@ -1074,12 +1074,12 @@ onMounted(async () => {
   transform: rotate(90deg);
 }
 .cc-ring-num { font-size: 13px; font-weight: 700; line-height: 1.1; color: var(--color-text-primary); }
-.cc-ring-label { font-size: 9px; color: var(--text-muted); line-height: 1.2; }
+.cc-ring-label { font-size: 9px; color: var(--color-text-muted); line-height: 1.2; }
 /* 0KM PPM sparkline 迷你趋势 */
 .cc-spark { margin-top: $spacing-sm; }
 .cc-spark-svg { width: 100%; height: 26px; display: block; }
-.cc-spark-label { font-size: $font-xs; color: var(--text-muted); margin-top: 2px; display: block; }
-.cc-remark { font-size: $font-xs; color: var(--text-muted); margin-top: $spacing-xs; }
+.cc-spark-label { font-size: $font-xs; color: var(--color-text-muted); margin-top: 2px; display: block; }
+.cc-remark { font-size: $font-xs; color: var(--color-text-muted); margin-top: $spacing-xs; }
 
 /* ============ 图表卡片 ============ */
 .pack-chart-grid {
@@ -1100,7 +1100,7 @@ onMounted(async () => {
   color: var(--color-text-primary);
   display: flex; align-items: center; gap: $spacing-sm;
 }
-.chart-sub { font-size: $font-xs; color: var(--text-muted); font-weight: 400; }
+.chart-sub { font-size: $font-xs; color: var(--color-text-muted); font-weight: 400; }
 .chart-bar { width: 4px; height: 20px; background: linear-gradient(180deg,var(--color-primary),var(--color-accent)); border-radius: 2px; display: inline-block; }
 .chart-box-h300 { height: 300px; }
 .chart-box-h280 { height: 280px; }
@@ -1135,7 +1135,7 @@ onMounted(async () => {
   align-items: center;
   gap: $spacing-xs;
 }
-.window-label { font-size: $font-xs; color: var(--text-muted); margin-right: 4px; }
+.window-label { font-size: $font-xs; color: var(--color-text-muted); margin-right: 4px; }
 .window-tab-btn {
   padding: 4px 12px;
   border-radius: $radius-md;
@@ -1215,7 +1215,7 @@ onMounted(async () => {
   &.bar-green { background: var(--color-success); }
   &.bar-blue  { background: var(--color-primary); }
 }
-.m6-sub { font-size: $font-xs; color: var(--text-muted); margin-top: $spacing-xs; }
+.m6-sub { font-size: $font-xs; color: var(--color-text-muted); margin-top: $spacing-xs; }
 
 .detail-note {
   margin-top: $spacing-lg;
@@ -1278,11 +1278,11 @@ onMounted(async () => {
   transition: opacity .2s;
   margin-left: $spacing-sm;
 }
-.issue-empty { padding: $spacing-lg 0; text-align: center; color: var(--text-muted); font-size: $font-sm; }
+.issue-empty { padding: $spacing-lg 0; text-align: center; color: var(--color-text-muted); font-size: $font-sm; }
 .issue-head { display: flex; align-items: center; gap: $spacing-sm; margin-bottom: $spacing-xs; }
 .issue-head h4 { margin: 0; font-weight: 700; color: var(--color-text-primary); font-size: $font-md; }
 .issue-desc { color: var(--color-text-primary); font-size: $font-sm; margin: 0 0 $spacing-xs 0; line-height: 1.5; }
-.issue-meta { color: var(--text-muted); font-size: $font-xs; margin: 0; }
+.issue-meta { color: var(--color-text-muted); font-size: $font-xs; margin: 0; }
 
 .conclude-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: $spacing-md; }
 .conclude-card {
@@ -1294,7 +1294,7 @@ onMounted(async () => {
   &.border-red    { border-left-color: var(--color-danger); h4 { color: var(--color-danger); } }
   &.border-blue   { border-left-color: var(--color-primary); h4 { color: var(--color-primary); } }
 }
-.conclude-score { font-size: $font-xs; font-weight: 600; color: var(--text-muted); }
+.conclude-score { font-size: $font-xs; font-weight: 600; color: var(--color-text-muted); }
 
 .issues-right .pack-chart-card.mb { margin-bottom: $spacing-sm; }
 .suggest-list { display: flex; flex-direction: column; gap: $spacing-xs; }

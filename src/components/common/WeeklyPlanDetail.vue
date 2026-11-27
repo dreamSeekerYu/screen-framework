@@ -304,7 +304,7 @@ function progressStatus(s) {
   }
 
   thead th {
-    background: var(--primary-soft);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
     color: var(--color-primary-emphasis);
     font-weight: 600;
     position: sticky;

@@ -190,8 +190,8 @@
 
     <!-- 基础弹窗 -->
     <Dialog v-model="basicVisible" title="基础弹窗" width="520px" draggable>
-      <p style="line-height: 1.8; color: var(--text-secondary);">这是一个支持拖拽、背景模糊、ESC 关闭、点击遮罩关闭的基础弹窗。</p>
-      <p style="line-height: 1.8; color: var(--text-secondary);">你可以通过 header/footer 插槽自定义标题区和底部按钮区。</p>
+      <p style="line-height: 1.8; color: var(--color-text-secondary);">这是一个支持拖拽、背景模糊、ESC 关闭、点击遮罩关闭的基础弹窗。</p>
+      <p style="line-height: 1.8; color: var(--color-text-secondary);">你可以通过 header/footer 插槽自定义标题区和底部按钮区。</p>
       <template #footer>
         <div class="row gap-sm" style="justify-content: flex-end;">
           <StatusTag text="取消" @click="basicVisible = false" />

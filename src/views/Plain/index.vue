@@ -252,7 +252,6 @@ async function load() {
   try {
     const sheet = await loadSheet('plan', 0)
     const { weeks: w, workshops: ws } = parseWeeklyPlan(sheet)
-    console.log('weekly plan', w, ws)
     // 按"标题里的 wXX 数字"倒序，最新一周排前面；解析不出来就保持原顺序
     w.sort((a, b) => weekNo(b.title) - weekNo(a.title))
     // 过滤掉 items 为空的周
@@ -325,12 +324,12 @@ onMounted(load)
 
 .loading-mask, .error-mask {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  flex: 1; gap: 14px; color: var(--text-secondary, #6b7280);
+  flex: 1; gap: 14px; color: var(--color-text-secondary);
 }
 .loading-spinner {
   width: 36px; height: 36px; border-radius: 50%;
-  border: 3px solid var(--border-color, #e5e7eb);
-  border-top-color: var(--primary, #2563eb);
+  border: 3px solid var(--color-border-light);
+  border-top-color: var(--color-primary);
   animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -362,34 +361,34 @@ onMounted(load)
 
 .highlight-list {
   list-style: none; padding: 4px 8px; margin: 0; overflow-y: auto;
-  font-size: 13px; line-height: 1.7; color: var(--text-base, #1f2937);
+  font-size: 13px; line-height: 1.7; color: var(--color-text-primary);
   height: 100%;
   li { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px;
     .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 8px; flex-shrink: 0;
-      background: var(--primary, #2563eb);
+      background: var(--color-primary);
     }
-    strong { color: var(--primary-dark, #1e40af); margin-right: 4px; }
+    strong { color: var(--color-primary-dark); margin-right: 4px; }
   }
-  .h-ok .dot { background: var(--success, #10b981); }
-  .h-warn .dot { background: var(--danger, #ef4444); }
-  .h-info .dot { background: var(--primary, #2563eb); }
-  .h-empty { color: var(--text-secondary, #9ca3af); justify-content: center; }
+  .h-ok .dot { background: var(--color-success); }
+  .h-warn .dot { background: var(--color-danger); }
+  .h-info .dot { background: var(--color-primary); }
+  .h-empty { color: var(--color-text-muted); justify-content: center; }
 }
 
 .brief-table {
   width: 100%; border-collapse: collapse; font-size: 13px;
   height: 100%;
-  th, td { padding: 10px 8px; border-bottom: 1px solid var(--border-color, #eef0f4); text-align: left; }
-  th { background: var(--primary-soft, #eff6ff); color: var(--primary, #1d4ed8); font-weight: 600; font-size: 12px; }
+  th, td { padding: 10px 8px; border-bottom: 1px solid var(--color-border-light); text-align: left; }
+  th { background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary-emphasis); font-weight: 600; font-size: 12px; }
   .tc { text-align: center; }
-  .group-cell { color: var(--primary, #2563eb); font-weight: 600; width: 80px; text-align: center; }
-  .done-num { color: var(--success, #10b981); font-weight: 600; font-size: 15px; }
-  .brief-desc { color: var(--text-secondary, #4b5563); font-size: 12px; }
-  .empty-td { text-align: center; color: var(--text-secondary, #9ca3af); padding: 40px 0; }
+  .group-cell { color: var(--color-primary); font-weight: 600; width: 80px; text-align: center; }
+  .done-num { color: var(--color-success); font-weight: 600; font-size: 15px; }
+  .brief-desc { color: var(--color-text-secondary); font-size: 12px; }
+  .empty-td { text-align: center; color: var(--color-text-muted); padding: 40px 0; }
 }
 
 .footer-tip {
-  margin-top: 8px; text-align: center; font-size: 12px; color: var(--text-secondary, #9ca3af);
+  margin-top: 8px; text-align: center; font-size: 12px; color: var(--color-text-muted);
   flex-shrink: 0;
 }
 </style>

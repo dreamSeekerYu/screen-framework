@@ -568,8 +568,7 @@ onBeforeUnmount(() => {
   --green: var(--color-success);
   --text: var(--color-text-primary);
   --dim: var(--color-text-muted);
-  --card-glass: color-mix(in srgb, var(--color-bg-card) 82%, transparent);
-  --line: var(--color-border-light);
+  --home-card-glass: color-mix(in srgb, var(--color-bg-card) 82%, transparent);
   /* 暗角：深色主题下压边，浅色主题下减弱避免灰蒙蒙 */
   --vignette-c: rgba(0, 0, 0, 0.5);
 }
@@ -888,7 +887,7 @@ h1 {
   padding: 18px 22px;
   overflow: hidden;
   height: 100%;
-  background: var(--card-glass);
+  background: var(--home-card-glass);
   border: 1px solid var(--color-border-light);
   display: flex;
   flex-direction: column;

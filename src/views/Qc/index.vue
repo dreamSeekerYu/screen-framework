@@ -191,7 +191,6 @@ const leaveColors = { A1: 'var(--color-primary)', A2: 'var(--color-danger)', A3:
 // ============ 计算属性：KPI 卡片 ============
 const kpiCards = computed(() => {
   const k = qc.kpi
-  console.log('kpiCards.....',k)
   if (!k) return []
   return [
     {
@@ -413,7 +412,6 @@ onMounted(async () => {
     parseLeaveRateTrend(10)
       .then(t => t && Object.assign(leaveTrend, t))
       .catch(e => console.warn('离职率趋势加载失败:', e))
-    console.log('QC 数据加载成功:', data)
     // 同时还原 Excel 原始表格（详情弹窗用）
     const table = await parseQcTable()
     Object.assign(excelTable, table)
@@ -507,7 +505,7 @@ onMounted(async () => {
 .gauge-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: $spacing-xs; margin-top: $spacing-xs; }
 .gauge-cell {
   text-align: center; padding: 6px;
-  background: var(--bg-soft); border-radius: $radius-sm;
+  background: var(--color-bg-soft); border-radius: $radius-sm;
 }
 .gauge-cell__label { margin: 0; font-size: $font-xs; color: var(--color-text-secondary); }
 .gauge-cell__num { margin: 2px 0 0; font-size: $font-md; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -570,7 +568,7 @@ onMounted(async () => {
   }
   /* 表头：主题化（不使用 Excel 蓝底白字） */
   :deep(th) {
-    background: var(--bg-soft);
+    background: var(--color-bg-soft);
     color: var(--color-text-secondary);
     font-weight: 600;
     font-size: $font-xs;
@@ -579,7 +577,7 @@ onMounted(async () => {
   :deep(td) { color: var(--color-text-primary); }
   /* 合计行：主题化强调 */
   :deep(tr.is-total td) {
-    background: var(--bg-soft);
+    background: var(--color-bg-soft);
     color: var(--color-text-primary);
     font-weight: 600;
   }

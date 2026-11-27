@@ -226,7 +226,6 @@ onMounted(async () => {
   try {
     const sheet = await loadSheet('think', 0)
     const result = parseWeeklyThink(sheet)
-    console.log('weeklyThink', result)
     parsed.value = result
     // 默认展示当前周（「周度」列中周序号最大的一周）
     activeWeek.value = result.currentWeek || (result.weeks[0] && result.weeks[0].week) || ''
