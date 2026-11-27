@@ -512,7 +512,7 @@ function onPlanToggle() {
 // 关键：给车间看板固定行高，饼图吃掉剩余高度（否则首张卡片 height:100% 会把饼图挤成 0 高）
 .left-col {
   display: grid;
-  grid-template-rows: 190px 1fr;
+  grid-template-rows: auto 1fr;
   gap: $spacing-md;
   min-height: 0;
   overflow: hidden;
