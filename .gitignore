@@ -18,4 +18,6 @@ data-source/
 # 本地缓存
 .cache
 
-public
+public/img
+public/excal
+public/run_log.txt
