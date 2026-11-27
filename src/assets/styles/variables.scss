@@ -83,6 +83,8 @@ $radius-lg: 12px;
   --color-warning-bg: #fffbeb;
   --color-success-bg: #f0fdf4;
   --color-info-bg: #eff6ff;
+  // 深底强调文字色：浅色主题等同主色，深色主题自动切换为亮主色
+  --color-primary-emphasis: var(--color-primary);
 
   // 阴影
   // ---- 全局别名（兼容层，已弃用：禁止新代码使用，统一用 --color-* 语义 token） ----
@@ -166,6 +168,7 @@ $radius-lg: 12px;
   --color-warning-bg: #fffbeb;
   --color-success-bg: #f0fdf4;
   --color-info-bg: #ecfdf8;
+  --color-primary-emphasis: var(--color-primary);
 
   // ---- 全局别名（兼容层，已弃用：禁止新代码使用，统一用 --color-* 语义 token） ----
   --bg-base: var(--color-bg-page);
@@ -254,6 +257,7 @@ $radius-lg: 12px;
   --color-warning-bg: rgba(250, 173, 20, 0.14);
   --color-success-bg: rgba(0, 194, 146, 0.14);
   --color-info-bg: rgba(30, 111, 255, 0.14);
+  --color-primary-emphasis: var(--color-primary-light);
 
   // 阴影
   // ---- 全局别名（兼容层，已弃用：禁止新代码使用，统一用 --color-* 语义 token） ----
@@ -345,6 +349,7 @@ $radius-lg: 12px;
   --color-warning-bg: rgba(212, 175, 55, 0.14);
   --color-success-bg: rgba(54, 162, 116, 0.16);
   --color-info-bg: rgba(212, 175, 55, 0.12);
+  --color-primary-emphasis: var(--color-primary-light);
 
   // 阴影
   // ---- 全局别名（兼容层，已弃用：禁止新代码使用，统一用 --color-* 语义 token） ----

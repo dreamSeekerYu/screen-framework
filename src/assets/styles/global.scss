@@ -90,3 +90,15 @@ body.body-scrollable #app {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+// ========== 原生表单控件主题适配（弹窗内 select / input / option） ==========
+// 原生下拉展开面板由浏览器渲染，深色主题下默认白底黑字，需显式主题化
+select, input, textarea {
+  color-scheme: light dark;
+}
+
+select option,
+select optgroup {
+  background: var(--color-bg-elevated, #ffffff);
+  color: var(--color-text-primary, #1f2329);
+}

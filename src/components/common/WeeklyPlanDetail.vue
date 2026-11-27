@@ -1,6 +1,6 @@
 <template>
   <Dialog :model-value="modelValue" @update:model-value="v => emit('update:modelValue', v)" :title="title"
-    width="1100px" :show-fullscreen="true" :footer="false" class="plan-detail-dialog">
+    width="1100px" top="6vh" class="plan-detail-dialog">
     <!-- 筛选栏 -->
     <div class="filter-bar">
       <div class="filter-item">
@@ -175,7 +175,7 @@ function progressStatus(s) {
 
 <style lang="scss" scoped>
 .plan-detail-dialog {
-  :deep(.dialog-body) {
+  :deep(.ui-dialog__body) {
     padding: 0;
     display: flex;
     flex-direction: column;
@@ -188,12 +188,12 @@ function progressStatus(s) {
   align-items: center;
   flex-wrap: wrap;
   padding: 12px 16px;
-  background: var(--bg-elevated, #f6f8fb);
-  border-bottom: 1px solid var(--border-color, #eef0f4);
+  background: var(--color-bg-soft);
+  border-bottom: 1px solid var(--color-border-light);
 
   label {
     font-size: 13px;
-    color: var(--text-secondary, #6b7280);
+    color: var(--color-text-secondary);
     margin-right: 6px;
   }
 }
@@ -213,14 +213,14 @@ function progressStatus(s) {
   height: 30px;
   padding: 0 10px;
   font-size: 13px;
-  border: 1px solid var(--border-color, #dcdfe6);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
-  background: var(--bg-base, #fff);
-  color: var(--text-base, #1f2937);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
   outline: none;
 
   &:focus {
-    border-color: var(--primary, #2563eb);
+    border-color: var(--color-primary-emphasis);
   }
 }
 
@@ -233,15 +233,15 @@ function progressStatus(s) {
   margin-left: 8px;
   height: 30px;
   padding: 0 12px;
-  border: 1px solid var(--border-color, #dcdfe6);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
-  background: var(--bg-base, #fff);
-  color: var(--text-base, #374151);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
   cursor: pointer;
   font-size: 13px;
 
   &:hover {
-    background: var(--bg-hover, #f3f4f6);
+    background: var(--color-bg-hover);
   }
 }
 
@@ -256,30 +256,30 @@ function progressStatus(s) {
   flex-wrap: wrap;
   padding: 10px 16px;
   font-size: 13px;
-  color: var(--text-secondary, #6b7280);
-  border-bottom: 1px dashed var(--border-color, #eef0f4);
+  color: var(--color-text-secondary);
+  border-bottom: 1px dashed var(--color-border-light);
 
   .stats-item b,
   .stats-rate b {
-    color: var(--text-base, #1f2937);
+    color: var(--color-text-primary);
     font-weight: 600;
     margin: 0 2px;
   }
 
   .done b {
-    color: var(--success, #10b981);
+    color: var(--color-success);
   }
 
   .doing b {
-    color: var(--warning, #f59e0b);
+    color: var(--color-warning);
   }
 
   .todo b {
-    color: var(--info, #6b7280);
+    color: var(--color-text-muted);
   }
 
   .stats-rate b {
-    color: var(--primary, #2563eb);
+    color: var(--color-primary-emphasis);
     font-size: 16px;
   }
 }
@@ -298,14 +298,14 @@ function progressStatus(s) {
   th,
   td {
     padding: 10px 8px;
-    border-bottom: 1px solid var(--border-color, #eef0f4);
+    border-bottom: 1px solid var(--color-border-light);
     text-align: left;
     vertical-align: middle;
   }
 
   thead th {
-    background: var(--primary-soft, #eff6ff);
-    color: var(--primary, #1d4ed8);
+    background: var(--primary-soft);
+    color: var(--color-primary-emphasis);
     font-weight: 600;
     position: sticky;
     top: 0;
@@ -316,14 +316,14 @@ function progressStatus(s) {
   .col-idx {
     width: 50px;
     text-align: center;
-    color: var(--text-secondary, #9ca3af);
+    color: var(--color-text-muted);
   }
 
   .col-group {
     width: 70px;
     text-align: center;
     font-weight: 600;
-    color: var(--primary, #2563eb);
+    color: var(--color-primary-emphasis);
   }
 
   .col-tag {
@@ -340,7 +340,7 @@ function progressStatus(s) {
 
   .col-remark {
     max-width: 220px;
-    color: var(--text-secondary, #6b7280);
+    color: var(--color-text-secondary);
     font-size: 12px;
 
     span {
@@ -353,14 +353,14 @@ function progressStatus(s) {
 }
 
 .group-row td {
-  background: var(--bg-elevated, #f9fafb);
+  background: var(--color-bg-soft);
   font-weight: 600;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .group-name {
-  color: var(--primary, #1d4ed8);
+  color: var(--color-primary-emphasis);
   font-size: 14px;
   margin-right: 12px;
 }
@@ -368,28 +368,28 @@ function progressStatus(s) {
 .group-stat {
   font-weight: normal;
   font-size: 12px;
-  color: var(--text-secondary, #6b7280);
+  color: var(--color-text-secondary);
 }
 
 .plan-row:hover td {
-  background: var(--bg-hover, #f5f9ff);
+  background: var(--color-bg-hover);
 }
 
 .plan-row.st-done {
   .col-plan {
-    color: var(--text-secondary, #6b7280);
+    color: var(--color-text-secondary);
   }
 }
 
 .plan-row.st-doing {
   .col-plan {
-    color: var(--text-base, #1f2937);
+    color: var(--color-text-primary);
   }
 }
 
 .plan-row.st-todo {
   .col-plan {
-    color: var(--text-base, #374151);
+    color: var(--color-text-primary);
   }
 }
 
@@ -404,32 +404,32 @@ function progressStatus(s) {
 }
 
 .txt-done {
-  color: var(--success, #10b981);
+  color: var(--color-success);
 }
 
 .txt-doing {
-  color: var(--warning, #f59e0b);
+  color: var(--color-warning);
 }
 
 .txt-todo {
-  color: var(--info, #6b7280);
+  color: var(--color-text-muted);
 }
 
 .owner-name {
-  color: var(--text-base, #1f2937);
+  color: var(--color-text-primary);
   font-size: 13px;
 }
 
 .owner-date {
   font-size: 11px;
-  color: var(--text-secondary, #9ca3af);
+  color: var(--color-text-muted);
   margin-top: 2px;
 }
 
 .empty-state {
   padding: 60px 20px;
   text-align: center;
-  color: var(--text-secondary, #9ca3af);
+  color: var(--color-text-muted);
 
   .empty-icon {
     font-size: 48px;

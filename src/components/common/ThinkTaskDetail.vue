@@ -230,23 +230,23 @@ function markDone() {
   padding: 2px 10px;
   border-radius: 4px;
   font-size: $font-xs;
-  color: white;
+  color: #ffffff;
 
-  &.current { background: #409eff; }
-  &.last { background: #e6a23c; }
-  &.history { background: #909399; }
+  &.current { background: var(--color-primary); }
+  &.last { background: var(--color-warning); }
+  &.history { background: var(--color-text-muted); }
 }
 
 .risk-badge {
   padding: 4px 12px;
   border-radius: 20px;
   font-size: $font-lg;
-  color: white;
+  color: #ffffff;
   font-weight: 600;
 
-  &.high { background: #f56c6c; }
-  &.mid { background: #e6a23c; }
-  &.low { background: #67c23a; }
+  &.high { background: var(--color-danger); }
+  &.mid { background: var(--color-warning); }
+  &.low { background: var(--color-success); }
 }
 
 .indicator-row {
@@ -269,10 +269,10 @@ function markDone() {
     font-weight: bold;
     margin-bottom: 4px;
     font-family: 'DIN Alternate', sans-serif;
-    &.green { color: #67c23a; }
-    &.orange { color: #e6a23c; }
-    &.blue { color: var(--color-primary, #409eff); }
-    &.red { color: #f56c6c; }
+    &.green { color: var(--color-success); }
+    &.orange { color: var(--color-warning); }
+    &.blue { color: var(--color-primary); }
+    &.red { color: var(--color-danger); }
   }
   .indicator-label {
     font-size: $font-lg;
@@ -305,15 +305,15 @@ function markDone() {
 }
 
 .block-progress {
-  background: #f0f9eb;
-  border-left-color: #67c23a;
-  .block-title { color: #67c23a; }
+  background: var(--color-success-bg);
+  border-left-color: var(--color-success);
+  .block-title { color: var(--color-success); }
 }
 
 .block-risk {
-  background: #fef0f0;
-  border-left-color: #f56c6c;
-  .block-title { color: #f56c6c; }
+  background: var(--color-danger-bg);
+  border-left-color: var(--color-danger);
+  .block-title { color: var(--color-danger); }
 
   .risk-point {
     padding-left: 18px;
@@ -333,19 +333,19 @@ function markDone() {
       height: 8px;
       border-radius: 50%;
     }
-    &.high::before { background: #f56c6c; }
-    &.mid::before { background: #e6a23c; }
-    &.low::before { background: #67c23a; }
+    &.high::before { background: var(--color-danger); }
+    &.mid::before { background: var(--color-warning); }
+    &.low::before { background: var(--color-success); }
 
     .core-tag { margin-right: 4px; }
-    .risk-type { color: #909399; font-size: $font-xs; }
+    .risk-type { color: var(--color-text-muted); font-size: $font-xs; }
   }
 }
 
 .block-plan {
-  background: #ecf5ff;
-  border-left-color: var(--color-primary, #409eff);
-  .block-title { color: var(--color-primary, #409eff); }
+  background: var(--color-info-bg);
+  border-left-color: var(--color-primary);
+  .block-title { color: var(--color-primary); }
 
   .plan-item {
     display: flex;
@@ -356,7 +356,7 @@ function markDone() {
     .plan-check {
       width: 16px;
       height: 16px;
-      border: 2px solid #dcdfe6;
+      border: 2px solid var(--color-border);
       border-radius: 3px;
       margin-top: 3px;
       flex-shrink: 0;
@@ -365,48 +365,48 @@ function markDone() {
       align-items: center;
       justify-content: center;
       font-size: 11px;
-      color: white;
+      color: #ffffff;
       transition: all .2s;
 
       &.checked {
-        background: #67c23a;
-        border-color: #67c23a;
+        background: var(--color-success);
+        border-color: var(--color-success);
       }
     }
     .plan-text { flex: 1; }
-    .plan-time { color: #909399; font-size: $font-xs; }
+    .plan-time { color: var(--color-text-muted); font-size: $font-xs; }
 
     &.done .plan-text {
-      color: #909399;
+      color: var(--color-text-muted);
       text-decoration: line-through;
     }
   }
 }
 
 .block-resource {
-  background: #fdf6ec;
-  border-left-color: #e6a23c;
-  .block-title { color: #e6a23c; }
+  background: var(--color-warning-bg);
+  border-left-color: var(--color-warning);
+  .block-title { color: var(--color-warning); }
 
   .resource-tag {
     display: inline-block;
     padding: 4px 10px;
-    background: #faecd8;
-    color: #b88230;
+    background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+    color: var(--color-warning);
     border-radius: 4px;
     font-size: $font-sm;
     margin: 3px 6px 3px 0;
 
     .resource-dept {
-      color: #c79a4a;
+      color: var(--color-text-muted);
       font-size: $font-xs;
     }
   }
 }
 
 .block-note {
-  background: #f5f7fa;
-  border-left-color: #909399;
-  .block-title { color: #909399; }
+  background: var(--color-bg-soft);
+  border-left-color: var(--color-text-muted);
+  .block-title { color: var(--color-text-secondary); }
 }
 </style>
