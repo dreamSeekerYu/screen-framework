@@ -153,7 +153,7 @@
             </div>
 
             <div class="detail-table-wrap">
-              <h4 class="detail-sub-title">详细数据表（最近 {{ detailWeeks(currentA).length }} 个供货周）</h4>
+              <h4 class="detail-sub-title">详细数据表（最近 5 周）</h4>
               <table class="pack-data-table">
                 <thead>
                   <tr>
@@ -166,12 +166,10 @@
                 <tbody>
                   <tr v-for="row in detailRows(currentA)" :key="row.name">
                     <td class="tl">{{ row.name }}</td>
-                    <td v-for="(v,i) in row.weekly" :key="i" :class="valColor(row.status, v, row.target)">{{ formatVal(v) }}</td>
-                    <td>≤{{ row.target }} PPM</td>
+                    <td v-for="(v,i) in row.weekly" :key="i" :class="valColor(row, v)">{{ formatVal(v) }}</td>
+                    <td>{{ row.target === '—' ? '—' : '≤' + row.target + ' PPM' }}</td>
                     <td>
-                      <span class="cc-status" :class="`status-${row.status}`">
-                        {{ row.status === 'success' ? '达标' : (row.name.includes('故障') ? '—' : '超标') }}
-                      </span>
+                      <span class="cc-status" :class="`status-${row.status}`">{{ row.statusText }}</span>
                     </td>
                   </tr>
                 </tbody>
@@ -391,7 +389,7 @@ import NewStatCard from '@/components/common/NewStatCard.vue'
 import StatCardRow from '@/components/common/StatCardRow.vue'
 import { loadPackData, PERIOD_FIELD } from '@/utils/parsePack.js'
 import { buildPackInsight, fmtNum, riskLevelOf } from '@/utils/packRiskRules.js'
-import { chartC, tooltipStyle, legendStyle, gridStyle, axisStyle, valueAxisStyle } from '@/utils/chartTheme.js'
+import { chartC, tooltipStyle, legendStyle, gridStyle, axisStyle, valueAxisStyle, chartPalette } from '@/utils/chartTheme.js'
 
 const loading = ref(true)
 const loadError = ref('')
@@ -492,11 +490,12 @@ const overviewKpis = computed(() => {
     }
     return { title, value: peak.value, sub, status }
   }
-  const dangerCount = packData.dangerCustomers + packData.warningCustomers
+  // 需关注客户数由规则引擎评分推导（不再使用写死的 meta.status）
+  const focusCount = insight.value.riskScores.filter(r => r.level !== 'success').length
   return [
     { title: '监控客户数量', value: packData.totalCustomers,
-      sub: dangerCount ? `${dangerCount} 家客户需关注` : '全部客户纳入监控',
-      status: dangerCount ? 'warning' : 'success' },
+      sub: focusCount ? `${focusCount} 家客户需关注` : '全部客户达标',
+      status: focusCount ? 'warning' : 'success' },
     kpiOf(peaks.km0, '0KM PPM峰值'),
     kpiOf(peaks.km3, '3MIS PPM峰值'),
     kpiOf(peaks.km12, '12MIS PPM峰值'),
@@ -524,13 +523,12 @@ function sparkOf(cust) {
   return { points: pts, color }
 }
 
-function buildACard(c, barClass) {
+function buildACard(c) {
   const k = c.kpi
   const risk = riskOf(c.key)
   const periods = c.isM6 ? ['km0', 'km3'] : ['km0', 'km3', 'km6', 'km12']
   const metrics = periods.map(pk => {
     const item = k[pk]
-    const label = c.isM6 ? item.label : pk.replace('km', '').replace('km0', '0KM') + ' PPM'
     const lbl = c.isM6 ? item.label : ({ km0: '0KM PPM', km3: '3MIS PPM', km6: '6MIS PPM', km12: '12MIS PPM' }[pk])
     const over = item.target && item.ppm > item.target
     const value = item.ppm <= 0
@@ -609,7 +607,7 @@ function chartTheme() {
 
 /* ========== 总览：0KM 趋势对比（时间轴由数据推导，不再写死） ========== */
 const overviewTrendOption = computed(() => {
-  const list = [a1.value, a2.value, m5.value].filter(Boolean)
+  const list = [a1.value, a2.value, a3.value, m5.value].filter(Boolean)
   if (!list.length || !m6.value) return {}
   // 月份取各客户并集（保持时间顺序），周取最近 5 个
   const months = [...new Set(list.flatMap(c => c.months || []))]
@@ -619,12 +617,13 @@ const overviewTrendOption = computed(() => {
   const mk = (name, data) => ({ name, type: 'line', data, smooth: true, symbol: 'circle', symbolSize: 6 })
   return {
     ...chartTheme(),
-    legend: legendStyle({ data: ['A1', 'A2', 'M5-XP', 'M6-XM外观'], top: 0 }),
+    legend: legendStyle({ data: ['A1', 'A2', 'A3', 'M5-XP', 'M6-XM外观'], top: 0 }),
     xAxis: { ...axisStyle(), type: 'category', data: labels },
     yAxis: { ...valueAxisStyle(), type: 'value', name: 'PPM' },
     series: [
       mk('A1', seriesOf(a1.value, 'actual0km')),
       mk('A2', seriesOf(a2.value, 'actual0km')),
+      mk('A3', seriesOf(a3.value, 'actual0km')),
       mk('M5-XP', seriesOf(m5.value, 'actual0km')),
       mk('M6-XM外观', seriesOf(m6.value, 'ppmApp')),
     ],
@@ -709,23 +708,40 @@ function takeRecentWeeks(cust, n = 5) {
 function detailWeeks(cust) {
   return takeRecentWeeks(cust, 5)
 }
+/** 每个周期两行：PPM 实际（带目标/状态判定）+ 故障数 */
 function detailRows(cust) {
   if (!cust) return []
   const wks = detailWeeks(cust)
   const getM = (key) => cust.metrics[key]?.values || {}
-  return [
-    { name: '0KM故障数', weekly: wks.map(w => getM('fail')[w] ?? 0), target: cust.kpi.km0.target || 24, status: 'primary' },
-    { name: '3MIS故障数', weekly: wks.map(w => getM('fail3m')[w] ?? 0), target: cust.kpi.km3.target || 5, status: 'primary' },
-    { name: '6MIS故障数', weekly: wks.map(w => getM('fail6m')[w] ?? 0), target: cust.kpi.km6.target || 300, status: 'primary' },
-    { name: '12MIS故障数', weekly: wks.map(w => getM('fail12m')[w] ?? 0), target: cust.kpi.km12.target || 105, status: 'primary' },
+  const periods = [
+    { name: '0KM',  actual: 'actual0km',  fail: 'fail',    target: cust.kpi.km0.target || 24 },
+    { name: '3MIS', actual: 'actual3m',   fail: 'fail3m',  target: cust.kpi.km3.target || 5 },
+    { name: '6MIS', actual: 'actual6m',   fail: 'fail6m',  target: cust.kpi.km6.target || 300 },
+    { name: '12MIS',actual: 'actual12m',  fail: 'fail12m', target: cust.kpi.km12.target || 105 },
   ]
+  const rows = []
+  for (const p of periods) {
+    const ppmWeekly = wks.map(w => Number(getM(p.actual)[w] ?? 0))
+    const overCount = ppmWeekly.filter(v => v > p.target).length
+    rows.push({ name: `${p.name}-实际PPM`, weekly: ppmWeekly, target: p.target, isPpm: true,
+      status: overCount ? 'danger' : 'success', statusText: overCount ? `超标${overCount}周` : '达标' })
+    const failWeekly = wks.map(w => Number(getM(p.fail)[w] ?? 0))
+    const failTotal = failWeekly.reduce((a, b) => a + b, 0)
+    rows.push({ name: `${p.name}-故障数`, weekly: failWeekly, target: '—', isPpm: false,
+      status: 'primary', statusText: failTotal ? `共${failTotal}例` : '—' })
+  }
+  return rows
 }
-function valColor(rowStatus, v, target) {
-  if (rowStatus === 'primary') return ''
-  if (Number(v) > 0) return 'text-red font'
-  return 'text-green'
+/** 单元格配色：PPM 行按 目标/实际 分档，故障行非零标红 */
+function valColor(row, v) {
+  const n = Number(v) || 0
+  if (!row.isPpm) return n > 0 ? 'text-red font' : ''
+  if (n > row.target) return 'text-red font'
+  if (n > row.target * 0.5) return 'text-orange'
+  if (n > 0) return 'text-green'
+  return ''
 }
-function formatVal(v) { return v ?? 0 }
+function formatVal(v) { return fmt(v) }
 
 /* ========== M5 详情 ========== */
 const m5ChartOption = computed(() => {
@@ -795,7 +811,7 @@ const m6ChartOption = computed(() => {
       { ...valueAxisStyle(), type: 'value', name: 'PPM', position: 'right', max: Math.ceil(peak * 1.15) },
     ],
     series: [
-      { name: '周交付', type: 'bar', data: get('delivery'), yAxisIndex: 0, itemStyle: { color: chartC.accent || 'var(--color-accent)' } },
+      { name: '周交付', type: 'bar', data: get('delivery'), yAxisIndex: 0, itemStyle: { color: chartC.accent } },
       { name: 'PPM-外观', type: 'line', data: get('ppmApp'), yAxisIndex: 1, lineStyle: { color: chartC.danger, width: 2 }, symbolSize: 8,
         markPoint: highlightMark('M6', 'km0', labels, get('ppmApp')) },
       { name: 'PPM-性能', type: 'line', data: get('ppmPerf'), yAxisIndex: 1, lineStyle: { color: chartC.warning, width: 2 }, symbolSize: 8,
@@ -832,30 +848,32 @@ const m6TableRows = computed(() => {
   ]
 })
 
-/* ========== 问题分析页图表（数据由规则引擎产出） ========== */
-const TYPE_COLOR = {
-  '0KM异常': 'var(--color-danger)',
-  'MIS趋势': 'var(--color-warning)',
-  '外观问题': 'var(--color-primary)',
-  '性能问题': 'var(--color-accent)',
-}
+/* ========== 问题分析页图表（数据由规则引擎产出，颜色随主题调色板） ========== */
 const issueTypeOption = computed(() => {
   const dist = insight.value?.issueTypeDist || []
+  // 0KM异常/MIS趋势用语义色（超标/预警），其余类型走主题调色板（各主题自动适配）
+  const palette = chartPalette()
+  const colorOf = (name, i) => {
+    if (name === '0KM异常') return chartC.danger
+    if (name === 'MIS趋势') return chartC.warning
+    return palette[(i + 2) % palette.length]
+  }
   return {
     ...chartTheme(),
     tooltip: tooltipStyle({ trigger: 'item' }),
     series: [{
       type: 'pie', radius: ['50%', '72%'], avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 6, borderColor: 'var(--color-bg-card)', borderWidth: 2 },
+      itemStyle: { borderRadius: 6, borderColor: chartC.cardBg, borderWidth: 2 },
       label: { show: true, formatter: '{b}: {d}%', color: chartC.textMuted, fontSize: 11 },
-      data: dist.map(d => ({ ...d, itemStyle: { color: TYPE_COLOR[d.name] || 'var(--color-primary)' } })),
+      data: dist.map((d, i) => ({ ...d, itemStyle: { color: colorOf(d.name, i) } })),
     }],
   }
 })
 
 const riskScoreOption = computed(() => {
   const scores = [...(insight.value?.riskScores || [])].sort((a, b) => a.score - b.score)
-  const colorOf = (level) => level === 'success' ? 'var(--color-primary-light)' : (level === 'warning' ? 'var(--color-warning)' : 'var(--color-danger)')
+  // 语义色取色（勿用 primary-light：gov-red 主题下 primary-light 为红色，达标会显示成红条）
+  const colorOf = (level) => level === 'success' ? chartC.success : (level === 'warning' ? chartC.warning : chartC.danger)
   return {
     ...chartTheme(),
     tooltip: tooltipStyle(),
@@ -914,26 +932,22 @@ function rotateTick() {
   } else if (mainTab.value === 'overview') {
     mainTab.value = 'detail'
   } else {
+    // 问题分析 → 总览，并重置客户游标，保证下一轮详情从 A1 开始
     mainTab.value = 'overview'
+    activeClient.value = CLIENT_TABS[0].key
   }
   if (rotateOn.value) rotateTimer = setTimeout(rotateTick, ROTATE_MS)
 }
 onUnmounted(stopRotate)
 
-/* ========== 时间窗口：按窗口取图表标签（有数据周优先，消除空周） ========== */
-function activeWeeks(cust) {
-  const wk = (cust.weeks || []).filter(w => /WK\d+/.test(w))
-  const m = cust.metrics
-  return wk.filter(w =>
-    ['actual0km', 'actual3m', 'actual6m', 'actual12m', 'ppmApp', 'ppmPerf']
-      .some(k => m[k] && Number(m[k].values[w] ?? 0) > 0))
-}
+/* ========== 时间窗口：w4/w12 取最近 N 个自然周（parsePack 已裁掉尾部无数据周，时间轴真实连续） ========== */
 function windowLabels(cust, w) {
   if (!cust) return []
+  const wk = (cust.weeks || []).filter(x => /WK\d+/.test(x))
   if (w === 'month') return [...(cust.months || [])]
-  if (w === 'all') return [...(cust.months || []), ...(cust.weeks || []).filter(x => /WK\d+/.test(x))]
+  if (w === 'all') return [...(cust.months || []), ...wk]
   const n = w === 'w4' ? 4 : 12
-  return activeWeeks(cust).slice(-n)
+  return wk.slice(-n)
 }
 
 /* ========== 加载 ========== */
@@ -1132,8 +1146,8 @@ onMounted(async () => {
 .chart-bar { width: 4px; height: 20px; background: linear-gradient(180deg,var(--color-primary),var(--color-accent)); border-radius: 2px; display: inline-block; }
 .chart-box-h300 { height: 300px; }
 .chart-box-h280 { height: 280px; }
-.chart-box-h250 { height: 250px; }
-.chart-box-h240 { height: 240px; }
+.chart-box-h250 { height: 228px; }
+.chart-box-h240 { height: 224px; }
 
 /* ============ 客户详情Tab ============ */
 .pack-client-tabs {
@@ -1192,7 +1206,7 @@ onMounted(async () => {
 .detail-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: $spacing-md; }
 .detail-title { font-size: $font-lg; font-weight: 700; color: var(--text-main); margin: 0; }
 .detail-chart-grid {
-  display: grid; grid-template-columns: repeat(2,1fr); gap: $spacing-lg;
+  display: grid; grid-template-columns: repeat(2,1fr); gap: $spacing-md;
 }
 .detail-chart-grid--wide { display: grid; grid-template-columns: 1fr; gap: $spacing-md; }
 .detail-chart-block {
@@ -1207,13 +1221,27 @@ onMounted(async () => {
   font-size: $font-md; font-weight: 600; color: var(--color-primary);
   margin: 0;
 }
-.detail-table-wrap { margin-top: $spacing-lg; overflow: auto; max-height: 230px; }
+.detail-table-wrap { margin-top: $spacing-md; overflow: auto; max-height: 186px; border-radius: $radius-md; }
 .pack-data-table {
   width: 100%; border-collapse: collapse;
-  th { background: var(--color-bg-soft); padding: 10px 8px; text-align: center; font-weight: 600; font-size: $font-sm; color: var(--color-text-primary); border-bottom: 1px solid var(--border-color); }
+  th { position: sticky; top: 0; z-index: 1; background: var(--color-bg-soft); padding: 10px 8px; text-align: center; font-weight: 600; font-size: $font-sm; color: var(--color-text-primary); border-bottom: 1px solid var(--border-color); }
   td { padding: 8px; text-align: center; font-size: $font-sm; color: var(--text-body); border-bottom: 1px solid var(--color-border-light); }
-  tr:hover td { background: var(--color-bg-soft); }
+  tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--color-primary) 3%, transparent); }
+  tr:hover td { background: var(--color-bg-hover); }
   td.tl { text-align: left; color: var(--text-main); font-weight: 600; }
+}
+/* 状态胶囊（达标/超标/统计） */
+.cc-status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: $font-xs;
+  font-weight: 600;
+  white-space: nowrap;
+  &.status-success, &.status-pass { background: var(--color-success-bg); color: var(--color-success); }
+  &.status-warning { background: var(--color-warning-bg); color: var(--color-warning); }
+  &.status-danger, &.status-fail { background: var(--color-danger-bg); color: var(--color-danger); }
+  &.status-primary { background: var(--color-info-bg); color: var(--color-primary); }
 }
 
 /* M6 指标块 */
@@ -1245,19 +1273,39 @@ onMounted(async () => {
 }
 
 /* ============ 问题分析 ============ */
-.pack-issues-grid { display: grid; grid-template-columns: 2fr 1fr; gap: $spacing-lg; }
-.issues-left, .issues-right { display: flex; flex-direction: column; min-width: 0; }
+.pack-tab-panel--issues {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.pack-issues-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 2fr 1fr; gap: $spacing-md; }
+.issues-left, .issues-right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.issues-left .pack-chart-card, .issues-right .pack-chart-card { padding: $spacing-sm $spacing-md; height: auto; flex-shrink: 0; }
+/* 问题汇总卡占满左栏剩余高度，条目列表内部滚动（ScreenCard body overflow:hidden 需要显式高度链） */
+.issues-left > .pack-chart-card:first-child { flex: 1 1 auto; min-height: 0; }
+.issues-left > .pack-chart-card:first-child .issue-list { overflow-y: auto; }
 .section-title { font-size: $font-lg; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: $spacing-sm;
   &.sm { font-size: $font-md; }
 }
-.issue-list { display: flex; flex-direction: column; gap: $spacing-md; }
+.issue-list { display: flex; flex-direction: column; gap: $spacing-sm; }
 .issue-item {
   border-left: 3px solid var(--color-warning);
+  border-radius: 0 $radius-md $radius-md 0;
   transition: all .25s;
   padding: $spacing-xs 0 $spacing-xs $spacing-md;
   &:hover { background: var(--color-bg-hover); }
-  &--danger { border-left-color: var(--color-danger); }
-  &--info   { border-left-color: var(--color-info, var(--color-primary)); }
+  &--danger {
+    border-left-color: var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 6%, transparent);
+  }
+  &--warning {
+    border-left-color: var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 6%, transparent);
+  }
+  &--info {
+    border-left-color: var(--color-info, var(--color-primary));
+    background: color-mix(in srgb, var(--color-info, var(--color-primary)) 6%, transparent);
+  }
   &--click { cursor: pointer; }
   &--click:hover {
     background: var(--color-bg-hover);
@@ -1290,7 +1338,8 @@ onMounted(async () => {
 }
 .conclude-score { font-size: $font-xs; font-weight: 600; color: var(--text-muted); }
 
-.suggest-list { display: flex; flex-direction: column; gap: $spacing-sm; }
+.issues-right .pack-chart-card.mb { margin-bottom: $spacing-sm; }
+.suggest-list { display: flex; flex-direction: column; gap: $spacing-xs; }
 .suggest-item { display: flex; gap: $spacing-sm; align-items: flex-start; font-size: $font-sm; color: var(--text-body); }
 .suggest-no {
   width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 700; font-size: $font-sm;

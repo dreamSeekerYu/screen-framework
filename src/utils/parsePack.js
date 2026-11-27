@@ -395,8 +395,18 @@ export async function loadPackData() {
     return { value: Math.round(peak), owner }
   }
 
+  // 截至周期：取全部客户中最末的周标签（数据驱动，替代写死的 asOf）
+  let maxWeek = null
+  for (const c of custList) {
+    for (const w of c.weeks || []) {
+      const m = /^WK(\d+)$/i.exec(w)
+      if (m && (!maxWeek || Number(m[1]) > maxWeek.num)) maxWeek = { num: Number(m[1]), label: w }
+    }
+  }
+  const asOf = maxWeek ? maxWeek.label : ((custList[0] && custList[0].months) || []).slice(-1)[0] || ''
+
   _parsedCache = {
-    asOf: '2026年WK44',
+    asOf,
     totalCustomers,
     passCustomers,
     warningCustomers,
