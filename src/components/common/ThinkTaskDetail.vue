@@ -29,20 +29,20 @@
       <!-- KPI 指标 -->
       <div class="indicator-row">
         <div class="indicator-card">
+          <div class="indicator-label">已完成数</div>
           <div class="indicator-value green">{{ task.donePlanCount }}</div>
-          <div class="indicator-label">已完成动作</div>
         </div>
         <div class="indicator-card">
-          <div class="indicator-value orange">{{ task.todoPlanCount }}</div>
           <div class="indicator-label">剩余待办数</div>
+          <div class="indicator-value orange">{{ task.todoPlanCount }}</div>
         </div>
         <div class="indicator-card">
-          <div class="indicator-value blue">{{ task.deptCount }}</div>
           <div class="indicator-label">协同部门数</div>
+          <div class="indicator-value blue">{{ task.deptCount }}</div>
         </div>
         <div class="indicator-card">
+          <div class="indicator-label">核心卡点数</div>
           <div class="indicator-value red">{{ task.coreRiskCount }}</div>
-          <div class="indicator-label">核心卡点</div>
         </div>
       </div>
 
@@ -240,7 +240,7 @@ function markDone() {
 .risk-badge {
   padding: 4px 12px;
   border-radius: 20px;
-  font-size: $font-sm;
+  font-size: $font-lg;
   color: white;
   font-weight: 600;
 
@@ -256,27 +256,28 @@ function markDone() {
 }
 
 .indicator-card {
-  text-align: center;
-  padding: $spacing-md 0;
+  // text-align: center;
+  padding: $spacing-md;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: $radius-md;
-
+  display: flex;
+  line-height: 1;
+  
   .indicator-value {
-    font-size: 28px;
+    font-size: $font-xl;
     font-weight: bold;
-    line-height: 1;
     margin-bottom: 4px;
     font-family: 'DIN Alternate', sans-serif;
-
     &.green { color: #67c23a; }
     &.orange { color: #e6a23c; }
     &.blue { color: var(--color-primary, #409eff); }
     &.red { color: #f56c6c; }
   }
   .indicator-label {
-    font-size: $font-xs;
+    font-size: $font-lg;
     color: var(--color-text-muted);
+    flex: 1;
   }
 }
 
