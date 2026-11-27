@@ -18,7 +18,7 @@
       ref="imgRef"
       :src="currentSrc"
       :alt="alt"
-      :class="`sc-image__img--${fit}`"
+      :class="[`sc-image__img`, `sc-image__img--${fit}`]"
       draggable="false"
       @load="handleLoad"
       @error="handleError"

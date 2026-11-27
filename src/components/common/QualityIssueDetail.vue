@@ -105,7 +105,7 @@
                     <Image
                       v-if="slot.url"
                       :src="slot.url"
-                      fit="cover"
+                      fit="contain"
                       width="100%"
                       height="100%"
                       radius="0"
@@ -192,7 +192,7 @@
                       <Image
                         v-if="p.url"
                         :src="p.url"
-                        fit="cover"
+                        fit="contain"
                         width="100%"
                         height="100%"
                         radius="0"
@@ -395,15 +395,16 @@ onBeforeUnmount(() => {
 
 .ldg-panel {
   position: absolute;
-  inset: 30px 48px;  // 上下留 30px、左右留 48px 空白
-  border-radius: 12px;
-  box-shadow: 0 12px 48px rgba(0,0,0,.25), 0 4px 12px rgba(0,0,0,.12);
-  border: 1px solid var(--color-border-light);
+  /* 四周留空，不铺满整屏 */
+  inset: 30px 48px;
   display: flex;
   flex-direction: column;
   background: var(--color-bg-card);
   color: var(--color-text-primary);
   overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--color-border-light);
 }
 
 /* ========== 头部 ========== */
