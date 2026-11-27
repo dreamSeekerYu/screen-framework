@@ -395,7 +395,10 @@ onBeforeUnmount(() => {
 
 .ldg-panel {
   position: absolute;
-  inset: 0;
+  inset: 30px 48px;  // 上下留 30px、左右留 48px 空白
+  border-radius: 12px;
+  box-shadow: 0 12px 48px rgba(0,0,0,.25), 0 4px 12px rgba(0,0,0,.12);
+  border: 1px solid var(--color-border-light);
   display: flex;
   flex-direction: column;
   background: var(--color-bg-card);
@@ -852,7 +855,7 @@ onBeforeUnmount(() => {
 /* 整改凭证 */
 .ldg-proof-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   max-width: 320px;
   align-content: start;
