@@ -3,41 +3,6 @@
   <div v-else-if="error" class="question-screen question-err">数据加载失败：{{ error }}</div>
 
   <div v-else class="question-screen">
-    <!-- 顶部标题 -->
-    <!-- <div class="q-header">
-      <div class="q-header-left">
-        <div class="q-title-deco"></div>
-        <div class="q-title-group">
-          <h1 class="q-title">四、重大质量异常闭环率</h1>
-          <div class="q-title-sub">大屏汇报改版 · 16:9 投屏 · 成果导向 · 闭环跟踪 · 根因管控</div>
-        </div>
-      </div>
-      <div class="q-header-right">
-        <div class="q-stat-cycle">
-          <div class="q-cycle-label">统计周期</div>
-          <div class="q-cycle-value">{{ periodRange }}</div>
-          <div class="q-cycle-update">口径：重大质量异常台账 · 更新 {{ updateTime }}</div>
-        </div>
-        <div class="q-header-btns">
-          <button class="q-btn q-btn-primary" @click="detailVisible = true">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M9 12h6M9 16h6M9 8h6" />
-            </svg>
-            查看异常明细
-          </button>
-          <button class="q-btn q-btn-secondary" @click="toggleFullscreen">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
-            </svg>
-            全屏
-          </button>
-        </div>
-      </div>
-      <div class="q-title-divider"></div>
-    </div> -->
     <ScreenHeader title="重大质量异常闭环率">
       <template #right>
         <button class="detail-btn" @click="detailVisible = true">
@@ -492,12 +457,6 @@ function linearGradient(x0, y0, x2, y2, stops) {
   return { type: 'linear', x: x0, y: y0, x2: x2, y2: y2, colorStops: stops, global: false }
 }
 
-function toggleFullscreen() {
-  const el = document.documentElement
-  if (!document.fullscreenElement) el.requestFullscreen?.()
-  else document.exitFullscreen?.()
-}
-
 function openIssueDetail(it) {
   detailVisible.value = true
 }
@@ -677,45 +636,6 @@ function openIssueDetail(it) {
   gap: 8px;
 }
 
-.q-btn {
-  padding: 7px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all .25s cubic-bezier(0.4, 0, 0.2, 1);
-  border: none;
-  position: relative;
-  overflow: hidden;
-  font-family: inherit;
-}
-
-.q-btn-primary {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary) 100%);
-  color: #fff;
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 25%, transparent), inset 0 1px 0 color-mix(in srgb, #ffffff 20%, transparent);
-
-  &:hover {
-    box-shadow: 0 6px 20px color-mix(in srgb, var(--color-primary) 35%, transparent), inset 0 1px 0 color-mix(in srgb, #ffffff 25%, transparent);
-    transform: translateY(-1px);
-  }
-}
-
-.q-btn-secondary {
-  background: #fff;
-  color: var(--color-text-secondary);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 6%, transparent);
-
-  &:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 10%, transparent);
-    color: var(--color-primary-dark);
-  }
-}
 
 // ============ KPI 行：布局（宽度自适应 / 均分 / 约束）由 StatCardRow 统一承担 ============
 .q-kpi-row {

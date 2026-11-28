@@ -186,7 +186,6 @@ const excelTable = reactive({ title: '', cols: [], colPercents: [], rows: [] })
 const leaveColors = { A1: 'var(--color-primary)', A2: 'var(--color-danger)', A3: 'var(--color-success)', M5: 'var(--color-warning)', M6: 'var(--color-accent)' }
 
 // ============ 辅助函数 ============
-// （明细弹窗已改为 Excel 原表动态还原，旧的 formatGap / shopStatusTag / remarkByGap 移除）
 
 // ============ 计算属性：KPI 卡片 ============
 const kpiCards = computed(() => {

@@ -52,11 +52,15 @@ screen-framework/
 │   │   ├── chart/          # 图表组件
 │   │   │   └── BaseChart.vue        # ECharts基础封装
 │   │   └── data/           # 数据展示组件
-│   │       ├── NumberCounter.vue    # 数字滚动翻牌器
-│   │       └── MarqueeList.vue      # 无缝滚动列表
+│   │       └── NumberCounter.vue    # 数字滚动翻牌器
 │   ├── composables/        # 组合式函数
-│   │   ├── useResize.js    # 窗口resize防抖监听
-│   │   └── useLazyLoad.js  # 元素视口懒加载
+│   │   ├── useResize.js            # 窗口resize防抖监听
+│   │   ├── useLazyLoad.js          # 元素视口懒加载
+│   │   ├── useTouchDevice.js       # 触屏设备判定
+│   │   ├── useCarousel.js          # 大屏轮播（多页游标联动）
+│   │   ├── useTimeWindow.js        # 时间窗口（近4周/12周/月/全部）
+│   │   ├── useMarkPointLink.js     # ECharts markPoint 跨图联动
+│   │   └── usePageOverflowGuard.js # 页面溢出看门狗
 │   ├── stores/             # Pinia状态管理
 │   │   └── theme.js        # 主题状态管理
 │   ├── router/             # 路由配置
@@ -110,14 +114,7 @@ screen-framework/
 <NumberCounter :value="128569" suffix="人" :duration="1500" />
 ```
 
-### 5. MarqueeList 无缝滚动列表
-列表自动无缝滚动，鼠标移入暂停，支持自定义插槽：
-
-```vue
-<MarqueeList :data="listData" :speed="50" />
-```
-
-### 6. 组件懒加载
+### 5. 组件懒加载
 使用 `useLazyLoad` 实现元素进入视口才渲染，适合非首屏图表延迟加载：
 
 ```js

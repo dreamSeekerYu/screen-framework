@@ -318,7 +318,7 @@ const openByJs = () => {
   top: 16px; right: 24px; z-index: 100;
   display: flex; gap: 8px;
   padding: 4px;
-  background: #fff;
+  background: var(--color-bg-card);
   border-radius: 999px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
   .pill {
@@ -386,7 +386,7 @@ const openByJs = () => {
 }
 
 .demo-card {
-  background: #fff;
+  background: var(--color-bg-card);
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.04);

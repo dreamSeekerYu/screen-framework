@@ -100,10 +100,10 @@
       </div>
     </div>
 
-    <template #footer>
-      <StatusTag type="default" text="复制详情" @click="copyDetail" />
-      <StatusTag type="primary" text="标记已跟进" @click="markDone" />
-    </template>
+    <!-- <template #footer>
+      <button class="dt-btn" @click="copyDetail">复制详情</button>
+      <button class="dt-btn dt-btn--primary" @click="markDone">标记已跟进</button>
+    </template> -->
   </Dialog>
 </template>
 
@@ -111,7 +111,7 @@
 import { ref, computed, watch } from 'vue'
 import Dialog from '@/components/common/Dialog.vue'
 import Tag from '@/components/common/Tag.vue'
-import StatusTag from '@/components/common/StatusTag.vue'
+import { message } from '@/utils/message.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -171,7 +171,7 @@ function copyDetail() {
   const text = lines.join('\n')
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(
-      () => alert('详情已复制到剪贴板'),
+      () => message.success('详情已复制到剪贴板'),
       () => fallbackCopy(text)
     )
   } else {
@@ -183,13 +183,13 @@ function fallbackCopy(text) {
   ta.value = text
   document.body.appendChild(ta)
   ta.select()
-  try { document.execCommand('copy'); alert('详情已复制到剪贴板') } catch (e) { alert('复制失败，请手动复制') }
+  try { document.execCommand('copy'); message.success('详情已复制到剪贴板') } catch (e) { message.danger('复制失败，请手动复制') }
   document.body.removeChild(ta)
 }
 
 function markDone() {
   emit('mark-done', props.task)
-  alert('已标记该任务为跟进中')
+  message.success('已标记该任务为已跟进')
 }
 </script>
 
@@ -408,5 +408,35 @@ function markDone() {
   background: var(--color-bg-soft);
   border-left-color: var(--color-text-muted);
   .block-title { color: var(--color-text-secondary); }
+}
+
+/* 底部操作按钮 */
+.dt-btn {
+  padding: 8px 22px;
+  border: 1px solid var(--color-border);
+  border-radius: $radius-md;
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  font-size: $font-sm;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary-emphasis);
+  }
+
+  &--primary {
+    border: none;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    color: #ffffff;
+    font-weight: 600;
+
+    &:hover {
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 35%, transparent);
+      transform: translateY(-1px);
+    }
+  }
 }
 </style>
