@@ -178,22 +178,22 @@ export function useStatCardColors(props) {
             }
 
             if (props.borderColor) {
-                style['--card-border-color'] = props.borderColor
+                style['--stat-card-border'] = props.borderColor
             } else if (props.variant !== 'default') {
-                style['--card-border-color'] = borderColor
+                style['--stat-card-border'] = borderColor
             }
 
             if (props.bgColor) {
-                style['--card-bg-color'] = props.bgColor
+                style['--stat-card-bg'] = props.bgColor
             } else if (props.variant === 'plain') {
                 // 与原 StatCard 保持一致的透明度档位
                 let bgOpacity = 0.1
                 if (props.brightness === 'light') bgOpacity = 0.06
                 if (props.brightness === 'dark') bgOpacity = 0.18
-                style['--card-bg-color'] = alphaColor(borderColor, bgOpacity)
+                style['--stat-card-bg'] = alphaColor(borderColor, bgOpacity)
             }
 
-            style['--value-color'] = textColor
+            style['--stat-card-value-color'] = textColor
             return style
         }
 
@@ -209,8 +209,8 @@ export function useStatCardColors(props) {
             `linear-gradient(135deg, ${cfg.accentBg[0]} 0%, ${cfg.accentBg[1]} 50%, ${cfg.accentBg[2]} 100%)`
 
         // 用户自定义背景/边框
-        if (props.bgColor) style['--card-bg-color'] = props.bgColor
-        if (props.borderColor) style['--card-border-color'] = props.borderColor
+        if (props.bgColor) style['--stat-card-bg'] = props.bgColor
+        if (props.borderColor) style['--stat-card-border'] = props.borderColor
 
         // 动画延迟
         if (props.animated) {

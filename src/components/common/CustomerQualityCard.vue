@@ -1,9 +1,9 @@
 <template>
-  <div class="customer-card" :class="[`status-${status}`, `theme-${theme}`]">
+  <div class="customer-card" :class="[`status-${status}`]">
     <!-- 头部：客户名称 + 状态标签 -->
     <div class="card-header">
       <span class="customer-name">{{ title }}</span>
-      <span class="status-tag" :class="`tag-${status}`">{{ statusText }}</span>
+      <span class="status-tag" :class="`tag-${status}`">{{ displayStatusText }}</span>
     </div>
 
     <!-- 内容区：自动根据 layout 切换 -->
@@ -97,20 +97,15 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  // 主题：'light' | 'dark'
-  theme: {
-    type: String,
-    default: 'light'
-  },
-  // 自定义主色（status='custom' 时生效）
+  // 自定义主色（status='custom' 时生效），默认跟随主题主色
   customColor: {
     type: String,
-    default: '#4080ff'
+    default: 'var(--color-primary)'
   }
 })
 
-// 自动生成状态文字
-const _statusText = computed(() => {
+// 自动生成状态文字（未显式传入 statusText 时按状态取默认文案）
+const displayStatusText = computed(() => {
   if (props.statusText) return props.statusText
   const map = { attention: '关注', warning: '预警', success: '达标', custom: '自定义' }
   return map[props.status]
@@ -118,161 +113,86 @@ const _statusText = computed(() => {
 </script>
 
 <style scoped>
+/* 全部颜色取自全局主题变量（--color-*），随 <html data-theme> 自动切换 */
 .customer-card {
   border-radius: 8px;
   padding: 16px 18px;
-  border: 1px solid transparent;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-card);
   transition: all 0.3s ease;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* ===== 亮色主题 ===== */
-.theme-light {
-  background: #ffffff;
-  border-color: #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-.theme-light .customer-name {
-  color: #1f2937;
+.customer-name {
+  color: var(--color-text-primary);
   font-size: 16px;
   font-weight: 600;
 }
-.theme-light .metric-label {
-  color: #6b7280;
+.metric-label {
+  color: var(--color-text-secondary);
   font-size: 13px;
 }
-.theme-light .metric-value {
-  color: #1f2937;
+.metric-value {
+  color: var(--color-text-primary);
   font-size: 14px;
   font-weight: 600;
 }
-.theme-light .metric-value.highlight {
-  color: var(--status-color, #2563eb);
+.metric-value.highlight {
+  color: var(--status-color);
   font-weight: 700;
 }
-.theme-light .metric-extra {
-  color: var(--status-color, #2563eb);
+.metric-extra {
+  color: var(--status-color);
   font-weight: 500;
   font-size: 12px;
   margin-left: 4px;
 }
-.theme-light .section-title {
-  color: #374151;
+.section-title {
+  color: var(--color-text-primary);
   font-size: 13px;
   font-weight: 600;
   margin-top: 8px;
   margin-bottom: 4px;
 }
-.theme-light .progress-bar {
-  background: #f3f4f6;
+.progress-bar {
+  background: var(--color-bg-soft);
 }
-.theme-light .progress-fill {
-  background: var(--status-color, #2563eb);
+.progress-fill {
+  background: var(--status-color);
 }
-.theme-light .remark-text {
-  color: #6b7280;
+.remark-text {
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
-/* ===== 暗黑主题 ===== */
-.theme-dark {
-  background: #1e293b;
-  border-color: #334155;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-.theme-dark .customer-name {
-  color: #f1f5f9;
-  font-size: 16px;
-  font-weight: 600;
-}
-.theme-dark .metric-label {
-  color: #94a3b8;
-  font-size: 13px;
-}
-.theme-dark .metric-value {
-  color: #f1f5f9;
-  font-size: 14px;
-  font-weight: 600;
-}
-.theme-dark .metric-value.highlight {
-  color: var(--status-color, #60a5fa);
-  font-weight: 700;
-}
-.theme-dark .metric-extra {
-  color: var(--status-color, #60a5fa);
-  font-weight: 500;
-  font-size: 12px;
-  margin-left: 4px;
-}
-.theme-dark .section-title {
-  color: #cbd5e1;
-  font-size: 13px;
-  font-weight: 600;
-  margin-top: 8px;
-  margin-bottom: 4px;
-}
-.theme-dark .progress-bar {
-  background: #334155;
-}
-.theme-dark .progress-fill {
-  background: var(--status-color, #60a5fa);
-}
-.theme-dark .remark-text {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-/* ===== 状态色系 ===== */
+/* ===== 状态色系（语义色取自主题） ===== */
 /* 关注 */
 .status-attention {
-  --status-color: #3b82f6;
+  --status-color: var(--color-primary);
 }
-.status-attention .status-tag {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-}
-.theme-dark.status-attention .status-tag {
-  background: rgba(96, 165, 250, 0.15);
-}
-
 /* 预警（加粗边框高亮） */
 .status-warning {
-  --status-color: #1e40af;
-  border-color: #1e40af !important;
-  border-width: 2px !important;
+  --status-color: var(--color-warning);
+  border-color: var(--status-color);
+  border-width: 2px;
 }
-.theme-dark.status-warning {
-  --status-color: #60a5fa;
-  border-color: #60a5fa !important;
-}
-.status-warning .status-tag {
-  background: rgba(30, 64, 175, 0.1);
-  color: #1e40af;
-}
-.theme-dark.status-warning .status-tag {
-  background: rgba(96, 165, 250, 0.15);
-  color: #60a5fa;
-}
-
 /* 达标 */
 .status-success {
-  --status-color: #06b6d4;
+  --status-color: var(--color-success);
 }
-.status-success .status-tag {
-  background: rgba(6, 182, 212, 0.1);
-  color: #06b6d4;
-}
-.theme-dark.status-success .status-tag {
-  background: rgba(34, 211, 238, 0.15);
-}
-
 /* 自定义 */
 .status-custom {
   --status-color: v-bind('props.customColor');
 }
-.status-custom .status-tag {
-  background: color-mix(in srgb, var(--status-color) 10%, transparent);
+
+.status-tag {
+  background: color-mix(in srgb, var(--status-color) 12%, transparent);
   color: var(--status-color);
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 500;
 }
 
 /* ===== 通用样式 ===== */
@@ -281,13 +201,6 @@ const _statusText = computed(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 14px;
-}
-
-.status-tag {
-  font-size: 12px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-weight: 500;
 }
 
 .metric-row {
@@ -324,9 +237,6 @@ const _statusText = computed(() => {
 /* 卡片hover效果 */
 .customer-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-.theme-dark.customer-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-hover);
 }
 </style>

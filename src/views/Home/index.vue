@@ -298,7 +298,7 @@ function layoutRing() {
 let cvCtx = null, W = 0, H = 0, parts = [], SPRITES = {}, rafParts = true
 // 粒子色板（"r,g,b" 三元组）与连线色，均在 buildSprites 时按当前主题解析
 let SPRITE_COLORS = []
-let LINK_RGB = '90,160,255'
+let LINK_RGB = ''
 // 性能参数：30fps 节流 + 粒子数随画布面积自适应（大屏 1920×1080 约封顶 80，小屏自动减少）
 const PART_FRAME_MS = 1000 / 30
 let lastPartsT = 0
@@ -344,14 +344,16 @@ function resizeCanvas() {
   syncPartCount()
 }
 function buildSprites() {
-  // 从当前主题读取四个强调色作为粒子色板
-  const palette = [
-    getCssVar('--color-accent', '#00e5ff'),
-    getCssVar('--color-primary', '#3a7bff'),
-    getCssVar('--color-primary-light', '#8b5cf6'),
-    getCssVar('--color-danger', '#ff3d8b')
-  ].map(hexToRgbTriplet)
-  LINK_RGB = hexToRgbTriplet(getCssVar('--color-primary', '#3a7bff'))
+  // 从当前主题读取四个强调色作为粒子色板（未取到则跳过，不做硬编码兜底）
+  const themeColors = [
+    getCssVar('--color-accent'),
+    getCssVar('--color-primary'),
+    getCssVar('--color-primary-light'),
+    getCssVar('--color-danger')
+  ].filter(Boolean)
+  if (!themeColors.length) return
+  const palette = themeColors.map(hexToRgbTriplet)
+  LINK_RGB = hexToRgbTriplet(getCssVar('--color-primary') || themeColors[0])
   SPRITE_COLORS = palette
   palette.forEach(c => {
     const s = document.createElement('canvas')
@@ -376,7 +378,7 @@ class P {
     this.vx = (Math.random() - 0.5) * 0.25
     this.col = SPRITE_COLORS.length
       ? SPRITE_COLORS[Math.floor(Math.random() * SPRITE_COLORS.length)]
-      : '58,123,255'
+      : ''
     this.a = Math.random() * 0.6 + 0.2
   }
   step() {
@@ -385,8 +387,10 @@ class P {
     if (this.y > H + 10 || this.x < -10 || this.x > W + 10) this.reset(false)
   }
   draw() {
+    const sprite = SPRITES[this.col]
+    if (!sprite) return
     cvCtx.globalAlpha = this.a
-    cvCtx.drawImage(SPRITES[this.col], this.x - 8, this.y - 8, 16, 16)
+    cvCtx.drawImage(sprite, this.x - 8, this.y - 8, 16, 16)
     cvCtx.globalAlpha = 1
   }
 }
@@ -403,7 +407,7 @@ function loopParts(ts) {
       if (dx > 110 || dx < -110) continue
       const dy = parts[i].y - parts[j].y
       const d2 = dx * dx + dy * dy
-      if (d2 < 12000) {
+      if (LINK_RGB && d2 < 12000) {
         cvCtx.strokeStyle = `rgba(${LINK_RGB},${(0.12 * (1 - d2 / 12000)).toFixed(3)})`
         cvCtx.lineWidth = 1
         cvCtx.beginPath()
@@ -609,8 +613,8 @@ onBeforeUnmount(() => {
     linear-gradient(color-mix(in srgb, var(--blue) 6%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--blue) 6%, transparent) 1px, transparent 1px);
   background-size: 64px 64px;
-  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 40%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 40%, transparent 100%);
   will-change: transform;
   animation: gridScroll 30s linear infinite;
 }
@@ -683,7 +687,7 @@ onBeforeUnmount(() => {
   font-size: 42px;
   font-weight: 800;
   letter-spacing: 24px;
-  background: linear-gradient(180deg, var(--text), color-mix(in srgb, var(--blue) 45%, #ffffff) 60%, var(--blue));
+  background: linear-gradient(180deg, var(--text), color-mix(in srgb, var(--blue) 45%, var(--color-bg-card)) 60%, var(--blue));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -739,7 +743,7 @@ h1 {
   font-size: 30px;
   font-weight: 800;
   letter-spacing: 12px;
-  background: linear-gradient(180deg, var(--text) 20%, color-mix(in srgb, var(--blue) 45%, #ffffff) 60%, var(--blue) 100%);
+  background: linear-gradient(180deg, var(--text) 20%, color-mix(in srgb, var(--blue) 45%, var(--color-bg-card)) 60%, var(--blue) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -843,7 +847,7 @@ h1 {
   font-size: 84px;
   font-weight: 900;
   letter-spacing: 14px;
-  background: linear-gradient(180deg, var(--text) 20%, color-mix(in srgb, var(--blue) 45%, #ffffff) 55%, var(--blue) 100%);
+  background: linear-gradient(180deg, var(--text) 20%, color-mix(in srgb, var(--blue) 45%, var(--color-bg-card)) 55%, var(--blue) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
