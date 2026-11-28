@@ -15,18 +15,20 @@
 
 确保本地已安装 Node.js 16+ 版本：
 
+本项目统一使用 **yarn**（Yarn 1.22.22），请勿使用 npm / pnpm，也不要提交 `package-lock.json`。
+
 ```bash
 # 1. 安装依赖
-npm install
+yarn install
 
 # 2. 启动开发服务（默认端口8888，自动打开浏览器）
-npm run dev
+yarn dev
 
 # 3. 构建生产包
-npm run build
+yarn build
 
 # 4. 预览生产构建
-npm run preview
+yarn preview
 ```
 
 ## 📁 目录结构

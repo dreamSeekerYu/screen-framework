@@ -4,7 +4,7 @@
  * 用法：
  *   1. 把 Excel 重新导出的原始 JSON 放到项目根目录 data-source/ 下
  *      （文件名保持不变：data.json / dataLPA.json / pack客户表现.json / 周度工作计划.json）
- *   2. 执行 `npm run data`
+ *   2. 执行 `yarn data`
  *   3. 压缩产物自动写入 public/data/，业务代码无需改动
  *
  * 压缩策略：
@@ -12,7 +12,7 @@
  *   - 弃用字段剥离（默认开启）：styles / rowHeights / columnWidths / styleId
  *     解析层（utils/parse*.js）只读 cells[*].value，这些字段不影响页面；
  *     实测「仅样式/行高变化」的重新导出会让 JSON 膨胀 3%~13%，剥离后可避免。
- *     需要保留时用 `KEEP_STYLES=1 npm run data`
+ *     需要保留时用 `KEEP_STYLES=1 yarn data`
  *   - 去空字段：值为 null/undefined/空数组的键删除
  *   - 紧凑输出：无缩进、无换行
  *   - 自动处理 data-source/ 下全部 *.json（无需维护文件清单）
