@@ -46,7 +46,6 @@ export default defineConfig({
             if (/[\\/]echarts[\\/]/.test(id)) return 'echarts'
             if (/[\\/]vue[\\/]/.test(id) || /[\\/]vue-router[\\/]/.test(id) ||
                 /[\\/]pinia[\\/]/.test(id)) return 'vue-vendor'
-            if (/[\\/]axios[\\/]/.test(id)) return 'axios'
             return 'vendor'
           }
           // src/data 下的 json 已迁移到 public/data，理论上不会再出现；

@@ -68,9 +68,7 @@ screen-framework/
 │   ├── router/             # 路由配置
 │   │   └── index.js
 │   ├── utils/              # 工具函数
-│   │   ├── request.js      # Axios请求封装
 │   │   └── echarts.js      # ECharts按需引入注册
-│   ├── api/                # 接口请求
 │   ├── views/              # 页面视图
 │   │   └── Home/
 │   │       └── index.vue   # 首页演示示例
