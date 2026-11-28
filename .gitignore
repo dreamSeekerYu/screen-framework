@@ -16,9 +16,6 @@ pnpm-lock.yaml
 .idea
 .DS_Store
 
-# 原始 Excel 导出的大 JSON（不入仓库，构建脚本从这里读取）
-data-source/
-
 # 本地缓存
 .cache
 
