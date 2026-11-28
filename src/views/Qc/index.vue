@@ -16,7 +16,7 @@
     <div class="qc-body">
       <!-- KPI 四卡 -->
       <StatCardRow :gap="12" :min-card-width="220" :max-card-width="520">
-        <NewStatCard v-for="(c, i) in kpiCards" :key="i"
+        <StatCard v-for="(c, i) in kpiCards" :key="i"
                      :theme="c.theme" :title="c.title" :value="c.value" :unit="c.unit"
                      :subTitle="(c.explain?c.explain:'') + (c.subTitle?c.subTitle:'')" :trend="c.trend" :trend-type="c.trendType">
           <template v-if="c.extra" #left-extra>
@@ -27,7 +27,7 @@
               <div class="kpi-progress__fill" :style="{ width: Math.min(c.progress, 100) + '%' }"></div>
             </div>
           </template>
-        </NewStatCard>
+        </StatCard>
       </StatCardRow>
 
       <!-- 结论条 -->
@@ -167,7 +167,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
-import NewStatCard from '@/components/common/NewStatCard.vue'
+import StatCard from '@/components/common/StatCard.vue'
 import StatCardRow from '@/components/common/StatCardRow.vue'
 import SummaryBar from '@/components/common/SummaryBar.vue'
 import StatusTag from '@/components/common/StatusTag.vue'

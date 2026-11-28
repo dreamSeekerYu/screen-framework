@@ -6,7 +6,8 @@
   <title>数据可视化大屏框架</title>
   <script>
     // 首屏防闪烁：在DOM解析前先设置好主题属性
-    const savedTheme = localStorage.getItem('screen-theme') || 'dark-blue'
+    // 默认值需与 src/stores/theme.js 的 DEFAULT_THEME 保持一致（light-business）
+    const savedTheme = localStorage.getItem('screen-theme') || 'light-business'
     document.documentElement.setAttribute('data-theme', savedTheme)
   </script>
 </head>

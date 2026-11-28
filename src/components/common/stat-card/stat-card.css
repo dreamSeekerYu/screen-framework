@@ -1,0 +1,633 @@
+/* =========================================================
+ * StatCard 样式（统一实现）
+ *
+ * 说明：布局已拆分到 stat-card/ 子组件，样式集中在本文件，因此不使用
+ * scoped —— 所有选择器都以 `.stat-card` / `.stat-card--theme-*` 命名空间收口，
+ * 不会污染全局样式。
+ * ========================================================= */
+
+/* =========================================================
+ * 基础：所有主题共享的卡片容器
+ * ========================================================= */
+.stat-card {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+}
+
+/* =========================================================
+ * 一、经典主题（原 StatCard 样式）
+ * ========================================================= */
+.stat-card--theme-classic {
+    /* 兼容原 StatCard：允许默认插槽内容溢出显示 */
+    overflow: visible;
+
+    --card-bg-color: var(--color-bg-card);
+    --card-border-color: transparent;
+    --value-color: var(--color-primary);
+    --border-radius: 16px;
+    --padding: 20px 28px;
+    --title-size: 22px;
+    --explain-size: 16px;
+    --value-size: 42px;
+    --unit-size: 28px;
+    background: var(--card-bg-color);
+    border-radius: var(--border-radius);
+    padding: var(--padding);
+    border: 2px solid var(--card-border-color);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: center;
+}
+
+.stat-card--theme-classic:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.stat-card--theme-classic.stat-card--small {
+    --border-radius: 12px;
+    --padding: 14px 20px;
+    --title-size: 16px;
+    --explain-size: 13px;
+    --value-size: 28px;
+    --unit-size: 18px;
+}
+
+.stat-card--theme-classic.stat-card--large {
+    --border-radius: 20px;
+    --padding: 28px 36px;
+    --title-size: 26px;
+    --explain-size: 18px;
+    --value-size: 56px;
+    --unit-size: 36px;
+}
+
+.stat-card--theme-classic.stat-card--dash {
+    border-style: dashed;
+}
+
+.stat-card--theme-classic.stat-card--default {
+    border-color: var(--color-border-light);
+    background: var(--color-bg-card);
+}
+
+.stat-card--theme-classic.stat-card--outlined {
+    background: var(--color-bg-card);
+}
+
+.stat-card--theme-classic .stat-card__content {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+}
+
+.stat-card--theme-classic .stat-card__left {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-card--theme-classic .stat-card__title {
+    font-size: var(--title-size);
+    font-weight: 500;
+    color: var(--color-text-primary);
+    line-height: 1.4;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-card--theme-classic .stat-card__explain {
+    font-size: var(--explain-size);
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-card--theme-classic .stat-card__right {
+    flex-shrink: 0;
+    display: flex;
+    align-items: baseline;
+    font-weight: 700;
+}
+
+.stat-card--theme-classic .stat-card__value {
+    font-size: var(--value-size);
+    color: var(--value-color);
+    line-height: 1;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.stat-card--theme-classic .stat-card__unit {
+    font-size: var(--unit-size);
+    color: var(--value-color);
+    margin-left: 4px;
+    line-height: 1;
+}
+
+.stat-card--theme-classic.stat-card--brightness-light.stat-card--plain {
+    --card-bg-color: color-mix(in srgb, var(--color-bg-card) 90%, transparent);
+}
+
+/* =========================================================
+ * 二、kpi-side 主题（玻璃拟态 + 左侧色条 + 图标块）
+ * ========================================================= */
+.stat-card--theme-kpi-side {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 12%, transparent) 0%, var(--color-bg-card) 60%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--color-border-light);
+    border-radius: 10px;
+    box-shadow: var(--shadow-card);
+    padding: 0 22px;
+    min-height: 105px;
+    display: flex;
+    align-items: stretch;
+}
+
+.stat-card--theme-kpi-side:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--color-border);
+}
+
+.stat-card--theme-kpi-side.stat-card--small {
+    min-height: 80px;
+    padding: 0 16px;
+}
+
+.stat-card--theme-kpi-side.stat-card--large {
+    min-height: 125px;
+    padding: 0 28px;
+}
+
+.stat-card--theme-kpi-side .stat-card__side-bar {
+    position: absolute;
+    top: 14px;
+    left: 0;
+    bottom: 14px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    z-index: 2;
+}
+
+.stat-card--theme-kpi-side.stat-card--small .stat-card__side-bar {
+    top: 10px;
+    bottom: 10px;
+}
+
+.stat-card--theme-kpi-side.stat-card--large .stat-card__side-bar {
+    top: 18px;
+    bottom: 18px;
+    width: 4px;
+}
+
+.stat-card--theme-kpi-side .kpi-side {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 0;
+    position: relative;
+    z-index: 1;
+}
+
+.stat-card .kpi-side__left {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.stat-card .kpi-side__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.stat-card--theme-kpi-side.stat-card--small .kpi-side__icon {
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+    border-radius: 6px;
+}
+
+.stat-card--theme-kpi-side.stat-card--large .kpi-side__icon {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+    border-radius: 10px;
+}
+
+.stat-card .kpi-side__text {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-card .kpi-side__title {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    text-align: left;
+    line-height: 1.4;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-card--theme-kpi-side.stat-card--small .kpi-side__title {
+    font-size: 13px;
+}
+
+.stat-card--theme-kpi-side.stat-card--large .kpi-side__title {
+    font-size: 16px;
+}
+
+.stat-card .kpi-side__title small {
+    display: block;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-card .kpi-side__right {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.stat-card .kpi-side__value-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+}
+
+.stat-card .kpi-side__value {
+    font-size: 38px;
+    font-weight: 700;
+    line-height: 1;
+    font-family: 'DIN Alternate', 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
+    color: var(--color-accent);
+}
+
+.stat-card--theme-kpi-side.stat-card--small .kpi-side__value {
+    font-size: 28px;
+}
+
+.stat-card--theme-kpi-side.stat-card--large .kpi-side__value {
+    font-size: 44px;
+}
+
+.stat-card .kpi-side__unit {
+    font-size: 16px;
+    font-weight: 500;
+    margin-left: 3px;
+    color: var(--color-accent);
+    line-height: 1;
+}
+
+.stat-card--theme-kpi-side.stat-card--small .kpi-side__unit {
+    font-size: 13px;
+}
+
+.stat-card--theme-kpi-side.stat-card--large .kpi-side__unit {
+    font-size: 18px;
+}
+
+.stat-card .kpi-side__trend {
+    font-size: 12px;
+    text-align: right;
+    margin-top: 7px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+
+.stat-card .kpi-side__trend--up {
+    color: var(--color-success);
+}
+
+.stat-card .kpi-side__trend--down {
+    color: var(--color-danger);
+}
+
+.stat-card .kpi-side__badge {
+    position: absolute;
+    top: 10px;
+    right: 0;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* =========================================================
+ * 三、kpi-top 主题（顶部渐变彩条 + 立体质感 + 光晕扫光）
+ * ========================================================= */
+.stat-card--theme-kpi-top {
+    background: linear-gradient(180deg, var(--color-bg-card) 0%, var(--color-bg-soft) 100%);
+    border-radius: 12px;
+    padding: 18px 18px 16px;
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-card);
+    display: block;
+}
+
+.stat-card--theme-kpi-top:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.stat-card--theme-kpi-top.stat-card--small {
+    padding: 14px 14px 12px;
+    border-radius: 10px;
+}
+
+.stat-card--theme-kpi-top.stat-card--large {
+    padding: 22px 24px 20px;
+    border-radius: 14px;
+}
+
+/* 强调渐变背景（第一张卡风格） */
+.stat-card--theme-kpi-top.stat-card--accent {
+    background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+.stat-card--theme-kpi-top .stat-card__top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 12px 12px 0 0;
+}
+
+.stat-card--theme-kpi-top .stat-card__halo {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.stat-card .kpi-top {
+    position: relative;
+    z-index: 1;
+}
+
+.stat-card .kpi-top__body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-card .kpi-top__left {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-card .kpi-top__title {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-card--theme-kpi-top.stat-card--small .kpi-top__title {
+    font-size: 12px;
+}
+
+.stat-card--theme-kpi-top.stat-card--large .kpi-top__title {
+    font-size: 15px;
+}
+
+.stat-card .kpi-top__sub {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-card .kpi-top__right {
+    /* 固定占比：宽度不随数值内容浮动，字号自适应才能收敛 */
+    flex: 0 0 auto;
+    width: 58%;
+    min-width: 0;
+    text-align: right;
+}
+
+.stat-card .kpi-top__value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    justify-content: flex-end;
+    /* 阻断 min-content 传递：否则长数值会把外层 grid 的 1fr 轨道撑开，形成测量回流 */
+    min-width: 0;
+}
+
+.stat-card .kpi-top__value {
+    font-size: 38px;
+    font-weight: 800;
+    line-height: 1;
+    /* 不换行 + 裁剪：换行/溢出会污染测量，溢出部分交给字号自适应处理 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -1px;
+    color: var(--color-accent);
+    text-shadow: 0 2px 12px color-mix(in srgb, var(--color-accent) 20%, transparent);
+    font-family: 'DIN Alternate', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card--theme-kpi-top.stat-card--small .kpi-top__value {
+    font-size: 28px;
+}
+
+.stat-card--theme-kpi-top.stat-card--large .kpi-top__value {
+    font-size: 46px;
+}
+
+.stat-card--theme-kpi-top.stat-card--accent .kpi-top__value {
+    font-size: 42px;
+}
+
+.stat-card .kpi-top__unit {
+    font-size: 16px;
+    font-weight: 600;
+    margin-left: 2px;
+    color: var(--color-accent);
+    line-height: 1;
+    transition: opacity 0.4s ease 0.3s;
+}
+
+.stat-card--theme-kpi-top.stat-card--small .kpi-top__unit {
+    font-size: 13px;
+}
+
+.stat-card--theme-kpi-top.stat-card--large .kpi-top__unit {
+    font-size: 19px;
+}
+
+/* 入场动画初始态 */
+.stat-card--theme-kpi-top.stat-card--animated .kpi-top__value {
+    opacity: 0;
+    transform: translateY(8px);
+}
+
+.stat-card--theme-kpi-top.stat-card--animated .kpi-top__unit {
+    opacity: 0;
+}
+
+.stat-card--theme-kpi-top .kpi-top__value--loaded {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
+.stat-card--theme-kpi-top .kpi-top__unit--loaded {
+    opacity: 1 !important;
+}
+
+.stat-card .kpi-top__badge {
+    position: absolute;
+    top: -4px;
+    right: 0;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* =========================================================
+ * 四、mini 主题（居中 + 浅底 + 大数字 + 标签）
+ * ========================================================= */
+.stat-card--theme-mini {
+    padding: 12px 8px;
+    border-radius: 8px;
+    text-align: center;
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+    display: block;
+}
+
+.stat-card--theme-mini:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-card);
+}
+
+.stat-card--theme-mini .mini-stat {
+    width: 100%;
+}
+
+.stat-card .mini-stat__value {
+    font-size: 20px;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--color-accent) 70%, var(--color-text-primary));
+    font-family: 'DIN Alternate', 'PingFang SC', sans-serif;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.stat-card--theme-mini.stat-card--small .mini-stat__value {
+    font-size: 17px;
+}
+
+.stat-card--theme-mini.stat-card--large .mini-stat__value {
+    font-size: 24px;
+}
+
+.stat-card .mini-stat__label {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+/* =========================================================
+ * 五、动效：扫光 + 入场 fadeInUp
+ * ========================================================= */
+.stat-card__shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: statCardShine 8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 2;
+}
+
+@keyframes statCardShine {
+    0% {
+        left: -40%;
+    }
+
+    20%,
+    100% {
+        left: 140%;
+    }
+}
+
+/* 入场动画 */
+.stat-card--animated {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: statCardFadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes statCardFadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================================
+ * 右上角 action 通用定位
+ * ========================================================= */
+.stat-card__action {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 14px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+}
+
+.stat-card * {
+    box-sizing: border-box;
+}

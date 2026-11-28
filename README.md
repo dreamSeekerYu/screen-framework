@@ -13,7 +13,7 @@
 
 ## 🚀 快速启动
 
-确保本地已安装 Node.js 16+ 版本：
+确保本地已安装 Node.js 18+ 版本（Vite 5 的最低要求）：
 
 本项目统一使用 **yarn**（Yarn 1.22.22），请勿使用 npm / pnpm，也不要提交 `package-lock.json`。
 

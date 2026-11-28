@@ -229,7 +229,7 @@
 </template>
 
 <script setup>
-import StatCard from '@/components/common/NewStatCard.vue'
+import StatCard from '@/components/common/StatCard.vue'
 </script>
 
 <style>

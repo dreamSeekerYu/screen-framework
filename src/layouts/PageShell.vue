@@ -1,6 +1,6 @@
 <template>
   <div class="page-shell">
-    <!-- KPI 行：固定高度，一行 NewStatCard/StatCardRow -->
+    <!-- KPI 行：固定高度，一行 StatCard/StatCardRow -->
     <div v-if="$slots.kpi" class="page-shell__kpi">
       <slot name="kpi" />
     </div>

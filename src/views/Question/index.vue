@@ -16,7 +16,7 @@
     </ScreenHeader>
     <!-- KPI 行：由 StatCardRow 统一做"内容自然宽度 + min/max 约束 + 剩余空间均分"的自适应布局 -->
     <StatCardRow class="q-kpi-row" :gap="16" :min-card-width="200" :max-card-width="460">
-      <NewStatCard v-for="(k, i) in kpiCards" :key="k.title" class="q-kpi" theme="kpi-top" :status="k.status"
+      <StatCard v-for="(k, i) in kpiCards" :key="k.title" class="q-kpi" theme="kpi-top" :status="k.status"
         :title="k.title" :sub-title="k.sub" :value="k.value" :unit="k.unit" :count-up="k.countUp" :fit-value="false"
         animated :animation-delay="i * 80" />
     </StatCardRow>
@@ -123,7 +123,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
-import NewStatCard from '@/components/common/NewStatCard.vue'
+import StatCard from '@/components/common/StatCard.vue'
 import StatCardRow from '@/components/common/StatCardRow.vue'
 import SummaryBar from '@/components/common/SummaryBar.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
@@ -167,7 +167,7 @@ onMounted(async () => {
   }
 })
 
-// KPI 卡片配置（复用 NewStatCard kpi-top 主题）
+// KPI 卡片配置（复用 StatCard kpi-top 主题）
 const kpiCards = computed(() => {
   if (!closeData.value) return []
   const c = closeData.value

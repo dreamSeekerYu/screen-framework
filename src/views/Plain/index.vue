@@ -26,7 +26,7 @@
     <template v-else-if="currentWeek">
       <!-- KPI 指标栏 -->
       <div class="kpi-row">
-        <NewStatCard
+        <StatCard
           v-for="k in kpiCards"
           :key="k.title"
           :theme="k.theme"
@@ -110,7 +110,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
-import NewStatCard from '@/components/common/NewStatCard.vue'
+import StatCard from '@/components/common/StatCard.vue'
 import BaseChart from '@/components/chart/BaseChart.vue'
 import WeeklyPlanDetail from '@/components/common/WeeklyPlanDetail.vue'
 import { loadSheet } from '@/utils/dataLoader.js'

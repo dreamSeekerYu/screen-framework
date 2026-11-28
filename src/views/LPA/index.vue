@@ -85,7 +85,7 @@ import { ref, computed } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
 import { useLazyLoad } from '@/composables/useLazyLoad'
-import StatCard from '@/components/common/NewStatCard.vue'
+import StatCard from '@/components/common/StatCard.vue'
 
 import { loadData } from '@/utils/dataLoader.js'
 import {

@@ -41,7 +41,7 @@
 
       <!-- KPI 行（均按当前所选周统计） -->
       <div class="kpi-row">
-        <NewStatCard
+        <StatCard
           theme="classic"
           status="primary"
           :title="`${activeShort}重点任务`"
@@ -49,7 +49,7 @@
           unit="项"
           :explain="compareTip('总任务数')"
         />
-        <NewStatCard
+        <StatCard
           theme="classic"
           status="danger"
           :title="`${activeShort}高风险任务`"
@@ -57,7 +57,7 @@
           unit="项"
           :explain="compareTip('高风险任务')"
         />
-        <NewStatCard
+        <StatCard
           theme="classic"
           status="warning"
           :title="`${activeShort}核心风险卡点`"
@@ -65,7 +65,7 @@
           unit="个"
           :explain="compareTip('核心卡点')"
         />
-        <NewStatCard
+        <StatCard
           theme="classic"
           status="success"
           :title="`${activeShort}需协调资源`"
@@ -188,7 +188,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import ScreenHeader from '@/components/layout/ScreenHeader.vue'
 import ScreenCard from '@/components/common/ScreenCard.vue'
-import NewStatCard from '@/components/common/NewStatCard.vue'
+import StatCard from '@/components/common/StatCard.vue'
 import Tabs from '@/components/common/Tabs.vue'
 import TabPane from '@/components/common/TabPane.vue'
 import Tag from '@/components/common/Tag.vue'
